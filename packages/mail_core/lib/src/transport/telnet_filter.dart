@@ -10,9 +10,9 @@ class TelnetFilter implements Transport {
   TelnetFilter(this._inner);
 
   final Transport _inner;
-  late final Stream<List<int>> _incoming = _inner.incoming.transform(
-    StreamTransformer.fromBind((input) => _filter(input)),
-  );
+  // Called directly rather than through Stream.transform: a socket is
+  // really a Stream<Uint8List>, which transform's type check rejects.
+  late final Stream<List<int>> _incoming = _filter(_inner.incoming);
 
   static const _iac = 255, _sb = 250, _se = 240, _will = 251, _dont = 254;
 
