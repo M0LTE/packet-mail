@@ -105,7 +105,7 @@ Capability flags let the app hide what a driver can't do (for example, no White 
 
 - **Plain ASCII on send.** Curly quotes, long dashes, ellipses and similar become their ASCII equivalents. Anything else unmappable is flagged before sending.
 - **Line wrapping:** the body is wrapped to 72 characters on send. Packet mail is read on 80-column terminals, and 72 leaves room for a few levels of `> ` quoting before a reply overflows a line.
-- **Subject:** capped at 60 characters.
+- **Subject:** capped at 59 characters (BPQMail silently cuts longer titles).
 - **No CC.** Several recipients means one copy each. Sent shows it as one item with a status per recipient.
 - **No attachments in v1.**
 - **Reply:** quotes the original with `>` and prefixes `Re:`, once.

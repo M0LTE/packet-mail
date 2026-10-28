@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Starts a fresh test BBS. State lives in a temporary directory, so every run starts clean.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)

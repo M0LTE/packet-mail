@@ -1,0 +1,3 @@
+tags:
+  bbs:
+    description: Needs a running test BBS (test-bbs/run.sh).

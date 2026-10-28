@@ -1,0 +1,89 @@
+import '../message.dart';
+
+/// BPQMail silently cuts titles at this length.
+const maxTitleLength = 59;
+
+const _months = {
+  'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+  'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
+};
+
+/// BPQ dates carry no year. Picks the most recent year that doesn't put the
+/// date more than a day in the future.
+DateTime bpqDate(String dayMonth, DateTime now, {int hour = 0, int minute = 0}) {
+  final m = RegExp(r'^(\d\d)-(\w{3})$').firstMatch(dayMonth);
+  if (m == null) throw FormatException('Not a BPQ date', dayMonth);
+  final day = int.parse(m[1]!);
+  final month = _months[m[2]] ?? (throw FormatException('Not a month', m[2]));
+  var d = DateTime.utc(now.year, month, day, hour, minute);
+  if (d.isAfter(now.add(const Duration(days: 1)))) d = DateTime.utc(now.year - 1, month, day, hour, minute);
+  return d;
+}
+
+final _listing = RegExp(r'^(\d+)\s+(\d\d-\w{3})\s+([PBT])(\S)\s+(\d+)\s+(\S+)\s*(?:@(\S+))?\s+(\S+) ?(.*)$');
+
+/// Parses one line of an `L` listing, or returns null if it isn't one.
+MessageHeader? parseListingLine(String line, DateTime now) {
+  final m = _listing.firstMatch(line);
+  if (m == null) return null;
+  return MessageHeader(
+    number: int.parse(m[1]!),
+    date: bpqDate(m[2]!, now),
+    type: MessageType.fromLetter(m[3]!),
+    status: m[4]!,
+    size: int.parse(m[5]!),
+    to: m[6]!,
+    at: m[7],
+    from: m[8]!,
+    subject: m[9]!.trim(),
+  );
+}
+
+/// Parses the text of an `R n` reply up to and including the end marker.
+ReadMessage? parseReadMessage(int number, String text, DateTime now) {
+  final start = text.indexOf('From: ');
+  final end = text.lastIndexOf('[End of Message #$number from ');
+  if (start < 0 || end < 0) return null;
+  // Bodies from other systems may use LF or CRLF; treat every kind as a line end.
+  final lines = text.substring(start, end).replaceAll('\r\n', '\r').replaceAll('\n', '\r').split('\r');
+
+  final headers = <String, String>{};
+  var i = 0;
+  for (; i < lines.length && lines[i].isNotEmpty; i++) {
+    final colon = lines[i].indexOf(': ');
+    if (colon > 0) headers[lines[i].substring(0, colon)] = lines[i].substring(colon + 2);
+  }
+  i++; // the blank line after the headers
+
+  // Winlink-style messages start with a Body: line; skip it and its blank line.
+  if (i < lines.length && RegExp(r'^Body: \d+$').hasMatch(lines[i])) {
+    i++;
+    if (i < lines.length && lines[i].isEmpty) i++;
+  }
+  final routing = <String>[];
+  while (i < lines.length && lines[i].startsWith('R:')) {
+    routing.add(lines[i++]);
+  }
+  if (routing.isNotEmpty && i < lines.length && lines[i].isEmpty) i++;
+
+  var body = lines.sublist(i < lines.length ? i : lines.length);
+  // The BBS adds empty lines before the end marker; trailing empty lines carry nothing.
+  while (body.isNotEmpty && body.last.trim().isEmpty) {
+    body = body.sublist(0, body.length - 1);
+  }
+
+  final typeStatus = headers['Type/Status'] ?? 'PN';
+  final dt = RegExp(r'^(\d\d-\w{3}) (\d\d):(\d\d)Z$').firstMatch(headers['Date/Time'] ?? '');
+  return ReadMessage(
+    number: number,
+    type: MessageType.fromLetter(typeStatus.isEmpty ? 'P' : typeStatus[0]),
+    statusBeforeRead: typeStatus.length > 1 ? typeStatus[1] : '',
+    from: headers['From'] ?? '',
+    to: headers['To'] ?? '',
+    subject: headers['Title'] ?? '',
+    date: dt == null ? now : bpqDate(dt[1]!, now, hour: int.parse(dt[2]!), minute: int.parse(dt[3]!)),
+    bid: headers['Bid'] ?? '',
+    routing: routing,
+    body: body.join('\n'),
+  );
+}

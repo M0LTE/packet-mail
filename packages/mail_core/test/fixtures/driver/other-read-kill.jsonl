@@ -1,0 +1,34 @@
+# Recorded by driver_live_test.dart against test-bbs; do not edit.
+{"t":0.0,"dir":"tx","data":"other\r"}
+{"t":0.0,"dir":"tx","data":"other\r"}
+{"t":0.0,"dir":"tx","data":"BBS\r"}
+{"t":0.028,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":0.099,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rPlease enter your Name\r>\r"}
+{"t":0.099,"dir":"tx","data":"Olive Other\r"}
+{"t":0.201,"dir":"rx","data":"Hello Olive Other. Latest Message is 4, Last listed is -16\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":0.201,"dir":"tx","data":"LM\r"}
+{"t":0.302,"dir":"rx","data":"2      28-Oct PN     126 Q0OTH  @Q0TST  Q0USR  Hello from the driver\rde Q0TST>\r"}
+{"t":0.303,"dir":"tx","data":"R 2\r"}
+{"t":0.403,"dir":"rx","data":"From: Q0USR\rTo: Q0OTH\rType/Status: PN\rDate/Time: 28-Oct 09:24Z\rBid: 2_Q0TST\rTitle: Hello from the driver\r\rLine one\r\r Invalid Command is a phrase that would drop the session\r /ex\r    Tabbed line\rCafé and a ? snowman\rLast line\r\r\r[End of M"}
+{"t":0.443,"dir":"rx","data":"essage #2 from Q0USR]\rde Q0TST>\r"}
+{"t":0.445,"dir":"tx","data":"LM\r"}
+{"t":0.504,"dir":"rx","data":"2      28-Oct PY     126 Q0OTH  @Q0TST  Q0USR  Hello from the driver\rde Q0TST>\r"}
+{"t":0.504,"dir":"tx","data":"K 2\r"}
+{"t":0.605,"dir":"rx","data":"Message #2 Killed\rde Q0TST>\r"}
+{"t":0.605,"dir":"tx","data":"K 2\r"}
+{"t":0.706,"dir":"rx","data":"Message 2 not found\rde Q0TST>\r"}
+{"t":0.706,"dir":"tx","data":"R 2\r"}
+{"t":0.807,"dir":"rx","data":"Message 2 not for you\rde Q0TST>\r"}
+{"t":0.81,"dir":"tx","data":"R 99\r"}
+{"t":0.908,"dir":"rx","data":"Message 99 not found\rde Q0TST>\r"}
+{"t":0.909,"dir":"tx","data":"LB\r"}
+{"t":1.009,"dir":"rx","data":"3      28-Oct BN      16 ALL    @GBR    Q0USR  Driver bulletin\rde Q0TST>\r"}
+{"t":1.01,"dir":"tx","data":"R 3\r"}
+{"t":1.11,"dir":"rx","data":"From: Q0USR\rTo: ALL\rType/Status: BN\rDate/Time: 28-Oct 09:24Z\rBid: 3_Q0TST\rTitle: Driver bulletin\r\rBulletin body.\r\r\r[End of Message #3 from Q0USR]\rde Q0TST>\r"}
+{"t":1.111,"dir":"tx","data":"K 3\r"}
+{"t":1.212,"dir":"rx","data":"Not your message\rde Q0TST>\r"}
+{"t":1.212,"dir":"tx","data":"I G8BPQ\r"}
+{"t":1.313,"dir":"rx","data":"de Q0TST>\r"}
+{"t":1.313,"dir":"tx","data":"B\r"}
+{"t":2.414,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":2.414,"dir":"close"}

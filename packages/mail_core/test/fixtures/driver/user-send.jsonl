@@ -1,0 +1,35 @@
+# Recorded by driver_live_test.dart against test-bbs; do not edit.
+{"t":0.002,"dir":"tx","data":"user\r"}
+{"t":0.005,"dir":"tx","data":"user\r"}
+{"t":0.005,"dir":"tx","data":"BBS\r"}
+{"t":0.03,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":0.099,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rPlease enter your Name\r>\r"}
+{"t":0.101,"dir":"tx","data":"Tom User\r"}
+{"t":0.201,"dir":"rx","data":"Hello Tom User. Latest Message is 1, Last listed is -19\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":0.204,"dir":"tx","data":"SP Q0OTH @ Q0TST.#42.GBR.EURO\r"}
+{"t":0.302,"dir":"rx","data":"Enter Title (only):\r"}
+{"t":0.303,"dir":"tx","data":"Hello from the driver\r"}
+{"t":0.403,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
+{"t":0.404,"dir":"tx","data":"Line one\r"}
+{"t":0.405,"dir":"tx","data":"\r"}
+{"t":0.405,"dir":"tx","data":" Invalid Command is a phrase that would drop the session\r"}
+{"t":0.405,"dir":"tx","data":" /ex\r"}
+{"t":0.405,"dir":"tx","data":"    Tabbed line\r"}
+{"t":0.405,"dir":"tx","data":"Café and a ? snowman\r"}
+{"t":0.405,"dir":"tx","data":"Last line\r"}
+{"t":0.405,"dir":"tx","data":"/EX\r"}
+{"t":0.504,"dir":"rx","data":"Message: 2 Bid:  2_Q0TST Size: 126\rde Q0TST>\r"}
+{"t":0.507,"dir":"tx","data":"SB ALL @ GBR\r"}
+{"t":0.605,"dir":"rx","data":"Enter Title (only):\r"}
+{"t":0.605,"dir":"tx","data":"Driver bulletin\r"}
+{"t":0.706,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
+{"t":0.706,"dir":"tx","data":"Bulletin body.\r"}
+{"t":0.706,"dir":"tx","data":"/EX\r"}
+{"t":0.807,"dir":"rx","data":"Message: 3 Bid:  3_Q0TST Size: 16\r@BBS specified, but no forwarding info is available - msg may not be delivered\rde Q0TST>\r"}
+{"t":0.808,"dir":"tx","data":"LB\r"}
+{"t":0.909,"dir":"rx","data":"3      28-Oct BN      16 ALL    @GBR    Q0USR  Driver bulletin\rde Q0TST>\r"}
+{"t":0.911,"dir":"tx","data":"LM\r"}
+{"t":1.01,"dir":"rx","data":"de Q0TST>\r"}
+{"t":1.01,"dir":"tx","data":"B\r"}
+{"t":2.111,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":2.112,"dir":"close"}

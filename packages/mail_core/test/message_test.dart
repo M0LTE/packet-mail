@@ -7,6 +7,7 @@ void main() {
       number: 1234,
       type: MessageType.bulletin,
       from: 'G8BPQ',
+      status: 'N',
       to: 'WX',
       at: 'GBR',
       subject: 'Weekly summary',

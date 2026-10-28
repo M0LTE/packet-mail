@@ -26,6 +26,28 @@ jobs:
         working-directory: packages/mail_core
         run: dart test
 
+  bbs:
+    name: Driver against a real LinBPQ
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Start the test BBS
+        run: test-bbs/run.sh
+      - name: Driver scenarios against it
+        working-directory: packages/mail_core
+        run: dart test test/driver_live_test.dart
+        env:
+          PACKET_MAIL_TEST_BBS: '1'
+      - name: BBS log on failure
+        if: failure()
+        run: docker logs packet-mail-test-bbs
+
   android:
     needs: test
     runs-on: ubuntu-latest
