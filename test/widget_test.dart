@@ -76,4 +76,33 @@ void main() {
     expect(app.passwords.passwords[c.id], 'secret');
     await app.dispose(tester);
   });
+
+  testWidgets('first run keeps nothing if the password cannot be saved, so a retry makes one connection',
+      (tester) async {
+    final app = TestApp();
+    await app.pump(tester);
+    await enter(tester, 'Callsign', 'm0lte');
+    await enter(tester, 'Name', 'Tom');
+    await enter(tester, 'Home BBS', 'GB7RDG.#42.GBR.EURO');
+    await tapText(tester, 'Next');
+    await enter(tester, 'Name', 'Home BBS');
+    await enter(tester, 'Host', '192.168.1.20');
+    await enter(tester, 'Login name', 'm0lte');
+    await enter(tester, 'Password', 'secret');
+
+    app.passwords.writeFailure = Exception('locked');
+    await tapText(tester, 'Save and finish');
+    await app.settle(tester);
+    expect(find.text('Could not save. Try again.'), findsOneWidget);
+    expect(await tester.runAsync(() => app.store.select(app.store.connections).get()), isEmpty);
+    expect(await tester.runAsync(() => app.store.select(app.store.identities).get()), isEmpty);
+
+    app.passwords.writeFailure = null;
+    await tapText(tester, 'Save and finish');
+    await app.settle(tester);
+    expect(find.text('No mail yet. Pull down to check.'), findsOneWidget);
+    final c = (await tester.runAsync(() => app.store.select(app.store.connections).getSingle()))!;
+    expect(app.passwords.passwords[c.id], 'secret');
+    await app.dispose(tester);
+  });
 }

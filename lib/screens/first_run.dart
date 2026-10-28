@@ -40,14 +40,27 @@ class _FirstRunScreenState extends ConsumerState<FirstRunScreen> {
     if (_identityForm.currentState!.validate()) setState(() => _step = 1);
   }
 
+  /// Saves the connection, its password and the identity together: if any
+  /// of them fails nothing is kept, so trying again can't add a second
+  /// connection. The password goes in before the identity, which is what
+  /// moves the app on to the mail screens.
   Future<void> _save(ConnectionDraft draft, String? password) async {
     final store = ref.read(storeProvider);
-    await saveConnection(store, ref.read(passwordsProvider), draft, password: password);
-    await store.into(store.identities).insert(IdentitiesCompanion(
-          callsign: Value(_callsign.text.trim().toUpperCase()),
-          name: Value(_name.text.trim()),
-          homeBbs: Value(_homeBbs.text.trim().toUpperCase()),
-        ));
+    final passwords = ref.read(passwordsProvider);
+    int? id;
+    try {
+      await store.transaction(() async {
+        id = await saveConnection(store, passwords, draft, password: password ?? '');
+        await store.into(store.identities).insert(IdentitiesCompanion(
+              callsign: Value(_callsign.text.trim().toUpperCase()),
+              name: Value(_name.text.trim()),
+              homeBbs: Value(_homeBbs.text.trim().toUpperCase()),
+            ));
+      });
+    } on Object {
+      if (id case final id?) await passwords.delete(id).catchError((_) {});
+      rethrow;
+    }
   }
 
   @override
