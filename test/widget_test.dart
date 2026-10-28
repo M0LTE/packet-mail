@@ -65,7 +65,7 @@ void main() {
 
     await tapText(tester, 'Save and finish');
     await app.settle(tester);
-    expect(find.text('Coming soon.'), findsOneWidget);
+    expect(find.text('No mail yet. Pull down to check.'), findsOneWidget);
 
     final identity = await tester.runAsync(() => app.store.select(app.store.identities).getSingle());
     expect(identity!.callsign, 'M0LTE');

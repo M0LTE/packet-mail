@@ -27,3 +27,6 @@ final connectionsProvider = StreamProvider<List<Connection>>((ref) {
   final store = ref.watch(storeProvider);
   return (store.select(store.connections)..orderBy([(c) => OrderingTerm(expression: c.name)])).watch();
 });
+
+/// The time now. Tests and screenshots fix it.
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);

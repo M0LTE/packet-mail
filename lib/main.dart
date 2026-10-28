@@ -2,15 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'providers.dart';
 import 'screens/first_run.dart';
 import 'screens/home.dart';
 import 'theme.dart';
+import 'view_choice.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(_fontLicences);
-  runApp(const ProviderScope(child: PacketMailApp()));
+  final prefs = await SharedPreferences.getInstance();
+  runApp(ProviderScope(
+    overrides: [prefsProvider.overrideWithValue(prefs)],
+    child: const PacketMailApp(),
+  ));
 }
 
 Stream<LicenseEntry> _fontLicences() async* {

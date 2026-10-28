@@ -10,6 +10,10 @@ abstract final class Logbook {
   static const inkFaint = Color(0xFF8A7F6C);
   static const stampRed = Color(0xFFB0482C);
 
+  /// A stamp on mail already read: faded, like an old QSL card.
+  static const stampFadedBorder = Color(0xFFC9BFAE);
+  static const stampFadedInk = Color(0xFFA99E8A);
+
   static const serif = 'SourceSerif4';
   static const sans = 'Inter';
   static const mono = 'JetBrainsMono';

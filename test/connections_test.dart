@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
@@ -6,7 +8,8 @@ import 'helpers.dart';
 
 void main() {
   Future<TestApp> seeded(WidgetTester tester) async {
-    final app = TestApp();
+    // Hold the sync that runs on opening, so the seeded result stays.
+    final app = TestApp()..gate = Completer();
     await tester.runAsync(() async {
       await app.store.into(app.store.identities).insert(IdentitiesCompanion.insert(
             callsign: 'M0LTE',

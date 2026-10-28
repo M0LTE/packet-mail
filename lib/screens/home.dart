@@ -2,26 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
+import '../sync.dart';
 import '../theme.dart';
 import 'connections_screen.dart';
 import 'identity_screen.dart';
+import 'mail_tab.dart';
 
 /// The app after first run: Mail, Bulletins, Contacts and Settings.
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   var _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Check for mail whenever the app opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(syncingProvider.notifier).syncAll();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: switch (_tab) {
-        0 => const _ComingSoon(title: 'Mail'),
+        0 => const MailTab(),
         1 => const _ComingSoon(title: 'Bulletins'),
         2 => const _ComingSoon(title: 'Contacts'),
         _ => const SettingsTab(),
