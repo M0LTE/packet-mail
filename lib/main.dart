@@ -1,10 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mail_core/mail_core.dart' show TrafficLog;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'providers.dart';
+import 'report.dart';
 import 'screens/first_run.dart';
 import 'screens/home.dart';
 import 'theme.dart';
@@ -14,8 +19,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(_fontLicences);
   final prefs = await SharedPreferences.getInstance();
+  final support = await getApplicationSupportDirectory();
   runApp(ProviderScope(
-    overrides: [prefsProvider.overrideWithValue(prefs)],
+    overrides: [
+      prefsProvider.overrideWithValue(prefs),
+      trafficLogProvider.overrideWithValue(TrafficLog(Directory('${support.path}/traffic'))),
+    ],
     child: const PacketMailApp(),
   ));
 }

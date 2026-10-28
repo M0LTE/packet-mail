@@ -91,13 +91,14 @@ Future<void> deleteConnection(MailStore store, PasswordStore passwords, int id) 
 /// Tries a connection and says what happened in plain words.
 typedef ConnectionTester = Future<String> Function(ConnectionDraft draft, {required String password, required String name});
 
-/// Connects, logs in, lists personal mail and disconnects.
-Future<String> testConnection(ConnectionDraft draft, {required String password, required String name}) async {
+/// Connects, logs in, lists personal mail and disconnects, keeping the traffic in [log].
+Future<String> testConnection(ConnectionDraft draft,
+    {required String password, required String name, TrafficLog? log}) async {
   MailDriver? driver;
   try {
-    final transport = await TcpTransport.connect(draft.host, draft.port, timeout: const Duration(seconds: 10));
+    final tcp = await TcpTransport.connect(draft.host, draft.port, timeout: const Duration(seconds: 10));
     driver = BpqDriver(
-      transport,
+      log?.record(tcp, '${draft.name}, ${draft.portKind.label}, connection test') ?? tcp,
       port: draft.portKind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
       timeout: const Duration(seconds: 15),
     );

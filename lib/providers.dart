@@ -5,6 +5,7 @@ import 'package:mail_core/mail_core.dart';
 
 import 'connections.dart';
 import 'passwords.dart';
+import 'report.dart';
 
 /// The app's one database. Tests override it with an in-memory store.
 final storeProvider = Provider<MailStore>((ref) {
@@ -15,7 +16,10 @@ final storeProvider = Provider<MailStore>((ref) {
 
 final passwordsProvider = Provider<PasswordStore>((ref) => const SecurePasswordStore());
 
-final connectionTesterProvider = Provider<ConnectionTester>((ref) => testConnection);
+final connectionTesterProvider = Provider<ConnectionTester>((ref) {
+  final log = ref.watch(trafficLogProvider);
+  return (draft, {required password, required name}) => testConnection(draft, password: password, name: name, log: log);
+});
 
 /// The identity, or null before first run is finished.
 final identityProvider = StreamProvider<Identity?>((ref) {

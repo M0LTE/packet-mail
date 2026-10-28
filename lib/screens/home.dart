@@ -9,6 +9,7 @@ import 'connections_screen.dart';
 import 'contacts_tab.dart';
 import 'identity_screen.dart';
 import 'mail_tab.dart';
+import 'report_screen.dart';
 
 /// The app after first run: Mail, Bulletins, Contacts and Settings.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -97,6 +98,18 @@ class SettingsTab extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
             onTap: () =>
                 Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen())),
+          ),
+          const Divider(indent: 24),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+            child: Text('HELP', style: Logbook.sectionLabel),
+          ),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            title: Text('Report a problem', style: text.titleMedium),
+            subtitle: Text('Send a note and recent BBS traffic', style: text.labelMedium),
+            trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ReportScreen())),
           ),
           const Divider(indent: 24),
         ],

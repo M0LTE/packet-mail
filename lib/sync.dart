@@ -4,15 +4,18 @@ import 'package:mail_core/mail_core.dart';
 import 'connections.dart';
 import 'passwords.dart';
 import 'providers.dart';
+import 'report.dart';
 
-/// Connects and logs in to [connection] over TCP.
-Future<MailDriver> connectDriver(MailStore store, PasswordStore passwords, Connection connection) async {
+/// Connects and logs in to [connection] over TCP, keeping the traffic in [log].
+Future<MailDriver> connectDriver(MailStore store, PasswordStore passwords, Connection connection,
+    {TrafficLog? log}) async {
   final password = await passwords.read(connection.id) ?? '';
   final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
-  final transport = await TcpTransport.connect(connection.host, connection.port, timeout: const Duration(seconds: 10));
+  final tcp = await TcpTransport.connect(connection.host, connection.port, timeout: const Duration(seconds: 10));
+  final kind = PortKind.byId(connection.portKind);
   final driver = BpqDriver(
-    transport,
-    port: PortKind.byId(connection.portKind) == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
+    log?.record(tcp, '${connection.name}, ${kind.label}') ?? tcp,
+    port: kind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
     timeout: const Duration(seconds: 30),
   );
   try {
@@ -28,7 +31,8 @@ Future<MailDriver> connectDriver(MailStore store, PasswordStore passwords, Conne
 final driverFactoryProvider = Provider<DriverFactory>((ref) {
   final store = ref.watch(storeProvider);
   final passwords = ref.watch(passwordsProvider);
-  return (connection) => connectDriver(store, passwords, connection);
+  final log = ref.watch(trafficLogProvider);
+  return (connection) => connectDriver(store, passwords, connection, log: log);
 });
 
 final syncEngineProvider = Provider<SyncEngine>(

@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:packetmail/connections.dart';
@@ -41,7 +42,12 @@ class TestApp {
 
   late SharedPreferences prefs;
 
-  Future<void> pump(WidgetTester tester, {Widget? home, Map<String, Object> prefsValues = const {}}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    Widget? home,
+    Map<String, Object> prefsValues = const {},
+    List<Override> overrides = const [],
+  }) async {
     SharedPreferences.setMockInitialValues(prefsValues);
     prefs = (await tester.runAsync(SharedPreferences.getInstance))!;
     await tester.pumpWidget(ProviderScope(
@@ -60,6 +66,7 @@ class TestApp {
           tested.add(draft);
           return testResult;
         }),
+        ...overrides,
       ],
       child: home ?? const PacketMailApp(),
     ));
