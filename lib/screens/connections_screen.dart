@@ -6,6 +6,7 @@ import '../connections.dart';
 import '../providers.dart';
 import '../theme.dart';
 import 'connection_form.dart';
+import 'last_session_screen.dart';
 
 /// Every connection, with its last sync result.
 class ConnectionsScreen extends ConsumerWidget {
@@ -144,6 +145,16 @@ class _ConnectionEditScreenState extends ConsumerState<ConnectionEditScreen> {
             children: [
               if (c != null) ...[
                 Text(lastSyncLine(c), style: text.bodySmall),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    key: const ValueKey('last-session'),
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                    onPressed: () => Navigator.of(context)
+                        .push(MaterialPageRoute<void>(builder: (_) => LastSessionScreen(connection: c))),
+                    child: const Text('Last session'),
+                  ),
+                ),
                 const SizedBox(height: 8),
               ],
               if (_passwordUnreadable) ...[
