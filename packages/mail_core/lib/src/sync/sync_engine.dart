@@ -263,7 +263,47 @@ class SyncEngine {
     if (known != null && known.isNotEmpty) return (address: known, source: 'your address book');
     if (!driver.capabilities.contains(DriverCapability.whitePagesLookup)) return null;
     final wp = await driver.lookUpHomeBbs(call);
-    return wp == null ? null : (address: wp, source: 'White Pages');
+    if (wp == null) return null;
+    final found = MailAddress.parse('$call@$wp');
+    if (found.address?.at case final at? when !found.problems.any((p) => p.blocking)) {
+      await _learnHomeBbs(call, at, 'whitepages');
+    }
+    return (address: wp, source: 'White Pages');
+  }
+
+  // Address book
+
+  /// Remembers [call]'s home BBS in the address book. Contacts the user typed
+  /// or edited are never changed, a full route is never replaced by a
+  /// shorter one, and only real callsigns get an entry.
+  Future<void> _learnHomeBbs(String call, HierarchicalAddress home, String source) async {
+    final callsign = call.toUpperCase();
+    if (!isCallsign(callsign)) return;
+    final existing =
+        await (store.select(store.contacts)..where((c) => c.callsign.equals(callsign))).getSingleOrNull();
+    if (existing == null) {
+      await store.into(store.contacts).insert(ContactsCompanion.insert(
+            callsign: callsign,
+            homeBbs: Value(home.toString()),
+            source: source,
+          ));
+      return;
+    }
+    if (existing.edited || existing.source == 'typed') return;
+    final old = existing.homeBbs?.trim() ?? '';
+    if (old == home.toString()) return;
+    if (old.isNotEmpty && !home.isComplete && HierarchicalAddress(old.split('.')).isComplete) return;
+    await (store.update(store.contacts)..where((c) => c.callsign.equals(callsign)))
+        .write(ContactsCompanion(homeBbs: Value(home.toString()), source: Value(source)));
+  }
+
+  /// Learns the sender's home BBS from a From line with a route, such as
+  /// `M9TWM@GB7LOX.#19.GBR.EURO`.
+  Future<void> _learnFromSender(ReadMessage read) async {
+    final parsed = MailAddress.parse(read.from);
+    final address = parsed.address;
+    if (address == null || address.at == null || parsed.problems.any((p) => p.blocking)) return;
+    await _learnHomeBbs(address.call, address.at!, 'mail');
   }
 
   /// The BBS refusing a copy fails that recipient. A copy it already has
@@ -531,13 +571,16 @@ class SyncEngine {
     }
   }
 
-  Future<void> _storeBody(Message m, ReadMessage read) =>
-      (store.update(store.messages)..where((t) => t.id.equals(m.id))).write(MessagesCompanion(
-        body: Value(read.body),
-        routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
-        bid: Value(read.bid.isEmpty ? m.bid : read.bid),
-        date: Value(read.date),
-      ));
+  /// Stores a message's text, and for personal mail its sender's home BBS.
+  Future<void> _storeBody(Message m, ReadMessage read) async {
+    await (store.update(store.messages)..where((t) => t.id.equals(m.id))).write(MessagesCompanion(
+      body: Value(read.body),
+      routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
+      bid: Value(read.bid.isEmpty ? m.bid : read.bid),
+      date: Value(read.date),
+    ));
+    if (m.type != 'bulletin') await _learnFromSender(read);
+  }
 
   static Future<void> _quietly(Future<void> Function() f) async {
     try {

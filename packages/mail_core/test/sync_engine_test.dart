@@ -22,6 +22,9 @@ class FakeBbs implements MailDriver {
   final personal = <int, FakeMessage>{};
   final bulletins = <int, FakeMessage>{};
   final whitePages = <String, String>{};
+
+  /// The From line a read gives, when it differs from the listing.
+  final senders = <int, String>{};
   final notMine = <int>{};
   final calls = <String>[];
   final sent = <String>[];
@@ -117,7 +120,7 @@ class FakeBbs implements MailDriver {
       number: number,
       type: h.type,
       statusBeforeRead: h.status,
-      from: h.from,
+      from: senders[number] ?? h.from,
       to: h.to,
       subject: h.subject,
       date: h.date.add(const Duration(hours: 5)),
@@ -273,6 +276,124 @@ void main() {
       expect(bbs.disconnects, 1);
       await engine.sync(conn);
       expect(bbs.disconnects, 2);
+    });
+  });
+
+  group('address book', () {
+    Future<List<Contact>> contacts() =>
+        (db.select(db.contacts)..orderBy([(c) => OrderingTerm(expression: c.callsign)])).get();
+
+    Future<void> receive(Map<int, String> from, {String download = 'atSync'}) async {
+      conn = await addConnection(download: download, name: 'Other');
+      for (final e in from.entries) {
+        bbs.addPersonal(e.key);
+        bbs.senders[e.key] = e.value;
+      }
+      await engine.sync(conn);
+    }
+
+    test('a From line with a route adds the sender', () async {
+      await receive({10: 'M9TWM@GB7LOX.#19.GBR.EURO'});
+      final c = (await contacts()).single;
+      expect([c.callsign, c.homeBbs, c.source, c.edited], ['M9TWM', 'GB7LOX.#19.GBR.EURO', 'mail', false]);
+    });
+
+    test('opening a message adds the sender too', () async {
+      bbs.addPersonal(10);
+      bbs.senders[10] = 'G4APL@GB7CIP.#32.GBR.EURO';
+      await engine.sync(conn);
+      expect(await contacts(), isEmpty);
+      await engine.openMessage((await message(10)).id);
+      expect((await contacts()).single.homeBbs, 'GB7CIP.#32.GBR.EURO');
+    });
+
+    test('no contact without a route, or for things that are not callsigns', () async {
+      await receive({
+        10: 'G4APL',
+        11: 'SYSOP@GB7RDG.#42.GBR.EURO',
+        12: 'SYSTEM@GB7RDG',
+        13: 'someone@example.com',
+        14: 'G4APL@GB7CIP..GBR',
+      });
+      expect(await contacts(), isEmpty);
+    });
+
+    test('bulletins add no contacts', () async {
+      bbs.addBulletin(20);
+      bbs.senders[20] = 'G8BPQ@GB7BPQ.#76.GBR.EU';
+      await subscribe();
+      await engine.sync(conn);
+      expect((await message(20)).body, isNotNull);
+      expect(await contacts(), isEmpty);
+    });
+
+    test('a newer route replaces an older one; a shorter one does not', () async {
+      await receive({10: 'M9TWM@GB7LOX.#19.GBR.EURO', 11: 'M9TWM@GB7XYZ.#19.GBR.EURO'});
+      expect((await contacts()).single.homeBbs, 'GB7XYZ.#19.GBR.EURO');
+      bbs.addPersonal(12);
+      bbs.senders[12] = 'M9TWM@GB7XYZ';
+      await engine.sync(conn);
+      expect((await contacts()).single.homeBbs, 'GB7XYZ.#19.GBR.EURO');
+    });
+
+    test('edited and typed contacts are never changed', () async {
+      await db
+          .into(db.contacts)
+          .insert(
+            ContactsCompanion.insert(
+              callsign: 'M9TWM',
+              source: 'mail',
+              edited: const Value(true),
+              homeBbs: const Value('GB7OLD.#19.GBR.EURO'),
+            ),
+          );
+      await db
+          .into(db.contacts)
+          .insert(ContactsCompanion.insert(callsign: 'G4APL', source: 'typed', name: const Value('Al')));
+      await receive({10: 'M9TWM@GB7LOX.#19.GBR.EURO', 11: 'G4APL@GB7CIP.#32.GBR.EURO'});
+      final c = await contacts();
+      expect([c[0].callsign, c[0].homeBbs, c[0].name], ['G4APL', null, 'Al']);
+      expect([c[1].callsign, c[1].homeBbs, c[1].source], ['M9TWM', 'GB7OLD.#19.GBR.EURO', 'mail']);
+    });
+
+    test('a White Pages answer while sending is remembered', () async {
+      bbs.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+      await queue(['G8BPQ']);
+      await engine.sync(conn);
+      final c = (await contacts()).single;
+      expect([c.callsign, c.homeBbs, c.source], ['G8BPQ', 'GB7BPQ.#76.GBR.EU', 'whitepages']);
+
+      // Next time the address book answers.
+      bbs.calls.clear();
+      await queue(['G8BPQ']);
+      await engine.sync(conn);
+      expect(bbs.calls, isNot(contains('lookUpHomeBbs G8BPQ')));
+    });
+
+    test('a White Pages answer fills nothing the user edited', () async {
+      await db
+          .into(db.contacts)
+          .insert(
+            ContactsCompanion.insert(
+              callsign: 'G8BPQ',
+              source: 'typed',
+              edited: const Value(true),
+              name: const Value('John'),
+            ),
+          );
+      bbs.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+      await queue(['G8BPQ']);
+      await engine.sync(conn);
+      expect((await recipients()).single.state, 'sent');
+      final c = (await contacts()).single;
+      expect([c.homeBbs, c.source, c.name], [null, 'typed', 'John']);
+    });
+
+    test('a White Pages answer that is not an address is not stored', () async {
+      bbs.whitePages['G8BPQ'] = 'NOT AN ADDRESS';
+      await queue(['G8BPQ']);
+      await engine.sync(conn);
+      expect(await contacts(), isEmpty);
     });
   });
 
