@@ -1,0 +1,22 @@
+# GB7RDG LinBPQ 6.0.26.1, FBB port, 2026-10-28, user tf (SYSOP). Password redacted.
+# SP to a bare callsign: the BBS fills in the address from White Pages (here a stale entry, @M9YYY).
+{"t":2.026,"dir":"tx","data":"tf\r"}
+{"t":4.048,"dir":"tx","data":"PASSWORD\r"}
+{"t":6.068,"dir":"tx","data":"BBS\r"}
+{"t":6.099,"dir":"rx","data":"READNG:GB7RDG} Connected to BBS\r"}
+{"t":6.133,"dir":"rx","data":"[BPQ-6.0.26.1-IHJM$]\rde GB7RDG>\r"}
+{"t":8.189,"dir":"tx","data":"SP M0LTE\r"}
+{"t":8.284,"dir":"rx","data":"Address @M9YYY.#42.GBR.EURO added from WP\rEnter Title (only):\r"}
+{"t":10.31,"dir":"tx","data":"Packet Mail test, please ignore\r"}
+{"t":10.436,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
+{"t":12.532,"dir":"tx","data":"This is a test message from the Packet Mail app\r"}
+{"t":14.552,"dir":"tx","data":"recording tool. It will be killed straight away.\r"}
+{"t":16.572,"dir":"tx","data":"/EX\r"}
+{"t":16.713,"dir":"rx","data":"Message: 4491 Bid:  4491_GB7RDG Size: 99\rde GB7RDG>\r"}
+{"t":18.794,"dir":"tx","data":"LM\r"}
+{"t":18.839,"dir":"rx","data":"4491   28-Oct PN      99 M0LTE  @M9YYY  M0LTE  Packet Mail test, please ignore\r4485   28-Oct PY    1279 M0LTE  @GB7RDG G4APL  Re: CIP access\r4083   11-Oct PN     421 M0LTE  @GB7RDG M9TWM  Non-delivery Notification\r3996   08-Oct PN     7"}
+{"t":18.841,"dir":"rx","data":"28 M0LTE  @GB7RDG GM8BPQ MCR GM8BPQ 2026-10-08\r3995   08-Oct PN     705 M0LTE  @GB7RDG G8BPQ  MCR G8BPQ 2026-10-08\r3328   14-Sep PY     658 M0LTE  @GB7RDG M9TWM  Re: IMAP / SMTP Test\r3257   12-Sep PY     401 M0LTE  @GB7RDG M9TWM  Double routing fix test\rde GB7RDG>\r"}
+{"t":20.915,"dir":"tx","data":"B\r"}
+{"t":21.992,"dir":"rx","data":"73 de GB7RDG\r"}
+{"t":21.995,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":24.046,"dir":"close"}

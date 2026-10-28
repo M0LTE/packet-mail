@@ -1,4 +1,5 @@
 # GB7RDG LinBPQ 6.0.26.1, FBB port, 2026-10-28. User tf is SYSOP, so listings show more than a normal user sees. Password redacted.
+# Note XYZZY: commands match on first letter, so it toggled expert mode (X). Never send unvalidated text at the prompt.
 {"t":2.027,"dir":"tx","data":"tf\r"}
 {"t":4.048,"dir":"tx","data":"PASSWORD\r"}
 {"t":6.068,"dir":"tx","data":"BBS\r"}

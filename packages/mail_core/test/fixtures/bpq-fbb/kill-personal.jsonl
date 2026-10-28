@@ -1,0 +1,19 @@
+# GB7RDG LinBPQ 6.0.26.1, FBB port, 2026-10-28, user tf (SYSOP). Password redacted.
+# Killing as SYSOP leaves the message listed with status K; a second kill says not found.
+{"t":2.027,"dir":"tx","data":"tf\r"}
+{"t":4.048,"dir":"tx","data":"PASSWORD\r"}
+{"t":6.068,"dir":"tx","data":"BBS\r"}
+{"t":6.096,"dir":"rx","data":"READNG:GB7RDG} Connected to BBS\r"}
+{"t":6.15,"dir":"rx","data":"[BPQ-6.0.26.1-IHJM$]\rde GB7RDG>\r"}
+{"t":8.189,"dir":"tx","data":"K 4491\r"}
+{"t":8.318,"dir":"rx","data":"Message #4491 Killed\rde GB7RDG>\r"}
+{"t":10.411,"dir":"tx","data":"K 4491\r"}
+{"t":10.568,"dir":"rx","data":"Message 4491 not found\rde GB7RDG>\r"}
+{"t":12.633,"dir":"tx","data":"LL 1\r"}
+{"t":12.699,"dir":"rx","data":"4491   28-Oct PK      99 M0LTE  @M9YYY  M0LTE  Packet Mail test, please ignore\rde GB7RDG>\r"}
+{"t":14.754,"dir":"tx","data":"FWD QUEUE\r"}
+{"t":14.857,"dir":"rx","data":"EI0RSI 49 Msgs\rGB7BPQ 40 Msgs\rGB7CIP 13 Msgs\rGB7IOW 13 Msgs\rGB7OXF 28 Msgs\rSA6DAZ 50 Msgs\rde GB7RDG>\r"}
+{"t":16.875,"dir":"tx","data":"B\r"}
+{"t":18.006,"dir":"rx","data":"73 de GB7RDG\r"}
+{"t":18.008,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":20.108,"dir":"close"}

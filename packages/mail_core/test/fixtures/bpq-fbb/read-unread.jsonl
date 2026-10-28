@@ -1,0 +1,19 @@
+# GB7RDG LinBPQ 6.0.26.1, FBB port, 2026-10-28, user tf (SYSOP). Reading unread personal mail 4485 changes LM status PN to PY.
+# Password redacted. The body of 4485 is replaced with neutral text (the original held a password and personal news); headers, R: and T: lines and framing are as received. The listed size (1279) is the original.
+{"t": 2.026, "dir": "tx", "data": "tf\r"}
+{"t": 4.048, "dir": "tx", "data": "PASSWORD\r"}
+{"t": 6.068, "dir": "tx", "data": "BBS\r"}
+{"t": 6.096, "dir": "rx", "data": "READNG:GB7RDG} Connected to BBS\r"}
+{"t": 6.122, "dir": "rx", "data": "[BPQ-6.0.26.1-IHJM$]\rde GB7RDG>\r"}
+{"t": 8.189, "dir": "tx", "data": "LM\r"}
+{"t": 8.277, "dir": "rx", "data": "4485   28-Oct PN    1279 M0LTE  @GB7RDG G4APL  Re: CIP access\r4083   11-Oct PN     421 M0LTE  @GB7RDG M9TWM  Non-delivery Notification\r3996   08-Oct PN     728 M0LTE  @GB7RDG GM8BPQ MCR GM8BPQ 2026-10-08\r3995   08-Oct PN     705 M0LTE  "}
+{"t": 8.278, "dir": "rx", "data": "@GB7RDG G8BPQ  MCR G8BPQ 2026-10-08\r3328   14-Sep PY     658 M0LTE  @GB7RDG M9TWM  Re: IMAP / SMTP Test\r3257   12-Sep PY     401 M0LTE  @GB7RDG M9TWM  Double routing fix test\rde GB7RDG>\r"}
+{"t": 10.31, "dir": "tx", "data": "R 4485\r"}
+{"t": 10.465, "dir": "rx", "data": "From: G4APL\rTo: M0LTE\rType/Status: PN\rDate/Time: 28-Oct 05:20Z\rBid: 12886G4APL\rTitle: Re: CIP access\r\rR:261028/0521Z @:GB7CIP.#32.GBR.EURO #:9346 [Caterham Surrey GBR] $:12886G4APL\rR:261028/0520Z @:GB7CIP.#32.GBR.EURO [Caterham, IO91WH] Linux mailgw-0.3.1.8\rR:261028/0520Z @:GB7CIP.#32.GBR.EURO $:12886G4APL\rT:From: Paul Lewis <g4apl@gb7cip.ampr.org>\rT:To: m0lte%gb7rdg.#42.gbr.euro@gb7cip.ampr.org\rT:Message-Id: <alpine.DEB.2.10.2610271601090.19764@gb7cip.ampr.org>\r\rThanks Tom, good to hear from you.\r\rI have set that up for you now; details by\rseparate message.\r\r73 de Paul\r\r--\ramprnet g4apl@gb7cip.ampr.org  ax25 g4apl@gb7cip.#32.gbr.euro\r\r\r\rOn Mon, 26 Oct 2026, m0lte%gb7rdg.#42.gbr.euro@gb7cip.ampr.org wrote:\r\r> Hi Paul, long time, hope you are well.\r>\r> Would you mind setting up telnet access for me please?\r>\r> Thanks\r> Tom\r>\r\r\r[End of Message #4485 from G4APL]\rde GB7RDG>\r"}
+{"t": 12.532, "dir": "tx", "data": "LM\r"}
+{"t": 12.598, "dir": "rx", "data": "4485   28-Oct PY    1279 M0LTE  @GB7RDG G4APL  Re: CIP access\r4083   11-Oct PN     421 M0LTE  @GB7RDG M9TWM  Non-delivery Notification\r3996   08-Oct PN     728 M0LTE  @GB7RDG GM8BPQ MCR GM8BPQ 2026-10-08\r3995   08-Oct PN     705 M0LTE  "}
+{"t": 12.601, "dir": "rx", "data": "@GB7RDG G8BPQ  MCR G8BPQ 2026-10-08\r3328   14-Sep PY     658 M0LTE  @GB7RDG M9TWM  Re: IMAP / SMTP Test\r3257   12-Sep PY     401 M0LTE  @GB7RDG M9TWM  Double routing fix test\rde GB7RDG>\r"}
+{"t": 14.653, "dir": "tx", "data": "B\r"}
+{"t": 15.741, "dir": "rx", "data": "73 de GB7RDG\r"}
+{"t": 15.746, "dir": "rx", "data": "Disconnected from Node - Telnet Session kept\r\n"}
+{"t": 17.785, "dir": "close"}
