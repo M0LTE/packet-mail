@@ -73,13 +73,15 @@ Capability flags let the app hide what a driver can't do (for example, no White 
 
 ## Sync rules
 
+- **Additive everywhere** (Tom, 2026-10-28): every mailbox shows what the BBS lists, plus everything the phone has already downloaded, merged without duplicates. Downloaded messages and bulletins stay on the phone after the BBS drops them, until the user deletes them. Headers that were never downloaded go when the BBS stops listing them. Sent works the same way: the BBS's list of mail from us plus the phone's own copies.
+
 - **Personal mail:** on BPQ, downloading a message is what marks it read on the BBS, so the user chooses, per connection, between:
   - **Download when opened** (the default): sync fetches the list only; opening a message downloads it, which marks it read on the BBS. The BBS's read marker stays true, but opening unread mail needs a connection.
   - **Download everything at sync:** mail is there to read offline, and the app keeps its own unread state; the BBS shows it read once the app has it.
   The connection screen explains the trade-off in a sentence or two. Messages already downloaded stay readable offline either way.
 - **Deleting** kills the message on the BBS at the next sync and removes it from the app once confirmed.
 - **Sent:** kept in the app only.
-- **Bulletins:** headers for everything listed; bodies for subscribed categories. The BBS decides how long they live: a bulletin stays in the app while the BBS still lists it, and is removed locally once it drops off, unless starred. Never killed on the BBS. The same bulletin ID is stored once, even if seen through two connections.
+- **Bulletins:** headers for everything listed; bodies for subscribed categories. Never killed on the BBS.
 - **On the LAN** everything subscribed is fetched in one go. The sync engine fetches headers and bodies as separate steps, so a slow radio link can fetch bodies only when opened.
 - **Sync** runs on opening the app, on pull-to-refresh and after sending.
 
