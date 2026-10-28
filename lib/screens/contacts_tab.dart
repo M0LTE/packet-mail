@@ -36,21 +36,23 @@ class _ContactsTabState extends ConsumerState<ContactsTab> {
         if (contactMatches(c, _search.text)) c,
     ];
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const ValueKey('add-contact'),
-        tooltip: 'Add a contact',
-        backgroundColor: Logbook.stampRed,
-        foregroundColor: Logbook.paper,
-        onPressed: () => _open(null),
-        child: const Icon(Icons.person_add_outlined),
-      ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 88),
+          padding: const EdgeInsets.only(bottom: 16),
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Text('Contacts', style: text.displaySmall),
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+              child: Row(
+                children: [
+                  Expanded(child: Text('Contacts', style: text.displaySmall)),
+                  IconButton(
+                    key: const ValueKey('add-contact'),
+                    tooltip: 'Add a contact',
+                    icon: const Icon(Icons.person_add_outlined, color: Logbook.stampRed),
+                    onPressed: () => _open(null),
+                  ),
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),

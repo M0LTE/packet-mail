@@ -25,23 +25,14 @@ class BulletinsTab extends ConsumerWidget {
     final unread = all?.where((m) => !m.read).length ?? 0;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const ValueKey('new-bulletin'),
-        tooltip: 'New bulletin',
-        backgroundColor: Logbook.stampRed,
-        foregroundColor: Logbook.paper,
-        onPressed: () => openBulletinCompose(context),
-        child: const Icon(Icons.edit_outlined),
-      ),
       body: SafeArea(
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(child: Text('Bulletins', style: text.displaySmall)),
                   TextButton(
@@ -49,6 +40,12 @@ class BulletinsTab extends ConsumerWidget {
                         Navigator.of(context)
                             .push(MaterialPageRoute<void>(builder: (_) => const SubscriptionsScreen())),
                     child: Text(subs.isEmpty ? 'Subscriptions' : 'Subscriptions ${subs.length}'),
+                  ),
+                  IconButton(
+                    key: const ValueKey('new-bulletin'),
+                    tooltip: 'New bulletin',
+                    icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+                    onPressed: () => openBulletinCompose(context),
                   ),
                 ],
               ),
@@ -69,7 +66,7 @@ class BulletinsTab extends ConsumerWidget {
                 onRefresh: () => ref.read(syncingProvider.notifier).syncAll(),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 88),
+                  padding: const EdgeInsets.only(bottom: 16),
                   children: [
                     if (all != null && all.isEmpty)
                       Padding(
@@ -210,7 +207,7 @@ class BulletinListScreen extends ConsumerWidget {
   /// Null for the whole category.
   final String? area;
 
-  String get title => area == null ? 'All $category' : '$category at ${area!.isEmpty ? 'no area' : area}';
+  String get title => area == null ? category : '$category at ${area!.isEmpty ? 'no area' : area}';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -233,16 +230,17 @@ class BulletinListScreen extends ConsumerWidget {
           label: const Text('Bulletins'),
           style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'New bulletin',
-        backgroundColor: Logbook.stampRed,
-        foregroundColor: Logbook.paper,
-        onPressed: () => openBulletinCompose(context, category: category, area: area),
-        child: const Icon(Icons.edit_outlined),
+        actions: [
+          IconButton(
+            tooltip: 'New bulletin',
+            icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+            onPressed: () => openBulletinCompose(context, category: category, area: area),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 88),
+        padding: const EdgeInsets.only(bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
@@ -475,16 +473,19 @@ class SubscriptionsScreen extends ConsumerWidget {
     final subs = ref.watch(subscriptionsProvider).value;
     final store = ref.read(storeProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Subscriptions')),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Add a subscription',
-        backgroundColor: Logbook.stampRed,
-        foregroundColor: Logbook.paper,
-        onPressed: () => showDialog<void>(context: context, builder: (_) => const _AddSubscriptionDialog()),
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        title: const Text('Subscriptions'),
+        actions: [
+          IconButton(
+            tooltip: 'Add a subscription',
+            icon: const Icon(Icons.add, color: Logbook.stampRed),
+            onPressed: () => showDialog<void>(context: context, builder: (_) => const _AddSubscriptionDialog()),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 88),
+        padding: const EdgeInsets.only(bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
