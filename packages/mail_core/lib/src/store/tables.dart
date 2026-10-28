@@ -23,6 +23,10 @@ class Connections extends Table {
   /// For bpq: 'fbb' or 'telnet'.
   TextColumn get portKind => text()();
   TextColumn get loginName => text()();
+
+  /// When personal mail downloads: 'onOpen' (only when opened, so the BBS's
+  /// read marker stays true) or 'atSync' (everything, for reading offline).
+  TextColumn get personalDownload => text().withDefault(const Constant('onOpen'))();
   DateTimeColumn get lastSyncAt => dateTime().nullable()();
 
   /// Plain words: "Fetched 3 new messages" or what went wrong.

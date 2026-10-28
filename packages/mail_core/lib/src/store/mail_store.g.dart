@@ -382,6 +382,18 @@ class $ConnectionsTable extends Connections
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _personalDownloadMeta = const VerificationMeta(
+    'personalDownload',
+  );
+  @override
+  late final GeneratedColumn<String> personalDownload = GeneratedColumn<String>(
+    'personal_download',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('onOpen'),
+  );
   static const VerificationMeta _lastSyncAtMeta = const VerificationMeta(
     'lastSyncAt',
   );
@@ -413,6 +425,7 @@ class $ConnectionsTable extends Connections
     port,
     portKind,
     loginName,
+    personalDownload,
     lastSyncAt,
     lastSyncResult,
   ];
@@ -479,6 +492,15 @@ class $ConnectionsTable extends Connections
     } else if (isInserting) {
       context.missing(_loginNameMeta);
     }
+    if (data.containsKey('personal_download')) {
+      context.handle(
+        _personalDownloadMeta,
+        personalDownload.isAcceptableOrUnknown(
+          data['personal_download']!,
+          _personalDownloadMeta,
+        ),
+      );
+    }
     if (data.containsKey('last_sync_at')) {
       context.handle(
         _lastSyncAtMeta,
@@ -534,6 +556,10 @@ class $ConnectionsTable extends Connections
         DriftSqlType.string,
         data['${effectivePrefix}login_name'],
       )!,
+      personalDownload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}personal_download'],
+      )!,
       lastSyncAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_sync_at'],
@@ -563,6 +589,10 @@ class Connection extends DataClass implements Insertable<Connection> {
   /// For bpq: 'fbb' or 'telnet'.
   final String portKind;
   final String loginName;
+
+  /// When personal mail downloads: 'onOpen' (only when opened, so the BBS's
+  /// read marker stays true) or 'atSync' (everything, for reading offline).
+  final String personalDownload;
   final DateTime? lastSyncAt;
 
   /// Plain words: "Fetched 3 new messages" or what went wrong.
@@ -575,6 +605,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     required this.port,
     required this.portKind,
     required this.loginName,
+    required this.personalDownload,
     this.lastSyncAt,
     this.lastSyncResult,
   });
@@ -588,6 +619,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     map['port'] = Variable<int>(port);
     map['port_kind'] = Variable<String>(portKind);
     map['login_name'] = Variable<String>(loginName);
+    map['personal_download'] = Variable<String>(personalDownload);
     if (!nullToAbsent || lastSyncAt != null) {
       map['last_sync_at'] = Variable<DateTime>(lastSyncAt);
     }
@@ -606,6 +638,7 @@ class Connection extends DataClass implements Insertable<Connection> {
       port: Value(port),
       portKind: Value(portKind),
       loginName: Value(loginName),
+      personalDownload: Value(personalDownload),
       lastSyncAt: lastSyncAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastSyncAt),
@@ -628,6 +661,7 @@ class Connection extends DataClass implements Insertable<Connection> {
       port: serializer.fromJson<int>(json['port']),
       portKind: serializer.fromJson<String>(json['portKind']),
       loginName: serializer.fromJson<String>(json['loginName']),
+      personalDownload: serializer.fromJson<String>(json['personalDownload']),
       lastSyncAt: serializer.fromJson<DateTime?>(json['lastSyncAt']),
       lastSyncResult: serializer.fromJson<String?>(json['lastSyncResult']),
     );
@@ -643,6 +677,7 @@ class Connection extends DataClass implements Insertable<Connection> {
       'port': serializer.toJson<int>(port),
       'portKind': serializer.toJson<String>(portKind),
       'loginName': serializer.toJson<String>(loginName),
+      'personalDownload': serializer.toJson<String>(personalDownload),
       'lastSyncAt': serializer.toJson<DateTime?>(lastSyncAt),
       'lastSyncResult': serializer.toJson<String?>(lastSyncResult),
     };
@@ -656,6 +691,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     int? port,
     String? portKind,
     String? loginName,
+    String? personalDownload,
     Value<DateTime?> lastSyncAt = const Value.absent(),
     Value<String?> lastSyncResult = const Value.absent(),
   }) => Connection(
@@ -666,6 +702,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     port: port ?? this.port,
     portKind: portKind ?? this.portKind,
     loginName: loginName ?? this.loginName,
+    personalDownload: personalDownload ?? this.personalDownload,
     lastSyncAt: lastSyncAt.present ? lastSyncAt.value : this.lastSyncAt,
     lastSyncResult: lastSyncResult.present
         ? lastSyncResult.value
@@ -680,6 +717,9 @@ class Connection extends DataClass implements Insertable<Connection> {
       port: data.port.present ? data.port.value : this.port,
       portKind: data.portKind.present ? data.portKind.value : this.portKind,
       loginName: data.loginName.present ? data.loginName.value : this.loginName,
+      personalDownload: data.personalDownload.present
+          ? data.personalDownload.value
+          : this.personalDownload,
       lastSyncAt: data.lastSyncAt.present
           ? data.lastSyncAt.value
           : this.lastSyncAt,
@@ -699,6 +739,7 @@ class Connection extends DataClass implements Insertable<Connection> {
           ..write('port: $port, ')
           ..write('portKind: $portKind, ')
           ..write('loginName: $loginName, ')
+          ..write('personalDownload: $personalDownload, ')
           ..write('lastSyncAt: $lastSyncAt, ')
           ..write('lastSyncResult: $lastSyncResult')
           ..write(')'))
@@ -714,6 +755,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     port,
     portKind,
     loginName,
+    personalDownload,
     lastSyncAt,
     lastSyncResult,
   );
@@ -728,6 +770,7 @@ class Connection extends DataClass implements Insertable<Connection> {
           other.port == this.port &&
           other.portKind == this.portKind &&
           other.loginName == this.loginName &&
+          other.personalDownload == this.personalDownload &&
           other.lastSyncAt == this.lastSyncAt &&
           other.lastSyncResult == this.lastSyncResult);
 }
@@ -740,6 +783,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
   final Value<int> port;
   final Value<String> portKind;
   final Value<String> loginName;
+  final Value<String> personalDownload;
   final Value<DateTime?> lastSyncAt;
   final Value<String?> lastSyncResult;
   const ConnectionsCompanion({
@@ -750,6 +794,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     this.port = const Value.absent(),
     this.portKind = const Value.absent(),
     this.loginName = const Value.absent(),
+    this.personalDownload = const Value.absent(),
     this.lastSyncAt = const Value.absent(),
     this.lastSyncResult = const Value.absent(),
   });
@@ -761,6 +806,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     required int port,
     required String portKind,
     required String loginName,
+    this.personalDownload = const Value.absent(),
     this.lastSyncAt = const Value.absent(),
     this.lastSyncResult = const Value.absent(),
   }) : name = Value(name),
@@ -777,6 +823,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     Expression<int>? port,
     Expression<String>? portKind,
     Expression<String>? loginName,
+    Expression<String>? personalDownload,
     Expression<DateTime>? lastSyncAt,
     Expression<String>? lastSyncResult,
   }) {
@@ -788,6 +835,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
       if (port != null) 'port': port,
       if (portKind != null) 'port_kind': portKind,
       if (loginName != null) 'login_name': loginName,
+      if (personalDownload != null) 'personal_download': personalDownload,
       if (lastSyncAt != null) 'last_sync_at': lastSyncAt,
       if (lastSyncResult != null) 'last_sync_result': lastSyncResult,
     });
@@ -801,6 +849,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     Value<int>? port,
     Value<String>? portKind,
     Value<String>? loginName,
+    Value<String>? personalDownload,
     Value<DateTime?>? lastSyncAt,
     Value<String?>? lastSyncResult,
   }) {
@@ -812,6 +861,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
       port: port ?? this.port,
       portKind: portKind ?? this.portKind,
       loginName: loginName ?? this.loginName,
+      personalDownload: personalDownload ?? this.personalDownload,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       lastSyncResult: lastSyncResult ?? this.lastSyncResult,
     );
@@ -841,6 +891,9 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     if (loginName.present) {
       map['login_name'] = Variable<String>(loginName.value);
     }
+    if (personalDownload.present) {
+      map['personal_download'] = Variable<String>(personalDownload.value);
+    }
     if (lastSyncAt.present) {
       map['last_sync_at'] = Variable<DateTime>(lastSyncAt.value);
     }
@@ -860,6 +913,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
           ..write('port: $port, ')
           ..write('portKind: $portKind, ')
           ..write('loginName: $loginName, ')
+          ..write('personalDownload: $personalDownload, ')
           ..write('lastSyncAt: $lastSyncAt, ')
           ..write('lastSyncResult: $lastSyncResult')
           ..write(')'))
@@ -3680,6 +3734,7 @@ typedef $$ConnectionsTableCreateCompanionBuilder =
       required int port,
       required String portKind,
       required String loginName,
+      Value<String> personalDownload,
       Value<DateTime?> lastSyncAt,
       Value<String?> lastSyncResult,
     });
@@ -3692,6 +3747,7 @@ typedef $$ConnectionsTableUpdateCompanionBuilder =
       Value<int> port,
       Value<String> portKind,
       Value<String> loginName,
+      Value<String> personalDownload,
       Value<DateTime?> lastSyncAt,
       Value<String?> lastSyncResult,
     });
@@ -3779,6 +3835,11 @@ class $$ConnectionsTableFilterComposer
 
   ColumnFilters<String> get loginName => $composableBuilder(
     column: $table.loginName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get personalDownload => $composableBuilder(
+    column: $table.personalDownload,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3887,6 +3948,11 @@ class $$ConnectionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get personalDownload => $composableBuilder(
+    column: $table.personalDownload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get lastSyncAt => $composableBuilder(
     column: $table.lastSyncAt,
     builder: (column) => ColumnOrderings(column),
@@ -3927,6 +3993,11 @@ class $$ConnectionsTableAnnotationComposer
 
   GeneratedColumn<String> get loginName =>
       $composableBuilder(column: $table.loginName, builder: (column) => column);
+
+  GeneratedColumn<String> get personalDownload => $composableBuilder(
+    column: $table.personalDownload,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get lastSyncAt => $composableBuilder(
     column: $table.lastSyncAt,
@@ -4024,6 +4095,7 @@ class $$ConnectionsTableTableManager
                 Value<int> port = const Value.absent(),
                 Value<String> portKind = const Value.absent(),
                 Value<String> loginName = const Value.absent(),
+                Value<String> personalDownload = const Value.absent(),
                 Value<DateTime?> lastSyncAt = const Value.absent(),
                 Value<String?> lastSyncResult = const Value.absent(),
               }) => ConnectionsCompanion(
@@ -4034,6 +4106,7 @@ class $$ConnectionsTableTableManager
                 port: port,
                 portKind: portKind,
                 loginName: loginName,
+                personalDownload: personalDownload,
                 lastSyncAt: lastSyncAt,
                 lastSyncResult: lastSyncResult,
               ),
@@ -4046,6 +4119,7 @@ class $$ConnectionsTableTableManager
                 required int port,
                 required String portKind,
                 required String loginName,
+                Value<String> personalDownload = const Value.absent(),
                 Value<DateTime?> lastSyncAt = const Value.absent(),
                 Value<String?> lastSyncResult = const Value.absent(),
               }) => ConnectionsCompanion.insert(
@@ -4056,6 +4130,7 @@ class $$ConnectionsTableTableManager
                 port: port,
                 portKind: portKind,
                 loginName: loginName,
+                personalDownload: personalDownload,
                 lastSyncAt: lastSyncAt,
                 lastSyncResult: lastSyncResult,
               ),
