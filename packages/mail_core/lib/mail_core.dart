@@ -9,6 +9,7 @@ export 'src/bpq/bpq_format.dart';
 export 'src/compose.dart';
 export 'src/driver.dart';
 export 'src/message.dart';
+export 'src/problems.dart';
 export 'src/store/mail_store.dart';
 export 'src/sync/sync_engine.dart';
 export 'src/transport/line_session.dart';

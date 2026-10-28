@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
 import 'package:mail_core/mail_core.dart';
 
@@ -95,50 +93,20 @@ typedef ConnectionTester = Future<String> Function(ConnectionDraft draft, {requi
 
 /// Connects, logs in, lists personal mail and disconnects.
 Future<String> testConnection(ConnectionDraft draft, {required String password, required String name}) async {
-  final Transport transport;
+  MailDriver? driver;
   try {
-    transport = await TcpTransport.connect(draft.host, draft.port, timeout: const Duration(seconds: 10));
-  } on SocketException catch (e) {
-    return _socketProblem(draft, e);
-  }
-  final driver = BpqDriver(
-    transport,
-    port: draft.portKind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
-    timeout: const Duration(seconds: 15),
-  );
-  try {
+    final transport = await TcpTransport.connect(draft.host, draft.port, timeout: const Duration(seconds: 10));
+    driver = BpqDriver(
+      transport,
+      port: draft.portKind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
+      timeout: const Duration(seconds: 15),
+    );
     await driver.logIn(user: draft.loginName, password: password, name: name);
     final count = (await driver.listPersonal()).length;
     return 'Connected. $count ${count == 1 ? 'message' : 'messages'} in your inbox.';
-  } on BbsError catch (e) {
-    return switch (e.kind) {
-      BbsErrorKind.loginFailed => 'The BBS did not accept the login name or password. Check them and try again.',
-      _ => 'Connected, but the BBS said something unexpected: ${e.message}',
-    };
-  } on SessionTimeout {
-    return 'Connected, but the BBS stopped answering. Check the port kind matches the port.';
-  } on SessionClosed {
-    return 'The BBS hung up. Check the login name, password and port kind.';
-  } on SocketException catch (e) {
-    return _socketProblem(draft, e);
+  } on Exception catch (e) {
+    return describeConnectionProblem(e, host: draft.host, port: draft.port);
   } finally {
-    await driver.disconnect();
+    await driver?.disconnect();
   }
-}
-
-String _socketProblem(ConnectionDraft draft, SocketException e) {
-  final m = '${e.message} ${e.osError?.message ?? ''}'.toLowerCase();
-  if (m.contains('host lookup') || m.contains('no address') || m.contains('nodename')) {
-    return 'Could not find ${draft.host}. Check the host name.';
-  }
-  if (m.contains('refused')) {
-    return 'Nothing answered on port ${draft.port} at ${draft.host}. Check the port and that the BBS is running.';
-  }
-  if (m.contains('timed out')) {
-    return 'No reply from ${draft.host}. Check the address and that you are on the right network.';
-  }
-  if (m.contains('unreachable')) {
-    return 'Cannot reach ${draft.host} from here. Check you are on the right network.';
-  }
-  return 'Could not connect to ${draft.host}: ${e.osError?.message ?? e.message}';
 }

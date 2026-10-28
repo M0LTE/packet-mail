@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import '../address.dart';
 import '../driver.dart';
 import '../message.dart';
+import '../problems.dart';
 import '../store/mail_store.dart';
 import '../transport/line_session.dart';
 
@@ -72,7 +73,7 @@ class SyncResult {
     final doneText = done.isEmpty ? null : '${done.join(', ')}.';
     final notesText = notes.map(_sentence).join(' ');
     if (error != null) {
-      if (!connected) return 'Could not connect: ${_sentence(error!)}';
+      if (!connected) return 'Could not connect. ${_sentence(error!)}';
       return [
         'Sync stopped: ${_sentence(error!)}',
         if (doneText != null) 'Before that: $doneText',
@@ -127,8 +128,9 @@ class SyncEngine {
   Future<SyncResult> _sync(int connectionId) async {
     final s = _Session();
     MailDriver? driver;
+    Connection? connection;
     try {
-      final connection = await _connection(connectionId);
+      connection = await _connection(connectionId);
       driver = await connect(connection);
       s.connected = true;
       await _sendOutbox(driver, connection, s);
@@ -140,7 +142,9 @@ class SyncEngine {
         await _downloadSubscribed(driver, connection, s);
       }
     } catch (e) {
-      s.error = describeError(e);
+      s.error = connection != null && !s.connected
+          ? describeConnectionProblem(e, host: connection.host, port: connection.port)
+          : describeError(e);
     } finally {
       if (driver != null) await _quietly(driver.disconnect);
     }
@@ -623,7 +627,7 @@ String describeError(Object e) => switch (e) {
       BbsError() => e.message,
       SessionTimeout() => 'The BBS stopped answering.',
       SessionClosed() => 'The BBS hung up.',
-      SocketException() => e.osError?.message.isNotEmpty == true ? e.osError!.message : e.message,
+      SocketException() => 'The connection to the BBS dropped.',
       TimeoutException() => 'No answer in time.',
       _ => 'Something went wrong talking to the BBS: $e',
     };

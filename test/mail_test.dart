@@ -137,7 +137,13 @@ void main() {
     await seedStation(app, tester);
     await app.pump(tester);
     await settleAll(app, tester);
-    expect(find.text('GB7RDG: Could not connect: No reply from 192.168.1.20.'), findsOneWidget);
+    expect(
+      find.text(
+        'GB7RDG: Could not connect. No reply from 192.168.1.20. '
+        'Check the address and that you are on the right network.',
+      ),
+      findsOneWidget,
+    );
     await app.dispose(tester);
   });
 

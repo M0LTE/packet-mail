@@ -264,7 +264,7 @@ void main() {
       engine = SyncEngine(db, (c) async => throw BbsError(BbsErrorKind.loginFailed, refused), clock: () => clock);
       final r = await engine.sync(conn);
       expect(r.ok, isFalse);
-      expect(r.summary, 'Could not connect: The BBS did not accept the user name or password.');
+      expect(r.summary, 'Could not connect. The BBS did not accept the login name or password. Check them and try again.');
       expect((await connection()).lastSyncResult, r.summary);
     });
 
