@@ -23,7 +23,7 @@ class TcpTransport implements Transport {
   Stream<List<int>> get incoming => _socket;
 
   @override
-  Future<void> write(List<int> bytes) async {
+  Future<void> write(List<int> bytes, {bool secret = false}) async {
     _socket.add(bytes);
     await _socket.flush();
   }

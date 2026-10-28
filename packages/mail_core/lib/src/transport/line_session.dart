@@ -56,6 +56,9 @@ class LineSession {
   /// Sends [text] followed by CR.
   Future<void> sendLine(String text) => transport.write(latin1.encode('$text\r'));
 
+  /// Sends a password followed by CR, marked secret so it is never recorded.
+  Future<void> sendSecretLine(String text) => transport.write(latin1.encode('$text\r'), secret: true);
+
   /// Waits until [pattern] appears in what has arrived, then returns
   /// everything up to and including the match and keeps the rest.
   Future<String> readUntil(Pattern pattern, {Duration timeout = const Duration(seconds: 30)}) async {

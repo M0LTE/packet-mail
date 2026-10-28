@@ -66,13 +66,13 @@ class BpqDriver implements MailDriver {
       }
       await _session.sendLine(user);
       await _session.readUntil('password:', timeout: timeout);
-      await _session.sendLine(password);
+      await _session.sendSecretLine(password);
       final r = await _session.readUntil(RegExp(r'Telnet Server\r|password:|user:'), timeout: timeout);
       if (_loginRefused.hasMatch(r)) throw BbsError(BbsErrorKind.loginFailed, _refusedMessage);
     } else {
       if (_telnetGreeting(_session.pending)) throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);
       await _session.sendLine(user);
-      await _session.sendLine(password);
+      await _session.sendSecretLine(password);
     }
     await _session.sendLine('BBS');
 

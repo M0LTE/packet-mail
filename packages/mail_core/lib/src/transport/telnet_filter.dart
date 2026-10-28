@@ -59,7 +59,7 @@ class TelnetFilter implements Transport {
   Stream<List<int>> get incoming => _incoming;
 
   @override
-  Future<void> write(List<int> bytes) => _inner.write(bytes);
+  Future<void> write(List<int> bytes, {bool secret = false}) => _inner.write(bytes, secret: secret);
 
   @override
   Future<void> close() => _inner.close();

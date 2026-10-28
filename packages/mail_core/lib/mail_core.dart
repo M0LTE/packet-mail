@@ -15,5 +15,6 @@ export 'src/sync/sync_engine.dart';
 export 'src/transport/line_session.dart';
 export 'src/transport/recording.dart';
 export 'src/transport/tcp_transport.dart';
+export 'src/transport/traffic_log.dart';
 export 'src/transport/telnet_filter.dart';
 export 'src/transport/transport.dart';
