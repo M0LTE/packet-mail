@@ -1,26 +1,26 @@
 # Recorded by driver_live_test.dart against test-bbs; do not edit.
 {"t":0.0,"dir":"tx","data":"user\r"}
-{"t":0.0,"dir":"tx","data":"user\r"}
+{"t":0.0,"dir":"tx","data":"PASSWORD\r","secret":true}
 {"t":0.0,"dir":"tx","data":"BBS\r"}
 {"t":0.028,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
-{"t":0.039,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rHello Tom User. Latest Message is 4, Last listed is -19\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":0.038,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rHello Tom User. Latest Message is 4, Last listed is -19\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
 {"t":0.039,"dir":"tx","data":"SP Q0OTH @ Q0TST.#42.GBR.EURO $DUPTEST1\r"}
-{"t":0.14,"dir":"rx","data":"Enter Title (only):\r"}
+{"t":0.139,"dir":"rx","data":"Enter Title (only):\r"}
 {"t":0.14,"dir":"tx","data":"Once only\r"}
-{"t":0.241,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
+{"t":0.24,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
 {"t":0.241,"dir":"tx","data":"Body.\r"}
 {"t":0.241,"dir":"tx","data":"/EX\r"}
 {"t":0.342,"dir":"rx","data":"Message: 5 Bid:  DUPTEST1 Size: 7\rde Q0TST>\r"}
-{"t":0.343,"dir":"tx","data":"SP Q0OTH @ Q0TST.#42.GBR.EURO $DUPTEST1\r"}
+{"t":0.342,"dir":"tx","data":"SP Q0OTH @ Q0TST.#42.GBR.EURO $DUPTEST1\r"}
 {"t":0.443,"dir":"rx","data":"*** Error- Duplicate BID\rde Q0TST>\r"}
 {"t":0.444,"dir":"tx","data":"SB ALL @ GBR $DUPTEST2\r"}
 {"t":0.544,"dir":"rx","data":"Enter Title (only):\r"}
 {"t":0.544,"dir":"tx","data":"Once only\r"}
 {"t":0.645,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
 {"t":0.645,"dir":"tx","data":"Body.\r"}
-{"t":0.646,"dir":"tx","data":"/EX\r"}
-{"t":0.747,"dir":"rx","data":"Message: 6 Bid:  DUPTEST2 Size: 7\r@BBS specified, but no forwarding info is available - msg may not be delivered\rde Q0TST>\r"}
-{"t":0.747,"dir":"tx","data":"SB ALL @ GBR $DUPTEST2\r"}
-{"t":0.848,"dir":"rx","data":"*** Error- Duplicate BID\rde Q0TST>\r"}
-{"t":0.848,"dir":"tx","data":"B\r"}
-{"t":1.949,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":0.645,"dir":"tx","data":"/EX\r"}
+{"t":0.746,"dir":"rx","data":"Message: 6 Bid:  DUPTEST2 Size: 7\r@BBS specified, but no forwarding info is available - msg may not be delivered\rde Q0TST>\r"}
+{"t":0.746,"dir":"tx","data":"SB ALL @ GBR $DUPTEST2\r"}
+{"t":0.847,"dir":"rx","data":"*** Error- Duplicate BID\rde Q0TST>\r"}
+{"t":0.847,"dir":"tx","data":"B\r"}
+{"t":1.948,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}

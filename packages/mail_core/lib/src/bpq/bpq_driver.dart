@@ -112,6 +112,14 @@ class BpqDriver implements MailDriver {
   @override
   Future<List<MessageHeader>> listBulletins() async => _visible(await _command('LB'));
 
+  /// `L< CALL`, with the space: `L<CALL` lists nothing.
+  @override
+  Future<List<MessageHeader>> listSent(String callsign) async {
+    final call = callsign.toUpperCase();
+    if (!isCallsign(call)) throw ArgumentError.value(callsign, 'callsign', 'not a callsign');
+    return _visible(await _command('L< $call'));
+  }
+
   /// Sysops see killed and held mail too; nobody else does, so neither do we.
   List<MessageHeader> _visible(List<String> lines) {
     final now = _clock().toUtc();

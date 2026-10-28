@@ -150,4 +150,22 @@ void defineScenarios(Connect connect) {
     );
     await d.disconnect();
   });
+
+  test('the sender lists what they sent, with its status, and reads it', () async {
+    final d = driverFor(await connect('user-list-sent', BpqPort.fbb), BpqPort.fbb);
+    await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+    final sent = await d.listSent('q0usr');
+    // The first personal message was killed by its recipient, so it has gone.
+    expect(sent.map((h) => (h.subject, h.type, h.status, h.to)), [
+      ('Once only', MessageType.bulletin, 'N', 'ALL'),
+      ('Once only', MessageType.personal, 'N', 'Q0OTH'),
+      ('Driver bulletin', MessageType.bulletin, 'N', 'ALL'),
+    ]);
+    expect(sent.every((h) => h.from == 'Q0USR'), isTrue);
+    final personal = sent.firstWhere((h) => h.type == MessageType.personal);
+    expect((await d.read(personal.number)).body, 'Body.');
+    expect((await d.listSent('Q0USR')).firstWhere((h) => h.number == personal.number).status, 'N');
+    expect(() => d.listSent('Q0USR LB'), throwsArgumentError);
+    await d.disconnect();
+  });
 }

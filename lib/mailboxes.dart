@@ -67,6 +67,69 @@ final outboxProvider = StreamProvider<List<OutgoingItem>>((ref) => _outgoing(ref
 
 final sentProvider = StreamProvider<List<OutgoingItem>>((ref) => _outgoing(ref.watch(storeProvider), sent: true));
 
+/// Mail from us as the BBS lists it, newest first.
+final sentListingsProvider = StreamProvider<List<SentListing>>((ref) {
+  final store = ref.watch(storeProvider);
+  return (store.select(store.sentListings)
+        ..orderBy([(t) => OrderingTerm.desc(t.date), (t) => OrderingTerm.desc(t.id)]))
+      .watch();
+});
+
+final sentListingProvider = StreamProvider.autoDispose.family<SentListing?, int>((ref, id) {
+  final store = ref.watch(storeProvider);
+  return (store.select(store.sentListings)..where((t) => t.id.equals(id))).watchSingleOrNull();
+});
+
+/// One item in Sent.
+sealed class SentEntry {
+  const SentEntry();
+  DateTime get when;
+}
+
+/// Sent from this phone, with what the BBS lists for each copy, by recipient id.
+final class PhoneSent extends SentEntry {
+  const PhoneSent(this.item, this.listings);
+  final OutgoingItem item;
+  final Map<int, SentListing> listings;
+  @override
+  DateTime get when => item.message.sentAt ?? item.message.createdAt;
+}
+
+/// Only the BBS lists it: sent some other way, or before this phone.
+final class BbsSent extends SentEntry {
+  const BbsSent(this.listing);
+  final SentListing listing;
+  @override
+  DateTime get when => listing.date;
+}
+
+/// The phone's own sent copies and the BBS's list, without duplicates: a
+/// listing belongs to a copy with the same BBS number, or else the same BID.
+List<SentEntry> mergeSent(List<OutgoingItem> items, List<SentListing> listings) {
+  final used = <int>{};
+  SentListing? find(int connectionId, bool Function(SentListing l) match) => listings
+      .where((l) => l.connectionId == connectionId && !used.contains(l.id) && match(l))
+      .firstOrNull;
+  final entries = <SentEntry>[];
+  for (final item in items) {
+    final found = <int, SentListing>{};
+    for (final r in item.recipients) {
+      final c = item.message.connectionId;
+      final l = (r.bbsNumber == null ? null : find(c, (l) => l.bbsNumber == r.bbsNumber)) ??
+          (r.bbsBid == null ? null : find(c, (l) => l.bid == r.bbsBid));
+      if (l == null) continue;
+      used.add(l.id);
+      found[r.id] = l;
+    }
+    entries.add(PhoneSent(item, found));
+  }
+  entries.addAll([
+    for (final l in listings)
+      if (!used.contains(l.id)) BbsSent(l),
+  ]);
+  return entries..sort((a, b) => b.when.compareTo(a.when));
+}
+
 /// Names from the address book, by callsign.
 final contactNamesProvider = StreamProvider<Map<String, String>>((ref) {
   final store = ref.watch(storeProvider);

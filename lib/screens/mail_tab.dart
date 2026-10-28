@@ -74,7 +74,7 @@ class _MailTabState extends ConsumerState<MailTab> {
                 Mailbox.inbox => _messages(ref.watch(inboxProvider), sections: true),
                 Mailbox.starred => _messages(ref.watch(starredProvider), sections: false),
                 Mailbox.outbox => _outgoing(ref.watch(outboxProvider), sent: false),
-                Mailbox.sent => _outgoing(ref.watch(sentProvider), sent: true),
+                Mailbox.sent => _sent(),
               },
             ),
           ),
@@ -179,6 +179,46 @@ class _MailTabState extends ConsumerState<MailTab> {
             MaterialPageRoute<void>(builder: (_) => OutgoingScreen(outgoingId: item.message.id, from: _box.label)),
           ),
         ),
+    ]);
+  }
+
+  /// The phone's own sent copies merged with the BBS's list of mail from us.
+  Widget _sent() {
+    final items = ref.watch(sentProvider).value;
+    final listings = ref.watch(sentListingsProvider).value;
+    if (items == null || listings == null) return _scrollable(const []);
+    final entries = mergeSent(items, listings);
+    if (entries.isEmpty) return _scrollable([const _Empty('Nothing sent yet.')]);
+    final home = ref.watch(identityProvider).value?.homeBbs;
+    return _scrollable([
+      if (items.isNotEmpty) HeldMailTip(connectionIds: {for (final i in items) i.message.connectionId}),
+      if (listings.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Text(
+            forwardedMeaning,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Logbook.inkFaint),
+          ),
+        ),
+      for (final e in entries)
+        switch (e) {
+          PhoneSent(:final item, :final listings) => OutgoingRow(
+            item: item,
+            sent: true,
+            listings: listings,
+            homeBbs: home,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => OutgoingScreen(outgoingId: item.message.id, from: _box.label)),
+            ),
+          ),
+          BbsSent(:final listing) => SentListingRow(
+            listing: listing,
+            homeBbs: home,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => SentListingScreen(sentId: listing.id, from: _box.label)),
+            ),
+          ),
+        },
     ]);
   }
 
@@ -315,11 +355,24 @@ class MessageRow extends ConsumerWidget {
 /// Something we wrote, in Outbox or Sent: one item, with a line for each
 /// recipient whose state is worth knowing.
 class OutgoingRow extends ConsumerWidget {
-  const OutgoingRow({super.key, required this.item, required this.sent, this.onTap});
+  const OutgoingRow({
+    super.key,
+    required this.item,
+    required this.sent,
+    this.onTap,
+    this.listings = const {},
+    this.homeBbs,
+  });
 
   final OutgoingItem item;
   final bool sent;
   final VoidCallback? onTap;
+
+  /// What the BBS lists for each copy, by recipient id.
+  final Map<int, SentListing> listings;
+
+  /// Ours, to tell a local addressee from a distant one.
+  final String? homeBbs;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -327,14 +380,21 @@ class OutgoingRow extends ConsumerWidget {
     final m = item.message;
     final to = item.recipients.map((r) => r.address.split('@').first).toList();
     final when = (sent ? m.sentAt : null) ?? m.createdAt;
-    // One plain sent copy needs no line; several each get one.
+    // One plain sent copy needs no line unless the BBS says how it is
+    // getting on; several each get one.
+    final many = item.recipients.length > 1;
+    String? state(OutgoingRecipient r) {
+      final bbs = listings[r.id];
+      final words = r.state == 'sent' && bbs != null ? bbsSentState(bbs, homeBbs: homeBbs) : null;
+      if (words != null) return words;
+      return many || r.state != 'sent' ? recipientState(r) : null;
+    }
+
     final lines = [
       for (final r in item.recipients)
-        if (item.recipients.length > 1 || r.state != 'sent')
+        if (state(r) case final s?)
           (
-            text: item.recipients.length > 1
-                ? '${r.address.split('@').first}: ${recipientState(r)}'
-                : recipientState(r),
+            text: many ? '${r.address.split('@').first}: $s' : s,
             problem: r.state == 'failed' || r.state == 'held',
           ),
     ];
@@ -376,6 +436,66 @@ class OutgoingRow extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: text.bodySmall?.copyWith(color: l.problem ? Logbook.stampRed : null),
                     ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Mail from us that only the BBS lists, with its status.
+class SentListingRow extends ConsumerWidget {
+  const SentListingRow({super.key, required this.listing, this.homeBbs, this.onTap});
+
+  final SentListing listing;
+  final String? homeBbs;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = Theme.of(context).textTheme;
+    final state = bbsSentState(listing, homeBbs: homeBbs);
+    return InkWell(
+      key: ValueKey('sent-listing-${listing.bbsNumber}'),
+      onTap: onTap,
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Logbook.rule)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CallsignStamp(listing.toCall, faded: true),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          listing.at == null ? 'To ${listing.toCall}' : 'To ${listing.toCall}@${listing.at}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.titleSmall,
+                        ),
+                      ),
+                      Text(listTime(listing.date.toLocal(), ref.watch(clockProvider)()), style: text.bodySmall),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    listing.subject.isEmpty ? '(no subject)' : listing.subject,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.titleMedium,
+                  ),
+                  if (state != null) Text(state, style: text.bodySmall),
                 ],
               ),
             ),

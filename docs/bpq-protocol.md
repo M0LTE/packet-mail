@@ -493,7 +493,8 @@ Recorded 2026-10-28 with `test-bbs/record-all.sh` against Tom's `m0lte/linbpq:6.
 - **First login** asks `Please enter your Name\r>\r`; the reply is taken as the name whatever it is (a command sent here becomes the name). Then `Hello <name>. Latest Message is N, Last listed is M\r`, a nudge to set a home BBS, and the prompt. The client must handle the name prompt before sending any command.
 - **New-user mail is held by default.** With `DontHoldNewUsers = 0` a new user's messages get a normal `Message: N` confirmation but status H, so nobody else sees them and the sender can't list them. The app should tell the user, once, when their sent mail never appears for anyone.
 - **The BBS's own notices use message numbers**: each new user creates a notice to the sysop, so numbers are not predictable from what a user can see.
-- **`LM` lists mail to me only**, not mail I sent. `L` lists new mail including what I sent. Sent items have to live in the app, as planned.
+- **`LM` lists mail to me only**, not mail I sent. `L` lists new mail including what I sent.
+- **`L< CALL` lists mail from CALL**, personal and bulletins, newest first, with their status letters (a personal message to a local user stays `PN` until read). The space matters: `L<CALL` lists nothing. Any user can list anyone's, but personal mail only shows to its sender or addressee. The sender can read their own message with `R n`, which does not change its status. The app's Sent uses this, merged with its own copies.
 - **Reading a bulletin changes nothing on the BBS**: it stays `BN` and stays in `LN`. Bulletin read state is the app's own.
 - **Kill rights**: the recipient can kill personal mail; the author can kill their own bulletin; anyone else gets `Not your message\r`. After a kill, `R n` gives `Message n not for you\r` to a normal user (not "not found").
 - **Bare callsign**: `SP Q0OTH` gave `Address @Q0TST.#42.GBR.EURO added from HomeBBS\r` (compare `added from WP` on GB7RDG).

@@ -1,0 +1,14 @@
+# Recorded by driver_live_test.dart against test-bbs; do not edit.
+{"t":0.0,"dir":"tx","data":"user\r"}
+{"t":0.0,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.0,"dir":"tx","data":"BBS\r"}
+{"t":0.027,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":0.037,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rHello Tom User. Latest Message is 6, Last listed is -19\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":0.037,"dir":"tx","data":"L< Q0USR\r"}
+{"t":0.138,"dir":"rx","data":"6      28-Oct BN       7 ALL    @GBR    Q0USR  Once only\r5      28-Oct PN       7 Q0OTH  @Q0TST  Q0USR  Once only\r3      28-Oct BN      16 ALL    @GBR    Q0USR  Driver bulletin\rde Q0TST>\r"}
+{"t":0.139,"dir":"tx","data":"R 5\r"}
+{"t":0.239,"dir":"rx","data":"From: Q0USR\rTo: Q0OTH\rType/Status: PN\rDate/Time: 28-Oct 13:25Z\rBid: DUPTEST1\rTitle: Once only\r\rBody.\r\r\r[End of Message #5 from Q0USR]\rde Q0TST>\r"}
+{"t":0.24,"dir":"tx","data":"L< Q0USR\r"}
+{"t":0.341,"dir":"rx","data":"6      28-Oct BN       7 ALL    @GBR    Q0USR  Once only\r5      28-Oct PN       7 Q0OTH  @Q0TST  Q0USR  Once only\r3      28-Oct BN      16 ALL    @GBR    Q0USR  Driver bulletin\rde Q0TST>\r"}
+{"t":0.342,"dir":"tx","data":"B\r"}
+{"t":1.442,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}

@@ -21,6 +21,9 @@ class FakeMessage {
 class FakeBbs implements MailDriver {
   final personal = <int, FakeMessage>{};
   final bulletins = <int, FakeMessage>{};
+
+  /// Mail from us, as `L< OURCALL` lists it.
+  final fromUs = <int, FakeMessage>{};
   final whitePages = <String, String>{};
 
   /// The From line a read gives, when it differs from the listing.
@@ -97,9 +100,29 @@ class FakeBbs implements MailDriver {
   }
 
   @override
+  Future<List<MessageHeader>> listSent(String callsign) async {
+    _call('listSent $callsign');
+    return [for (final m in fromUs.values) m.header];
+  }
+
+  void addFromUs(int n, {String status = 'N', String to = 'G4APL', String? at = 'GB7XYZ', String type = 'P'}) =>
+      fromUs[n] = FakeMessage(
+          MessageHeader(
+              number: n,
+              type: MessageType.fromLetter(type),
+              status: status,
+              from: 'M0LTE',
+              to: to,
+              at: at,
+              subject: 'Mine $n',
+              date: day),
+          body: 'Sent body $n',
+          bid: '${n}_GB7RDG');
+
+  @override
   Future<ReadMessage> read(int number) async {
     _call('read $number');
-    final m = personal[number] ?? bulletins[number];
+    final m = personal[number] ?? bulletins[number] ?? fromUs[number];
     if (m == null) throw BbsError(BbsErrorKind.notFound, 'Message $number is not on the BBS.');
     final h = m.header;
     if (h.type == MessageType.personal && h.status == 'N') {
@@ -555,6 +578,58 @@ void main() {
           throwsA(isA<BbsError>().having((e) => e.kind, 'kind', BbsErrorKind.notFound)));
       expect(bbs.calls.last, 'disconnect');
       expect((await message(10)).read, isFalse);
+    });
+  });
+
+  group('sent, from the BBS', () {
+    Future<List<SentListing>> sentRows() =>
+        (db.select(db.sentListings)..orderBy([(t) => OrderingTerm(expression: t.bbsNumber)])).get();
+
+    setUp(() async {
+      await db.into(db.identities).insert(
+          IdentitiesCompanion.insert(callsign: 'M0LTE-1', name: 'Tom', homeBbs: 'GB7RDG.#42.GBR.EURO'));
+    });
+
+    test('lists mail from our call, without the SSID, and keeps the status current', () async {
+      bbs
+        ..addFromUs(30)
+        ..addFromUs(31, type: 'B', status: r'$', to: 'ALL', at: 'GBR');
+      await engine.sync(conn);
+      expect(bbs.calls, contains('listSent M0LTE'));
+      expect((await sentRows()).map((r) => (r.bbsNumber, r.type, r.status)), [
+        (30, 'personal', 'N'),
+        (31, 'bulletin', r'$'),
+      ]);
+      bbs
+        ..addFromUs(30, status: 'F')
+        ..addFromUs(31, type: 'B', status: 'F', to: 'ALL', at: 'GBR');
+      await engine.sync(conn);
+      expect((await sentRows()).map((r) => r.status), ['F', 'F']);
+    });
+
+    test('additive: opened ones stay after the BBS drops them, the rest go', () async {
+      bbs
+        ..addFromUs(30)
+        ..addFromUs(31);
+      await engine.sync(conn);
+      final first = (await sentRows()).first;
+      expect(await engine.openSent(first.id), 'Sent body 30');
+      expect((await sentRows()).first.bid, '30_GB7RDG');
+      bbs.fromUs.clear();
+      await engine.sync(conn);
+      expect((await sentRows()).map((r) => r.bbsNumber), [30]);
+      bbs.calls.clear();
+      expect(await engine.openSent(first.id), 'Sent body 30');
+      expect(bbs.calls, isEmpty); // already here
+    });
+
+    test('a listing failure stops the sync and keeps what was there', () async {
+      bbs.addFromUs(30);
+      await engine.sync(conn);
+      bbs.failOn = 'listSent';
+      final r = await engine.sync(conn);
+      expect(r.ok, isFalse);
+      expect((await sentRows()).single.bbsNumber, 30);
     });
   });
 
@@ -1097,6 +1172,8 @@ abstract class _Wrapper implements MailDriver {
   Future<SendReceipt> sendBulletin(
           {required BulletinAddress to, required String subject, required String body, String? bid}) =>
       inner.sendBulletin(to: to, subject: subject, body: body, bid: bid);
+  @override
+  Future<List<MessageHeader>> listSent(String callsign) => inner.listSent(callsign);
   @override
   Future<void> kill(int number) => inner.kill(number);
   @override

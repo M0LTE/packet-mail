@@ -65,7 +65,38 @@ class Messages extends Table {
   /// Deleted here; kill on the BBS at the next sync, then remove the row.
   BoolColumn get pendingKill => boolean().withDefault(const Constant(false))();
 
-  /// Last time the BBS listed it. Bulletins the BBS stops listing are removed unless starred.
+  /// Last time the BBS listed it. Rows the BBS stops listing are removed
+  /// unless their text is here (additive, docs/plan.md Sync rules).
+  DateTimeColumn get lastListedAt => dateTime()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {connectionId, bbsNumber},
+      ];
+}
+
+/// Mail from us as the BBS lists it (`L< OURCALL`), personal and bulletins,
+/// with the BBS's status letter. Sent shows these merged with [Outgoing].
+class SentListings extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get connectionId => integer().references(Connections, #id, onDelete: KeyAction.cascade)();
+  IntColumn get bbsNumber => integer()();
+
+  /// 'personal', 'bulletin' or 'traffic'.
+  TextColumn get type => text()();
+
+  /// The BBS status letter: N, Y, F, $ or D.
+  TextColumn get status => text()();
+  TextColumn get toCall => text()();
+  TextColumn get at => text().nullable()();
+  TextColumn get subject => text()();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get size => integer().nullable()();
+
+  /// Null until opened.
+  TextColumn get body => text().nullable()();
+  TextColumn get routing => text().nullable()();
+  TextColumn get bid => text().nullable()();
   DateTimeColumn get lastListedAt => dateTime()();
 
   @override

@@ -2,7 +2,7 @@ import 'address.dart';
 import 'message.dart';
 
 /// What a driver can do beyond the basics. The app hides features a driver lacks.
-enum DriverCapability { whitePagesLookup, kill, bulletins }
+enum DriverCapability { whitePagesLookup, kill, bulletins, listSent }
 
 /// Why a BBS action failed, in terms the app can act on.
 enum BbsErrorKind {
@@ -52,6 +52,10 @@ abstract interface class MailDriver {
 
   /// Every bulletin the BBS currently holds.
   Future<List<MessageHeader>> listBulletins();
+
+  /// Mail from [callsign] (no SSID) that the BBS still lists, personal and
+  /// bulletins, with each one's status letter.
+  Future<List<MessageHeader>> listSent(String callsign);
 
   Future<ReadMessage> read(int number);
   /// Sends personal mail. A [bid] makes it safe to send again: the BBS

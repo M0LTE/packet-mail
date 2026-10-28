@@ -154,6 +154,7 @@ class SyncEngine {
       await _applyKills(driver, connection, s);
       await _listPersonal(driver, connection, s);
       if (connection.personalDownload == 'atSync') await _downloadPersonal(driver, connection);
+      if (driver.capabilities.contains(DriverCapability.listSent)) await _listSent(driver, connection);
       if (driver.capabilities.contains(DriverCapability.bulletins)) {
         await _listBulletins(driver, connection, s);
         await _downloadSubscribed(driver, connection, s);
@@ -195,6 +196,28 @@ class SyncEngine {
     await (store.update(store.messages)..where((m) => m.id.equals(messageId)))
         .write(const MessagesCompanion(read: Value(true)));
     return body;
+  }
+
+  /// Returns the text of mail we sent as the BBS lists it, downloading it
+  /// the first time. Reading our own mail changes nothing on the BBS.
+  Future<String> openSent(int sentId) async {
+    Future<SentListing> row() => (store.select(store.sentListings)..where((t) => t.id.equals(sentId))).getSingle();
+    return _exclusive((await row()).connectionId, () async {
+      final m = await row();
+      if (m.body != null) return m.body!;
+      final driver = await connect(await _connection(m.connectionId));
+      try {
+        final read = await driver.read(m.bbsNumber);
+        await (store.update(store.sentListings)..where((t) => t.id.equals(sentId))).write(SentListingsCompanion(
+          body: Value(read.body),
+          routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
+          bid: Value(read.bid.isEmpty ? null : read.bid),
+        ));
+        return read.body;
+      } finally {
+        await _quietly(driver.disconnect);
+      }
+    });
   }
 
   /// Asks White Pages on [connectionId] for [callsign]'s home BBS. Returns
@@ -447,6 +470,52 @@ class SyncEngine {
               (m.body.isNull() | m.pendingKill.equals(true))))
         .get();
     await _deleteIds([for (final m in stored) if (!listed.contains(m.bbsNumber)) m.id]);
+  }
+
+  // Sent
+
+  /// Mail from us as the BBS lists it, with its status. Additive: rows whose
+  /// text is here stay after the BBS drops them; headers only go.
+  Future<void> _listSent(MailDriver driver, Connection connection) async {
+    final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
+    final call = identity == null ? '' : identity.callsign.trim().toUpperCase().split('-').first;
+    if (!isCallsign(call)) return;
+    final headers = await driver.listSent(call);
+    final now = _clock();
+    await store.transaction(() async {
+      final existing = {
+        for (final m in await (store.select(store.sentListings)..where((m) => m.connectionId.equals(connection.id)))
+            .get())
+          m.bbsNumber: m,
+      };
+      for (final h in headers) {
+        final old = existing[h.number];
+        if (old != null && old.subject == h.subject && old.toCall == h.to) {
+          await (store.update(store.sentListings)..where((m) => m.id.equals(old.id)))
+              .write(SentListingsCompanion(status: Value(h.status), lastListedAt: Value(now)));
+          continue;
+        }
+        if (old != null) await (store.delete(store.sentListings)..where((m) => m.id.equals(old.id))).go();
+        await store.into(store.sentListings).insert(SentListingsCompanion.insert(
+              connectionId: connection.id,
+              bbsNumber: h.number,
+              type: h.type.name,
+              status: h.status,
+              toCall: h.to,
+              at: Value(h.at),
+              subject: h.subject,
+              date: h.date,
+              size: Value(h.size),
+              lastListedAt: now,
+            ));
+      }
+      final listed = {for (final h in headers) h.number};
+      final gone = [
+        for (final m in existing.values)
+          if (!listed.contains(m.bbsNumber) && m.body == null) m.id,
+      ];
+      if (gone.isNotEmpty) await (store.delete(store.sentListings)..where((m) => m.id.isIn(gone))).go();
+    });
   }
 
   Future<void> _downloadPersonal(MailDriver driver, Connection connection) async {

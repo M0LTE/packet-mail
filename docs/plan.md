@@ -80,7 +80,7 @@ Capability flags let the app hide what a driver can't do (for example, no White 
   - **Download everything at sync:** mail is there to read offline, and the app keeps its own unread state; the BBS shows it read once the app has it.
   The connection screen explains the trade-off in a sentence or two. Messages already downloaded stay readable offline either way.
 - **Deleting** kills the message on the BBS at the next sync and removes it from the app once confirmed.
-- **Sent:** kept in the app only.
+- **Sent:** the BBS's list of mail from us (`L< OURCALL`, personal and bulletins) merged with the phone's own sent copies, matched on the BBS number recorded at send, then BID. Each copy shows its BBS status in plain words; bodies download on open.
 - **Bulletins:** headers for everything listed; bodies for subscribed categories. Never killed on the BBS.
 - **On the LAN** everything subscribed is fetched in one go. The sync engine fetches headers and bodies as separate steps, so a slow radio link can fetch bodies only when opened.
 - **Sync** runs on opening the app, on pull-to-refresh and after sending.

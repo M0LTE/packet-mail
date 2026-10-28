@@ -1387,7 +1387,8 @@ class Message extends DataClass implements Insertable<Message> {
   /// Deleted here; kill on the BBS at the next sync, then remove the row.
   final bool pendingKill;
 
-  /// Last time the BBS listed it. Bulletins the BBS stops listing are removed unless starred.
+  /// Last time the BBS listed it. Rows the BBS stops listing are removed
+  /// unless their text is here (additive, docs/plan.md Sync rules).
   final DateTime lastListedAt;
   const Message({
     required this.id,
@@ -1865,6 +1866,797 @@ class MessagesCompanion extends UpdateCompanion<Message> {
           ..write('read: $read, ')
           ..write('starred: $starred, ')
           ..write('pendingKill: $pendingKill, ')
+          ..write('lastListedAt: $lastListedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SentListingsTable extends SentListings
+    with TableInfo<$SentListingsTable, SentListing> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SentListingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _connectionIdMeta = const VerificationMeta(
+    'connectionId',
+  );
+  @override
+  late final GeneratedColumn<int> connectionId = GeneratedColumn<int>(
+    'connection_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES connections (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _bbsNumberMeta = const VerificationMeta(
+    'bbsNumber',
+  );
+  @override
+  late final GeneratedColumn<int> bbsNumber = GeneratedColumn<int>(
+    'bbs_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _toCallMeta = const VerificationMeta('toCall');
+  @override
+  late final GeneratedColumn<String> toCall = GeneratedColumn<String>(
+    'to_call',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<String> at = GeneratedColumn<String>(
+    'at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _subjectMeta = const VerificationMeta(
+    'subject',
+  );
+  @override
+  late final GeneratedColumn<String> subject = GeneratedColumn<String>(
+    'subject',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
+  @override
+  late final GeneratedColumn<int> size = GeneratedColumn<int>(
+    'size',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _routingMeta = const VerificationMeta(
+    'routing',
+  );
+  @override
+  late final GeneratedColumn<String> routing = GeneratedColumn<String>(
+    'routing',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bidMeta = const VerificationMeta('bid');
+  @override
+  late final GeneratedColumn<String> bid = GeneratedColumn<String>(
+    'bid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastListedAtMeta = const VerificationMeta(
+    'lastListedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastListedAt = GeneratedColumn<DateTime>(
+    'last_listed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    connectionId,
+    bbsNumber,
+    type,
+    status,
+    toCall,
+    at,
+    subject,
+    date,
+    size,
+    body,
+    routing,
+    bid,
+    lastListedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sent_listings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SentListing> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('connection_id')) {
+      context.handle(
+        _connectionIdMeta,
+        connectionId.isAcceptableOrUnknown(
+          data['connection_id']!,
+          _connectionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_connectionIdMeta);
+    }
+    if (data.containsKey('bbs_number')) {
+      context.handle(
+        _bbsNumberMeta,
+        bbsNumber.isAcceptableOrUnknown(data['bbs_number']!, _bbsNumberMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bbsNumberMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('to_call')) {
+      context.handle(
+        _toCallMeta,
+        toCall.isAcceptableOrUnknown(data['to_call']!, _toCallMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_toCallMeta);
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    }
+    if (data.containsKey('subject')) {
+      context.handle(
+        _subjectMeta,
+        subject.isAcceptableOrUnknown(data['subject']!, _subjectMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subjectMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('size')) {
+      context.handle(
+        _sizeMeta,
+        size.isAcceptableOrUnknown(data['size']!, _sizeMeta),
+      );
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    }
+    if (data.containsKey('routing')) {
+      context.handle(
+        _routingMeta,
+        routing.isAcceptableOrUnknown(data['routing']!, _routingMeta),
+      );
+    }
+    if (data.containsKey('bid')) {
+      context.handle(
+        _bidMeta,
+        bid.isAcceptableOrUnknown(data['bid']!, _bidMeta),
+      );
+    }
+    if (data.containsKey('last_listed_at')) {
+      context.handle(
+        _lastListedAtMeta,
+        lastListedAt.isAcceptableOrUnknown(
+          data['last_listed_at']!,
+          _lastListedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastListedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {connectionId, bbsNumber},
+  ];
+  @override
+  SentListing map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SentListing(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      connectionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}connection_id'],
+      )!,
+      bbsNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bbs_number'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      toCall: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}to_call'],
+      )!,
+      at: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}at'],
+      ),
+      subject: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      size: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size'],
+      ),
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      ),
+      routing: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}routing'],
+      ),
+      bid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bid'],
+      ),
+      lastListedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_listed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SentListingsTable createAlias(String alias) {
+    return $SentListingsTable(attachedDatabase, alias);
+  }
+}
+
+class SentListing extends DataClass implements Insertable<SentListing> {
+  final int id;
+  final int connectionId;
+  final int bbsNumber;
+
+  /// 'personal', 'bulletin' or 'traffic'.
+  final String type;
+
+  /// The BBS's status letter: N, Y, F, \$ or D.
+  final String status;
+  final String toCall;
+  final String? at;
+  final String subject;
+  final DateTime date;
+  final int? size;
+
+  /// Null until opened.
+  final String? body;
+  final String? routing;
+  final String? bid;
+  final DateTime lastListedAt;
+  const SentListing({
+    required this.id,
+    required this.connectionId,
+    required this.bbsNumber,
+    required this.type,
+    required this.status,
+    required this.toCall,
+    this.at,
+    required this.subject,
+    required this.date,
+    this.size,
+    this.body,
+    this.routing,
+    this.bid,
+    required this.lastListedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['connection_id'] = Variable<int>(connectionId);
+    map['bbs_number'] = Variable<int>(bbsNumber);
+    map['type'] = Variable<String>(type);
+    map['status'] = Variable<String>(status);
+    map['to_call'] = Variable<String>(toCall);
+    if (!nullToAbsent || at != null) {
+      map['at'] = Variable<String>(at);
+    }
+    map['subject'] = Variable<String>(subject);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || size != null) {
+      map['size'] = Variable<int>(size);
+    }
+    if (!nullToAbsent || body != null) {
+      map['body'] = Variable<String>(body);
+    }
+    if (!nullToAbsent || routing != null) {
+      map['routing'] = Variable<String>(routing);
+    }
+    if (!nullToAbsent || bid != null) {
+      map['bid'] = Variable<String>(bid);
+    }
+    map['last_listed_at'] = Variable<DateTime>(lastListedAt);
+    return map;
+  }
+
+  SentListingsCompanion toCompanion(bool nullToAbsent) {
+    return SentListingsCompanion(
+      id: Value(id),
+      connectionId: Value(connectionId),
+      bbsNumber: Value(bbsNumber),
+      type: Value(type),
+      status: Value(status),
+      toCall: Value(toCall),
+      at: at == null && nullToAbsent ? const Value.absent() : Value(at),
+      subject: Value(subject),
+      date: Value(date),
+      size: size == null && nullToAbsent ? const Value.absent() : Value(size),
+      body: body == null && nullToAbsent ? const Value.absent() : Value(body),
+      routing: routing == null && nullToAbsent
+          ? const Value.absent()
+          : Value(routing),
+      bid: bid == null && nullToAbsent ? const Value.absent() : Value(bid),
+      lastListedAt: Value(lastListedAt),
+    );
+  }
+
+  factory SentListing.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SentListing(
+      id: serializer.fromJson<int>(json['id']),
+      connectionId: serializer.fromJson<int>(json['connectionId']),
+      bbsNumber: serializer.fromJson<int>(json['bbsNumber']),
+      type: serializer.fromJson<String>(json['type']),
+      status: serializer.fromJson<String>(json['status']),
+      toCall: serializer.fromJson<String>(json['toCall']),
+      at: serializer.fromJson<String?>(json['at']),
+      subject: serializer.fromJson<String>(json['subject']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      size: serializer.fromJson<int?>(json['size']),
+      body: serializer.fromJson<String?>(json['body']),
+      routing: serializer.fromJson<String?>(json['routing']),
+      bid: serializer.fromJson<String?>(json['bid']),
+      lastListedAt: serializer.fromJson<DateTime>(json['lastListedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'connectionId': serializer.toJson<int>(connectionId),
+      'bbsNumber': serializer.toJson<int>(bbsNumber),
+      'type': serializer.toJson<String>(type),
+      'status': serializer.toJson<String>(status),
+      'toCall': serializer.toJson<String>(toCall),
+      'at': serializer.toJson<String?>(at),
+      'subject': serializer.toJson<String>(subject),
+      'date': serializer.toJson<DateTime>(date),
+      'size': serializer.toJson<int?>(size),
+      'body': serializer.toJson<String?>(body),
+      'routing': serializer.toJson<String?>(routing),
+      'bid': serializer.toJson<String?>(bid),
+      'lastListedAt': serializer.toJson<DateTime>(lastListedAt),
+    };
+  }
+
+  SentListing copyWith({
+    int? id,
+    int? connectionId,
+    int? bbsNumber,
+    String? type,
+    String? status,
+    String? toCall,
+    Value<String?> at = const Value.absent(),
+    String? subject,
+    DateTime? date,
+    Value<int?> size = const Value.absent(),
+    Value<String?> body = const Value.absent(),
+    Value<String?> routing = const Value.absent(),
+    Value<String?> bid = const Value.absent(),
+    DateTime? lastListedAt,
+  }) => SentListing(
+    id: id ?? this.id,
+    connectionId: connectionId ?? this.connectionId,
+    bbsNumber: bbsNumber ?? this.bbsNumber,
+    type: type ?? this.type,
+    status: status ?? this.status,
+    toCall: toCall ?? this.toCall,
+    at: at.present ? at.value : this.at,
+    subject: subject ?? this.subject,
+    date: date ?? this.date,
+    size: size.present ? size.value : this.size,
+    body: body.present ? body.value : this.body,
+    routing: routing.present ? routing.value : this.routing,
+    bid: bid.present ? bid.value : this.bid,
+    lastListedAt: lastListedAt ?? this.lastListedAt,
+  );
+  SentListing copyWithCompanion(SentListingsCompanion data) {
+    return SentListing(
+      id: data.id.present ? data.id.value : this.id,
+      connectionId: data.connectionId.present
+          ? data.connectionId.value
+          : this.connectionId,
+      bbsNumber: data.bbsNumber.present ? data.bbsNumber.value : this.bbsNumber,
+      type: data.type.present ? data.type.value : this.type,
+      status: data.status.present ? data.status.value : this.status,
+      toCall: data.toCall.present ? data.toCall.value : this.toCall,
+      at: data.at.present ? data.at.value : this.at,
+      subject: data.subject.present ? data.subject.value : this.subject,
+      date: data.date.present ? data.date.value : this.date,
+      size: data.size.present ? data.size.value : this.size,
+      body: data.body.present ? data.body.value : this.body,
+      routing: data.routing.present ? data.routing.value : this.routing,
+      bid: data.bid.present ? data.bid.value : this.bid,
+      lastListedAt: data.lastListedAt.present
+          ? data.lastListedAt.value
+          : this.lastListedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SentListing(')
+          ..write('id: $id, ')
+          ..write('connectionId: $connectionId, ')
+          ..write('bbsNumber: $bbsNumber, ')
+          ..write('type: $type, ')
+          ..write('status: $status, ')
+          ..write('toCall: $toCall, ')
+          ..write('at: $at, ')
+          ..write('subject: $subject, ')
+          ..write('date: $date, ')
+          ..write('size: $size, ')
+          ..write('body: $body, ')
+          ..write('routing: $routing, ')
+          ..write('bid: $bid, ')
+          ..write('lastListedAt: $lastListedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    connectionId,
+    bbsNumber,
+    type,
+    status,
+    toCall,
+    at,
+    subject,
+    date,
+    size,
+    body,
+    routing,
+    bid,
+    lastListedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SentListing &&
+          other.id == this.id &&
+          other.connectionId == this.connectionId &&
+          other.bbsNumber == this.bbsNumber &&
+          other.type == this.type &&
+          other.status == this.status &&
+          other.toCall == this.toCall &&
+          other.at == this.at &&
+          other.subject == this.subject &&
+          other.date == this.date &&
+          other.size == this.size &&
+          other.body == this.body &&
+          other.routing == this.routing &&
+          other.bid == this.bid &&
+          other.lastListedAt == this.lastListedAt);
+}
+
+class SentListingsCompanion extends UpdateCompanion<SentListing> {
+  final Value<int> id;
+  final Value<int> connectionId;
+  final Value<int> bbsNumber;
+  final Value<String> type;
+  final Value<String> status;
+  final Value<String> toCall;
+  final Value<String?> at;
+  final Value<String> subject;
+  final Value<DateTime> date;
+  final Value<int?> size;
+  final Value<String?> body;
+  final Value<String?> routing;
+  final Value<String?> bid;
+  final Value<DateTime> lastListedAt;
+  const SentListingsCompanion({
+    this.id = const Value.absent(),
+    this.connectionId = const Value.absent(),
+    this.bbsNumber = const Value.absent(),
+    this.type = const Value.absent(),
+    this.status = const Value.absent(),
+    this.toCall = const Value.absent(),
+    this.at = const Value.absent(),
+    this.subject = const Value.absent(),
+    this.date = const Value.absent(),
+    this.size = const Value.absent(),
+    this.body = const Value.absent(),
+    this.routing = const Value.absent(),
+    this.bid = const Value.absent(),
+    this.lastListedAt = const Value.absent(),
+  });
+  SentListingsCompanion.insert({
+    this.id = const Value.absent(),
+    required int connectionId,
+    required int bbsNumber,
+    required String type,
+    required String status,
+    required String toCall,
+    this.at = const Value.absent(),
+    required String subject,
+    required DateTime date,
+    this.size = const Value.absent(),
+    this.body = const Value.absent(),
+    this.routing = const Value.absent(),
+    this.bid = const Value.absent(),
+    required DateTime lastListedAt,
+  }) : connectionId = Value(connectionId),
+       bbsNumber = Value(bbsNumber),
+       type = Value(type),
+       status = Value(status),
+       toCall = Value(toCall),
+       subject = Value(subject),
+       date = Value(date),
+       lastListedAt = Value(lastListedAt);
+  static Insertable<SentListing> custom({
+    Expression<int>? id,
+    Expression<int>? connectionId,
+    Expression<int>? bbsNumber,
+    Expression<String>? type,
+    Expression<String>? status,
+    Expression<String>? toCall,
+    Expression<String>? at,
+    Expression<String>? subject,
+    Expression<DateTime>? date,
+    Expression<int>? size,
+    Expression<String>? body,
+    Expression<String>? routing,
+    Expression<String>? bid,
+    Expression<DateTime>? lastListedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (connectionId != null) 'connection_id': connectionId,
+      if (bbsNumber != null) 'bbs_number': bbsNumber,
+      if (type != null) 'type': type,
+      if (status != null) 'status': status,
+      if (toCall != null) 'to_call': toCall,
+      if (at != null) 'at': at,
+      if (subject != null) 'subject': subject,
+      if (date != null) 'date': date,
+      if (size != null) 'size': size,
+      if (body != null) 'body': body,
+      if (routing != null) 'routing': routing,
+      if (bid != null) 'bid': bid,
+      if (lastListedAt != null) 'last_listed_at': lastListedAt,
+    });
+  }
+
+  SentListingsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? connectionId,
+    Value<int>? bbsNumber,
+    Value<String>? type,
+    Value<String>? status,
+    Value<String>? toCall,
+    Value<String?>? at,
+    Value<String>? subject,
+    Value<DateTime>? date,
+    Value<int?>? size,
+    Value<String?>? body,
+    Value<String?>? routing,
+    Value<String?>? bid,
+    Value<DateTime>? lastListedAt,
+  }) {
+    return SentListingsCompanion(
+      id: id ?? this.id,
+      connectionId: connectionId ?? this.connectionId,
+      bbsNumber: bbsNumber ?? this.bbsNumber,
+      type: type ?? this.type,
+      status: status ?? this.status,
+      toCall: toCall ?? this.toCall,
+      at: at ?? this.at,
+      subject: subject ?? this.subject,
+      date: date ?? this.date,
+      size: size ?? this.size,
+      body: body ?? this.body,
+      routing: routing ?? this.routing,
+      bid: bid ?? this.bid,
+      lastListedAt: lastListedAt ?? this.lastListedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (connectionId.present) {
+      map['connection_id'] = Variable<int>(connectionId.value);
+    }
+    if (bbsNumber.present) {
+      map['bbs_number'] = Variable<int>(bbsNumber.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (toCall.present) {
+      map['to_call'] = Variable<String>(toCall.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<String>(at.value);
+    }
+    if (subject.present) {
+      map['subject'] = Variable<String>(subject.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (size.present) {
+      map['size'] = Variable<int>(size.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (routing.present) {
+      map['routing'] = Variable<String>(routing.value);
+    }
+    if (bid.present) {
+      map['bid'] = Variable<String>(bid.value);
+    }
+    if (lastListedAt.present) {
+      map['last_listed_at'] = Variable<DateTime>(lastListedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SentListingsCompanion(')
+          ..write('id: $id, ')
+          ..write('connectionId: $connectionId, ')
+          ..write('bbsNumber: $bbsNumber, ')
+          ..write('type: $type, ')
+          ..write('status: $status, ')
+          ..write('toCall: $toCall, ')
+          ..write('at: $at, ')
+          ..write('subject: $subject, ')
+          ..write('date: $date, ')
+          ..write('size: $size, ')
+          ..write('body: $body, ')
+          ..write('routing: $routing, ')
+          ..write('bid: $bid, ')
           ..write('lastListedAt: $lastListedAt')
           ..write(')'))
         .toString();
@@ -2581,7 +3373,9 @@ class OutgoingRecipient extends DataClass
   /// As typed (or resolved): CALL@BBS.ROUTE, or CATEGORY@AREA for bulletins.
   final String address;
 
-  /// 'queued', 'sent', 'held' (waiting, with a reason) or 'failed'.
+  /// 'queued', 'sending' (tried, not yet confirmed; sent again with the same
+  /// bbsBid, which the BBS refuses if it already has it), 'sent', 'held'
+  /// (waiting, with a reason) or 'failed'.
   final String state;
   final int? bbsNumber;
   final String? bbsBid;
@@ -3500,6 +4294,7 @@ abstract class _$MailStore extends GeneratedDatabase {
   late final $IdentitiesTable identities = $IdentitiesTable(this);
   late final $ConnectionsTable connections = $ConnectionsTable(this);
   late final $MessagesTable messages = $MessagesTable(this);
+  late final $SentListingsTable sentListings = $SentListingsTable(this);
   late final $OutgoingTable outgoing = $OutgoingTable(this);
   late final $OutgoingRecipientsTable outgoingRecipients =
       $OutgoingRecipientsTable(this);
@@ -3517,6 +4312,7 @@ abstract class _$MailStore extends GeneratedDatabase {
     identities,
     connections,
     messages,
+    sentListings,
     outgoing,
     outgoingRecipients,
     contacts,
@@ -3531,6 +4327,13 @@ abstract class _$MailStore extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('messages', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'connections',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sent_listings', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -3775,6 +4578,24 @@ final class $$ConnectionsTableReferences
     );
   }
 
+  static MultiTypedResultKey<$SentListingsTable, List<SentListing>>
+  _sentListingsRefsTable(_$MailStore db) => MultiTypedResultKey.fromTable(
+    db.sentListings,
+    aliasName: 'connections__id__sent_listings__connection_id',
+  );
+
+  $$SentListingsTableProcessedTableManager get sentListingsRefs {
+    final manager = $$SentListingsTableTableManager(
+      $_db,
+      $_db.sentListings,
+    ).filter((f) => f.connectionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_sentListingsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$OutgoingTable, List<OutgoingData>>
   _outgoingRefsTable(_$MailStore db) => MultiTypedResultKey.fromTable(
     db.outgoing,
@@ -3869,6 +4690,31 @@ class $$ConnectionsTableFilterComposer
           }) => $$MessagesTableFilterComposer(
             $db: $db,
             $table: $db.messages,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> sentListingsRefs(
+    Expression<bool> Function($$SentListingsTableFilterComposer f) f,
+  ) {
+    final $$SentListingsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sentListings,
+      getReferencedColumn: (t) => t.connectionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SentListingsTableFilterComposer(
+            $db: $db,
+            $table: $db.sentListings,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4034,6 +4880,31 @@ class $$ConnectionsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> sentListingsRefs<T extends Object>(
+    Expression<T> Function($$SentListingsTableAnnotationComposer a) f,
+  ) {
+    final $$SentListingsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sentListings,
+      getReferencedColumn: (t) => t.connectionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SentListingsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sentListings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> outgoingRefs<T extends Object>(
     Expression<T> Function($$OutgoingTableAnnotationComposer a) f,
   ) {
@@ -4073,7 +4944,11 @@ class $$ConnectionsTableTableManager
           $$ConnectionsTableUpdateCompanionBuilder,
           (Connection, $$ConnectionsTableReferences),
           Connection,
-          PrefetchHooks Function({bool messagesRefs, bool outgoingRefs})
+          PrefetchHooks Function({
+            bool messagesRefs,
+            bool sentListingsRefs,
+            bool outgoingRefs,
+          })
         > {
   $$ConnectionsTableTableManager(_$MailStore db, $ConnectionsTable table)
     : super(
@@ -4143,11 +5018,16 @@ class $$ConnectionsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({messagesRefs = false, outgoingRefs = false}) {
+              ({
+                messagesRefs = false,
+                sentListingsRefs = false,
+                outgoingRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (messagesRefs) db.messages,
+                    if (sentListingsRefs) db.sentListings,
                     if (outgoingRefs) db.outgoing,
                   ],
                   addJoins: null,
@@ -4169,6 +5049,26 @@ class $$ConnectionsTableTableManager
                                 table,
                                 p0,
                               ).messagesRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'connection_id',
+                          typedResults: items,
+                        ),
+                      if (sentListingsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          Connection,
+                          $ConnectionsTable,
+                          SentListing,
+                          $SentListingsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ConnectionsTableReferences
+                              ._sentListingsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ConnectionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sentListingsRefs,
                           currentColumn: 'id',
                           referencedColumn: 'connection_id',
                           typedResults: items,
@@ -4213,7 +5113,11 @@ typedef $$ConnectionsTableProcessedTableManager =
       $$ConnectionsTableUpdateCompanionBuilder,
       (Connection, $$ConnectionsTableReferences),
       Connection,
-      PrefetchHooks Function({bool messagesRefs, bool outgoingRefs})
+      PrefetchHooks Function({
+        bool messagesRefs,
+        bool sentListingsRefs,
+        bool outgoingRefs,
+      })
     >;
 typedef $$MessagesTableCreateCompanionBuilder = MessagesCompanion Function({
   Value<int> id,
@@ -4752,6 +5656,488 @@ typedef $$MessagesTableProcessedTableManager =
       $$MessagesTableUpdateCompanionBuilder,
       (Message, $$MessagesTableReferences),
       Message,
+      PrefetchHooks Function({bool connectionId})
+    >;
+typedef $$SentListingsTableCreateCompanionBuilder =
+    SentListingsCompanion Function({
+      Value<int> id,
+      required int connectionId,
+      required int bbsNumber,
+      required String type,
+      required String status,
+      required String toCall,
+      Value<String?> at,
+      required String subject,
+      required DateTime date,
+      Value<int?> size,
+      Value<String?> body,
+      Value<String?> routing,
+      Value<String?> bid,
+      required DateTime lastListedAt,
+    });
+typedef $$SentListingsTableUpdateCompanionBuilder =
+    SentListingsCompanion Function({
+      Value<int> id,
+      Value<int> connectionId,
+      Value<int> bbsNumber,
+      Value<String> type,
+      Value<String> status,
+      Value<String> toCall,
+      Value<String?> at,
+      Value<String> subject,
+      Value<DateTime> date,
+      Value<int?> size,
+      Value<String?> body,
+      Value<String?> routing,
+      Value<String?> bid,
+      Value<DateTime> lastListedAt,
+    });
+
+final class $$SentListingsTableReferences
+    extends BaseReferences<_$MailStore, $SentListingsTable, SentListing> {
+  $$SentListingsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ConnectionsTable _connectionIdTable(_$MailStore db) => db.connections
+      .createAlias('sent_listings__connection_id__connections__id');
+
+  $$ConnectionsTableProcessedTableManager get connectionId {
+    final $_column = $_itemColumn<int>('connection_id')!;
+
+    final manager = $$ConnectionsTableTableManager(
+      $_db,
+      $_db.connections,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_connectionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SentListingsTableFilterComposer
+    extends Composer<_$MailStore, $SentListingsTable> {
+  $$SentListingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bbsNumber => $composableBuilder(
+    column: $table.bbsNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get toCall => $composableBuilder(
+    column: $table.toCall,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get routing => $composableBuilder(
+    column: $table.routing,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bid => $composableBuilder(
+    column: $table.bid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastListedAt => $composableBuilder(
+    column: $table.lastListedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ConnectionsTableFilterComposer get connectionId {
+    final $$ConnectionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.connectionId,
+      referencedTable: $db.connections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ConnectionsTableFilterComposer(
+            $db: $db,
+            $table: $db.connections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SentListingsTableOrderingComposer
+    extends Composer<_$MailStore, $SentListingsTable> {
+  $$SentListingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bbsNumber => $composableBuilder(
+    column: $table.bbsNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get toCall => $composableBuilder(
+    column: $table.toCall,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get routing => $composableBuilder(
+    column: $table.routing,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bid => $composableBuilder(
+    column: $table.bid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastListedAt => $composableBuilder(
+    column: $table.lastListedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ConnectionsTableOrderingComposer get connectionId {
+    final $$ConnectionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.connectionId,
+      referencedTable: $db.connections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ConnectionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.connections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SentListingsTableAnnotationComposer
+    extends Composer<_$MailStore, $SentListingsTable> {
+  $$SentListingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get bbsNumber =>
+      $composableBuilder(column: $table.bbsNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get toCall =>
+      $composableBuilder(column: $table.toCall, builder: (column) => column);
+
+  GeneratedColumn<String> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+
+  GeneratedColumn<String> get subject =>
+      $composableBuilder(column: $table.subject, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get routing =>
+      $composableBuilder(column: $table.routing, builder: (column) => column);
+
+  GeneratedColumn<String> get bid =>
+      $composableBuilder(column: $table.bid, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastListedAt => $composableBuilder(
+    column: $table.lastListedAt,
+    builder: (column) => column,
+  );
+
+  $$ConnectionsTableAnnotationComposer get connectionId {
+    final $$ConnectionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.connectionId,
+      referencedTable: $db.connections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ConnectionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.connections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SentListingsTableTableManager
+    extends
+        RootTableManager<
+          _$MailStore,
+          $SentListingsTable,
+          SentListing,
+          $$SentListingsTableFilterComposer,
+          $$SentListingsTableOrderingComposer,
+          $$SentListingsTableAnnotationComposer,
+          $$SentListingsTableCreateCompanionBuilder,
+          $$SentListingsTableUpdateCompanionBuilder,
+          (SentListing, $$SentListingsTableReferences),
+          SentListing,
+          PrefetchHooks Function({bool connectionId})
+        > {
+  $$SentListingsTableTableManager(_$MailStore db, $SentListingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SentListingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SentListingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SentListingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> connectionId = const Value.absent(),
+                Value<int> bbsNumber = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> toCall = const Value.absent(),
+                Value<String?> at = const Value.absent(),
+                Value<String> subject = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int?> size = const Value.absent(),
+                Value<String?> body = const Value.absent(),
+                Value<String?> routing = const Value.absent(),
+                Value<String?> bid = const Value.absent(),
+                Value<DateTime> lastListedAt = const Value.absent(),
+              }) => SentListingsCompanion(
+                id: id,
+                connectionId: connectionId,
+                bbsNumber: bbsNumber,
+                type: type,
+                status: status,
+                toCall: toCall,
+                at: at,
+                subject: subject,
+                date: date,
+                size: size,
+                body: body,
+                routing: routing,
+                bid: bid,
+                lastListedAt: lastListedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int connectionId,
+                required int bbsNumber,
+                required String type,
+                required String status,
+                required String toCall,
+                Value<String?> at = const Value.absent(),
+                required String subject,
+                required DateTime date,
+                Value<int?> size = const Value.absent(),
+                Value<String?> body = const Value.absent(),
+                Value<String?> routing = const Value.absent(),
+                Value<String?> bid = const Value.absent(),
+                required DateTime lastListedAt,
+              }) => SentListingsCompanion.insert(
+                id: id,
+                connectionId: connectionId,
+                bbsNumber: bbsNumber,
+                type: type,
+                status: status,
+                toCall: toCall,
+                at: at,
+                subject: subject,
+                date: date,
+                size: size,
+                body: body,
+                routing: routing,
+                bid: bid,
+                lastListedAt: lastListedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SentListingsTable, SentListing>(table),
+                  $$SentListingsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({connectionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (connectionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.connectionId,
+                        referencedTable: $$SentListingsTableReferences
+                            ._connectionIdTable(db),
+                        referencedColumn: $$SentListingsTableReferences
+                            ._connectionIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SentListingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$MailStore,
+      $SentListingsTable,
+      SentListing,
+      $$SentListingsTableFilterComposer,
+      $$SentListingsTableOrderingComposer,
+      $$SentListingsTableAnnotationComposer,
+      $$SentListingsTableCreateCompanionBuilder,
+      $$SentListingsTableUpdateCompanionBuilder,
+      (SentListing, $$SentListingsTableReferences),
+      SentListing,
       PrefetchHooks Function({bool connectionId})
     >;
 typedef $$OutgoingTableCreateCompanionBuilder = OutgoingCompanion Function({
@@ -5969,6 +7355,8 @@ class $MailStoreManager {
       $$ConnectionsTableTableManager(_db, _db.connections);
   $$MessagesTableTableManager get messages =>
       $$MessagesTableTableManager(_db, _db.messages);
+  $$SentListingsTableTableManager get sentListings =>
+      $$SentListingsTableTableManager(_db, _db.sentListings);
   $$OutgoingTableTableManager get outgoing =>
       $$OutgoingTableTableManager(_db, _db.outgoing);
   $$OutgoingRecipientsTableTableManager get outgoingRecipients =>

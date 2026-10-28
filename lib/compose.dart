@@ -180,6 +180,32 @@ String contactAddress(Contact c) {
   return home.isEmpty ? c.callsign.toUpperCase() : '${c.callsign.toUpperCase()}@${home.toUpperCase()}';
 }
 
+/// What the BBS's status letter says about mail we sent, in plain words, or
+/// null when it says nothing useful. [homeBbs] tells a local addressee from
+/// one on another BBS.
+String? bbsSentState(SentListing l, {String? homeBbs}) {
+  final at = l.at?.trim().toUpperCase() ?? '';
+  final home = homeBbs?.split('.').first.trim().toUpperCase() ?? '';
+  final local = at.isEmpty || at == home;
+  if (l.type == 'bulletin') {
+    return switch (l.status) {
+      r'$' => 'Forwarding',
+      'F' => 'Forwarded',
+      _ => null,
+    };
+  }
+  return switch (l.status) {
+    'N' => local ? 'Not read yet' : 'Waiting to forward',
+    'Y' => 'Read',
+    'F' => 'Forwarded',
+    'D' => 'Delivered',
+    _ => null,
+  };
+}
+
+/// Said once in Sent, quietly.
+const forwardedMeaning = 'Forwarded means passed to the next BBS, which may not be over the air.';
+
 /// One recipient's state, in plain words.
 String recipientState(OutgoingRecipient r) {
   final note = r.note?.trim();

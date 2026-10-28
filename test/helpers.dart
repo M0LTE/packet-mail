@@ -115,9 +115,18 @@ class FakeDriver extends Fake implements MailDriver {
   /// When set, the BBS has White Pages and knows these home BBSs.
   Map<String, String>? whitePages;
 
+  /// When set, the BBS lists mail from us (`L<`), with these bodies.
+  Map<MessageHeader, String>? fromUs;
+
   @override
-  Set<DriverCapability> get capabilities =>
-      {DriverCapability.kill, if (whitePages != null) DriverCapability.whitePagesLookup};
+  Set<DriverCapability> get capabilities => {
+    DriverCapability.kill,
+    if (whitePages != null) DriverCapability.whitePagesLookup,
+    if (fromUs != null) DriverCapability.listSent,
+  };
+
+  @override
+  Future<List<MessageHeader>> listSent(String callsign) async => [...?fromUs?.keys];
 
   @override
   Future<String?> lookUpHomeBbs(String callsign) async => whitePages?[callsign];
@@ -130,6 +139,8 @@ class FakeDriver extends Fake implements MailDriver {
 
   @override
   Future<ReadMessage> read(int number) async {
+    final mine = fromUs?.entries.where((e) => e.key.number == number).firstOrNull;
+    if (mine != null) personal[number] ??= (header: mine.key, body: mine.value);
     final m = personal[number] ?? (throw BbsError(BbsErrorKind.notFound, 'Message $number is not on the BBS.'));
     final h = m.header;
     return ReadMessage(

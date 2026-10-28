@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mail_core/mail_core.dart';
 
 import '../compose.dart';
 import '../mailboxes.dart';
@@ -27,6 +28,10 @@ class OutgoingScreen extends ConsumerWidget {
     final syncing = item != null && ref.watch(syncingProvider).contains(item.message.connectionId);
     final via = ref.watch(connectionsProvider).value?.where((c) => c.id == item?.message.connectionId).firstOrNull;
     final hdr = text.bodySmall?.copyWith(fontSize: 12.5, height: 1.6, color: Logbook.inkSoft);
+    final listings = item == null
+        ? const <int, SentListing>{}
+        : (mergeSent([item], ref.watch(sentListingsProvider).value ?? const []).first as PhoneSent).listings;
+    final home = ref.watch(identityProvider).value?.homeBbs;
 
     return Scaffold(
       appBar: AppBar(
@@ -77,6 +82,8 @@ class OutgoingScreen extends ConsumerWidget {
                                   color: r.state == 'failed' || r.state == 'held' ? Logbook.stampRed : Logbook.inkSoft,
                                 ),
                               ),
+                              if (listings[r.id] case final l?)
+                                if (bbsSentState(l, homeBbs: home) case final s?) Text(s, style: hdr),
                             ],
                           ),
                         ),
@@ -96,6 +103,123 @@ class OutgoingScreen extends ConsumerWidget {
                   ),
                 ),
                 Padding(padding: const EdgeInsets.fromLTRB(20, 14, 20, 0), child: AsSentBody(item.message.body)),
+              ],
+            ),
+    );
+  }
+}
+
+/// Mail from us that only the BBS lists: its status, then the text, which
+/// downloads the first time it is opened.
+class SentListingScreen extends ConsumerStatefulWidget {
+  const SentListingScreen({super.key, required this.sentId, required this.from});
+
+  final int sentId;
+
+  /// Where we came from, for the back link.
+  final String from;
+
+  @override
+  ConsumerState<SentListingScreen> createState() => _SentListingScreenState();
+}
+
+class _SentListingScreenState extends ConsumerState<SentListingScreen> {
+  var _opening = true;
+  String? _problem;
+
+  @override
+  void initState() {
+    super.initState();
+    _open();
+  }
+
+  Future<void> _open() async {
+    setState(() {
+      _opening = true;
+      _problem = null;
+    });
+    Exception? error;
+    try {
+      await ref.read(syncEngineProvider).openSent(widget.sentId);
+    } on Exception catch (e) {
+      error = e;
+    }
+    if (!mounted) return;
+    final l = ref.read(sentListingProvider(widget.sentId)).value;
+    final bbs = ref.read(connectionsProvider).value?.where((c) => c.id == l?.connectionId).firstOrNull?.name;
+    final name = bbs ?? 'the BBS';
+    setState(() {
+      _opening = false;
+      _problem = switch (error) {
+        null => null,
+        BbsError(kind: BbsErrorKind.notFound) => 'This message is no longer on $name.',
+        BbsError(:final message) => '$name would not send this message: $message',
+        _ => "Can't reach $name to download this message. Try again when you're connected.",
+      };
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final l = ref.watch(sentListingProvider(widget.sentId)).value;
+    final hdr = text.bodySmall?.copyWith(fontSize: 12.5, height: 1.6, color: Logbook.inkSoft);
+    final state = l == null ? null : bbsSentState(l, homeBbs: ref.watch(identityProvider).value?.homeBbs);
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 8,
+        toolbarHeight: 40,
+        title: TextButton.icon(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.chevron_left, size: 20),
+          label: Text(widget.from),
+          style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
+        ),
+      ),
+      body: l == null
+          ? Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text('This message has gone.', style: text.titleMedium),
+            )
+          : ListView(
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Logbook.rule))),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.subject.isEmpty ? '(no subject)' : l.subject, style: text.headlineSmall),
+                      const SizedBox(height: 8),
+                      Text(l.at == null ? l.toCall : '${l.toCall}@${l.at}', style: text.titleSmall),
+                      Text(
+                        [
+                          'Number ${l.bbsNumber}',
+                          ?state,
+                        ].join('. '),
+                        style: hdr,
+                      ),
+                      Text(fullTime(l.date.toLocal(), ref.watch(clockProvider)()), style: hdr),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                  child: switch (l.body) {
+                    final body? => AsSentBody(body),
+                    null when _opening => Text('Downloading...', style: text.bodyMedium?.copyWith(color: Logbook.inkSoft)),
+                    null => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_problem ?? 'This message has not been downloaded yet.', style: text.bodyLarge),
+                        const SizedBox(height: 12),
+                        OutlinedButton(onPressed: _open, child: const Text('Try again')),
+                      ],
+                    ),
+                  },
+                ),
               ],
             ),
     );

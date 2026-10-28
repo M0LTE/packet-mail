@@ -211,6 +211,46 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('Sent merges the BBS list with the phone copies, with forwarding status', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    MessageHeader mine(int n, String type, String status, String to, String at, String subject) => MessageHeader(
+      number: n,
+      type: MessageType.fromLetter(type),
+      status: status,
+      from: 'M0LTE',
+      to: to,
+      at: at,
+      subject: subject,
+      date: DateTime.utc(2026, 10, 27),
+    );
+    app.bbs.fromUs = {
+      mine(5000, 'P', 'F', 'G8BPQ', 'GB7BPQ', 'Net tonight'): 'On at eight.',
+      mine(4000, 'B', r'$', 'ALL', 'GBR', 'Club news'): 'News body.',
+      mine(3999, 'P', 'N', 'G4APL', 'GB7RDG', 'Local note'): 'Hi.',
+    };
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await openCompose(app, tester);
+    await type(tester, 'to', 'G8BPQ@GB7BPQ.#23.GBR.EURO');
+    await type(tester, 'subject', 'Net tonight');
+    await type(tester, 'body', 'On at eight.');
+    await send(app, tester); // sent as 5000, then listed back by the BBS
+
+    await showBox(app, tester, 'sent');
+    expect(find.text('Net tonight'), findsOneWidget); // one item, not two
+    expect(find.text('Forwarded'), findsOneWidget);
+    expect(find.text('Forwarding'), findsOneWidget);
+    expect(find.text('Not read yet'), findsOneWidget);
+    expect(find.text(forwardedMeaning), findsOneWidget);
+
+    await tester.tap(find.text('Club news'));
+    await settleAll(app, tester);
+    expect(find.text('News body.'), findsOneWidget);
+    expect(find.text('Number 4000. Forwarding'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
   testWidgets('the outbox shows held and queued mail, and a queued one can be cancelled', (tester) async {
     final app = TestApp();
     await seedStation(app, tester);
