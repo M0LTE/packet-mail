@@ -457,7 +457,7 @@ void main() {
       expect(m.lastListedAt.toUtc(), clock);
     });
 
-    test('the BBS no longer listing it: removed unless downloaded or starred', () async {
+    test('the BBS no longer listing it: downloaded mail stays, headers go, starred or not', () async {
       bbs
         ..addPersonal(10)
         ..addPersonal(11)
@@ -468,7 +468,7 @@ void main() {
           .write(const MessagesCompanion(starred: Value(true)));
       bbs.personal.clear();
       await engine.sync(conn);
-      expect((await messages()).map((m) => m.bbsNumber), [11, 12]);
+      expect((await messages()).map((m) => m.bbsNumber), [11]);
     });
 
     test('a number the BBS reuses for a new message replaces the old one', () async {
@@ -514,12 +514,11 @@ void main() {
           toCall: 'M0LTE',
           subject: 'Gone',
           date: day,
-          starred: const Value(true), // starred, so kept though no longer listed
           lastListedAt: now));
       bbs.addPersonal(10);
       final r = await engine.sync(conn);
       expect(r.ok, isTrue);
-      expect((await message(9)).body, isNull);
+      expect((await messages()).map((m) => m.bbsNumber), [10]); // 9 never downloaded, so it went
       expect((await message(10)).body, 'Body text');
     });
 
@@ -652,19 +651,19 @@ void main() {
       expect(reads(bbs), isEmpty);
     });
 
-    test('removed once the BBS stops listing them, unless starred', () async {
+    test('once the BBS stops listing them, downloaded ones stay and headers go', () async {
       bbs
         ..addBulletin(20)
         ..addBulletin(21)
         ..addBulletin(22);
       await engine.sync(conn);
-      await (db.update(db.messages)..where((m) => m.bbsNumber.equals(21)))
-          .write(const MessagesCompanion(starred: Value(true)));
+      await engine.openMessage((await message(21)).id);
       bbs.bulletins.remove(20);
       bbs.bulletins.remove(21);
       clock = now.add(const Duration(hours: 1));
       await engine.sync(conn);
       expect((await messages()).map((m) => m.bbsNumber), [21, 22]);
+      expect((await message(21)).body, isNotNull);
       expect((await message(22)).lastListedAt.toUtc(), clock);
       expect((await message(21)).lastListedAt.toUtc(), now);
     });
@@ -719,6 +718,10 @@ void main() {
       await engine.sync(conn);
       await engine.sync(other);
       bbs.bulletins.clear();
+      await engine.sync(conn);
+      // Downloaded, so it stays after the BBS drops it, until deleted here.
+      expect((await visible()).map((m) => (m.connectionId, m.bbsNumber)), [(conn, 20)]);
+      await deleteLocally(20);
       await engine.sync(conn);
       expect((await visible()).map((m) => (m.connectionId, m.bbsNumber)), [(other, 500)]);
       await engine.sync(other);

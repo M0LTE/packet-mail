@@ -427,18 +427,24 @@ class SyncEngine {
 
   // Personal mail
 
-  /// Messages the BBS no longer lists are removed unless their text is here
-  /// to read, or they are starred.
+  /// Additive: messages the BBS no longer lists stay if their text is here,
+  /// until the user deletes them. Headers never downloaded go.
   Future<void> _listPersonal(MailDriver driver, Connection connection, _Session s) async {
     final headers = await driver.listPersonal();
     s.newMessages += (await _storeHeaders(connection.id, headers)).length;
+    await _dropUnlisted(connection.id, headers, bulletins: false);
+  }
+
+  /// Removes rows the BBS no longer lists that have no text here, or that
+  /// the user has deleted (kept hidden only while the BBS still lists them).
+  Future<void> _dropUnlisted(int connectionId, List<MessageHeader> headers, {required bool bulletins}) async {
     final listed = {for (final h in headers) h.number};
+    final type = store.messages.type.equals('bulletin');
     final stored = await (store.select(store.messages)
           ..where((m) =>
-              m.connectionId.equals(connection.id) &
-              m.type.equals('bulletin').not() &
-              m.body.isNull() &
-              m.starred.equals(false)))
+              m.connectionId.equals(connectionId) &
+              (bulletins ? type : type.not()) &
+              (m.body.isNull() | m.pendingKill.equals(true))))
         .get();
     await _deleteIds([for (final m in stored) if (!listed.contains(m.bbsNumber)) m.id]);
   }
@@ -476,12 +482,8 @@ class SyncEngine {
     }
     s.newBulletinIds.addAll(await _storeHeaders(connection.id, keep));
 
-    // The BBS decides how long bulletins live.
-    final listed = {for (final h in headers) h.number};
-    final stored = await (store.select(store.messages)
-          ..where((m) => m.connectionId.equals(connection.id) & m.type.equals('bulletin') & m.starred.equals(false)))
-        .get();
-    await _deleteIds([for (final m in stored) if (!listed.contains(m.bbsNumber)) m.id]);
+    // Additive, as for personal mail: downloaded bulletins stay.
+    await _dropUnlisted(connection.id, headers, bulletins: true);
     await _reviveDuplicates();
   }
 
