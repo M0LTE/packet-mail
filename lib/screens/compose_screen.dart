@@ -130,23 +130,6 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   var _leaving = false;
 
-  Future<void> _confirmDiscard() async {
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Discard this message?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep writing')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Discard')),
-        ],
-      ),
-    );
-    if (discard == true && mounted) {
-      _leaving = true;
-      Navigator.of(context).pop();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -163,11 +146,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         ? 'One copy each to $count people.'
         : 'Callsigns, or full addresses. Separate several with commas.';
 
-    return PopScope(
-      canPop: _leaving || !_edited,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmDiscard();
-      },
+    return ConfirmDiscard(
+      canLeave: _leaving || !_edited,
+      question: 'Discard this message?',
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -390,4 +371,40 @@ class SendPreviewScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Asks before leaving a screen with writing on it. Leaving with
+/// Navigator.pop, as sending does, never asks.
+class ConfirmDiscard extends StatelessWidget {
+  const ConfirmDiscard({super.key, required this.canLeave, required this.question, required this.child});
+
+  /// True when there is nothing to lose.
+  final bool canLeave;
+
+  /// Such as "Discard this message?"
+  final String question;
+  final Widget child;
+
+  Future<void> _ask(BuildContext context) async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(question),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep writing')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Discard')),
+        ],
+      ),
+    );
+    if (discard == true && context.mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: canLeave,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) _ask(context);
+    },
+    child: child,
+  );
 }

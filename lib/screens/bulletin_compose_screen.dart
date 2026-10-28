@@ -36,6 +36,21 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
   final _body = TextEditingController();
   int? _connectionId;
   var _sending = false;
+  var _leaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [_subject, _body]) {
+      c.addListener(() => setState(() {}));
+    }
+  }
+
+  bool get _edited =>
+      _category.text != (widget.category ?? '') ||
+      _area.text != (widget.area ?? '') ||
+      _subject.text.isNotEmpty ||
+      _body.text.isNotEmpty;
 
   @override
   void dispose() {
@@ -85,6 +100,7 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
     );
     if (!mounted) return;
     ref.read(syncingProvider.notifier).sync(connection.id);
+    _leaving = true;
     Navigator.of(context).pop();
     say('Bulletin to $to is in the outbox. Sending through ${connection.name} now.');
   }
@@ -96,73 +112,77 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
     final bulletins = ref.watch(bulletinsProvider).value ?? const [];
     final categories = suggest(bulletins.map(categoryOf), commonCategories);
     final areas = suggest(bulletins.map(areaOf), knownFloodAreas);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('New bulletin'),
-        leading: IconButton(
-          tooltip: 'Cancel',
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        actions: [
-          TextButton(
-            key: const ValueKey('send-bulletin'),
-            onPressed: _sending ? null : _send,
-            child: const Text('Send'),
+    return ConfirmDiscard(
+      canLeave: _leaving || !_edited,
+      question: 'Discard this bulletin?',
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('New bulletin'),
+          leading: IconButton(
+            tooltip: 'Cancel',
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).maybePop(),
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Form(
-        key: _form,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          children: [
-            if (connections.length > 1)
-              DropdownButtonFormField<int>(
-                initialValue: _connectionId ?? connections.first.id,
-                decoration: const InputDecoration(labelText: 'Send through'),
-                items: [for (final c in connections) DropdownMenuItem(value: c.id, child: Text(c.name))],
-                onChanged: (id) => setState(() => _connectionId = id),
-              ),
-            TextFormField(
-              controller: _category,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(labelText: 'Category', helperText: 'What it is about, such as WX'),
-              validator: (v) => checkBulletinCategory(v),
-              onChanged: (_) => setState(() {}),
+          actions: [
+            TextButton(
+              key: const ValueKey('send-bulletin'),
+              onPressed: _sending ? null : _send,
+              child: const Text('Send'),
             ),
-            _Choices(options: categories, controller: _category, onPicked: () => setState(() {})),
-            TextFormField(
-              controller: _area,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(labelText: 'Area', helperText: 'Where it goes, such as GBR or WW'),
-              validator: (v) => checkBulletinArea(v),
-              onChanged: (_) => setState(() {}),
-            ),
-            _Choices(options: areas, controller: _area, onPicked: () => setState(() {})),
-            TextFormField(
-              controller: _subject,
-              maxLength: maxTitleLength,
-              decoration: const InputDecoration(labelText: 'Subject'),
-              buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                  Text('${maxLength! - currentLength} left', style: text.bodySmall),
-              validator: (v) => (v ?? '').trim().isEmpty ? 'Add a subject.' : null,
-            ),
-            TextFormField(
-              controller: _body,
-              minLines: 8,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              style: text.bodyLarge,
-              decoration: const InputDecoration(
-                hintText: 'Your bulletin',
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-              ),
-            ),
+            const SizedBox(width: 8),
           ],
+        ),
+        body: Form(
+          key: _form,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            children: [
+              if (connections.length > 1)
+                DropdownButtonFormField<int>(
+                  initialValue: _connectionId ?? connections.first.id,
+                  decoration: const InputDecoration(labelText: 'Send through'),
+                  items: [for (final c in connections) DropdownMenuItem(value: c.id, child: Text(c.name))],
+                  onChanged: (id) => setState(() => _connectionId = id),
+                ),
+              TextFormField(
+                controller: _category,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(labelText: 'Category', helperText: 'What it is about, such as WX'),
+                validator: (v) => checkBulletinCategory(v),
+                onChanged: (_) => setState(() {}),
+              ),
+              _Choices(options: categories, controller: _category, onPicked: () => setState(() {})),
+              TextFormField(
+                controller: _area,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(labelText: 'Area', helperText: 'Where it goes, such as GBR or WW'),
+                validator: (v) => checkBulletinArea(v),
+                onChanged: (_) => setState(() {}),
+              ),
+              _Choices(options: areas, controller: _area, onPicked: () => setState(() {})),
+              TextFormField(
+                controller: _subject,
+                maxLength: maxTitleLength,
+                decoration: const InputDecoration(labelText: 'Subject'),
+                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                    Text('${maxLength! - currentLength} left', style: text.bodySmall),
+                validator: (v) => (v ?? '').trim().isEmpty ? 'Add a subject.' : null,
+              ),
+              TextFormField(
+                controller: _body,
+                minLines: 8,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                style: text.bodyLarge,
+                decoration: const InputDecoration(
+                  hintText: 'Your bulletin',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
