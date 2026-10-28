@@ -1,0 +1,7 @@
+# GB7RDG LinBPQ 6.0.26.1, FBB port, 2026-10-28. User tf is SYSOP, so listings show more than a normal user sees. Password redacted.
+{"t":2.026,"dir":"tx","data":"tf\r"}
+{"t":4.047,"dir":"tx","data":"PASSWORD\r"}
+{"t":6.067,"dir":"tx","data":"BBS\r"}
+{"t":6.094,"dir":"rx","data":"READNG:GB7RDG} Connected to BBS\r"}
+{"t":6.19,"dir":"rx","data":"[BPQ-6.0.26.1-IHJM$]\rde GB7RDG>\r"}
+{"t":8.291,"dir":"close"}

@@ -1,0 +1,36 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'transport.dart';
+
+/// A [Transport] over a TCP socket.
+class TcpTransport implements Transport {
+  TcpTransport._(this._socket);
+
+  final Socket _socket;
+
+  static Future<TcpTransport> connect(
+    String host,
+    int port, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final socket = await Socket.connect(host, port, timeout: timeout);
+    socket.setOption(SocketOption.tcpNoDelay, true);
+    return TcpTransport._(socket);
+  }
+
+  @override
+  Stream<List<int>> get incoming => _socket;
+
+  @override
+  Future<void> write(List<int> bytes) async {
+    _socket.add(bytes);
+    await _socket.flush();
+  }
+
+  @override
+  Future<void> close() async {
+    await _socket.close();
+    _socket.destroy();
+  }
+}
