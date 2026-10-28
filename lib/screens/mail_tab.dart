@@ -7,8 +7,12 @@ import '../message_format.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import '../compose.dart';
+import '../view_choice.dart';
+import 'compose_screen.dart';
 import 'mail_widgets.dart';
 import 'message_screen.dart';
+import 'outgoing_screen.dart';
 
 /// Inbox, Outbox, Sent and Starred, with the sync status underneath.
 class MailTab extends ConsumerStatefulWidget {
@@ -37,8 +41,20 @@ class _MailTabState extends ConsumerState<MailTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Text(_box.label, style: text.displaySmall),
+            padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+            child: Row(
+              children: [
+                Expanded(child: Text(_box.label, style: text.displaySmall)),
+                IconButton(
+                  key: const ValueKey('compose'),
+                  tooltip: 'New message',
+                  icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<bool>(builder: (_) => const ComposeScreen()),
+                  ),
+                ),
+              ],
+            ),
           ),
           if (identity != null)
             Padding(
@@ -153,7 +169,17 @@ class _MailTabState extends ConsumerState<MailTab> {
     final list = value.value;
     if (list == null) return _scrollable(const []);
     if (list.isEmpty) return _scrollable([_Empty(sent ? 'Nothing sent yet.' : 'Nothing waiting to send.')]);
-    return _scrollable([for (final item in list) OutgoingRow(item: item, sent: sent)]);
+    return _scrollable([
+      if (sent) HeldMailTip(connectionIds: {for (final i in list) i.message.connectionId}),
+      for (final item in list)
+        OutgoingRow(
+          item: item,
+          sent: sent,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => OutgoingScreen(outgoingId: item.message.id, from: _box.label)),
+          ),
+        ),
+    ]);
   }
 
   /// Always scrollable, so pull to refresh works on a short list too.
@@ -286,12 +312,14 @@ class MessageRow extends ConsumerWidget {
   }
 }
 
-/// Something we wrote, in Outbox or Sent.
+/// Something we wrote, in Outbox or Sent: one item, with a line for each
+/// recipient whose state is worth knowing.
 class OutgoingRow extends ConsumerWidget {
-  const OutgoingRow({super.key, required this.item, required this.sent});
+  const OutgoingRow({super.key, required this.item, required this.sent, this.onTap});
 
   final OutgoingItem item;
   final bool sent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -299,44 +327,117 @@ class OutgoingRow extends ConsumerWidget {
     final m = item.message;
     final to = item.recipients.map((r) => r.address.split('@').first).toList();
     final when = (sent ? m.sentAt : null) ?? m.createdAt;
-    final notes = [
+    // One plain sent copy needs no line; several each get one.
+    final lines = [
       for (final r in item.recipients)
-        if (r.state == 'failed' || r.state == 'held')
-          '${r.address.split('@').first}: ${r.note ?? (r.state == 'held' ? 'waiting' : 'not sent')}',
+        if (item.recipients.length > 1 || r.state != 'sent')
+          (
+            text: item.recipients.length > 1
+                ? '${r.address.split('@').first}: ${recipientState(r)}'
+                : recipientState(r),
+            problem: r.state == 'failed' || r.state == 'held',
+          ),
     ];
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Logbook.rule)),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Logbook.rule)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CallsignStamp(to.isEmpty ? '?' : to.first, faded: sent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'To ${to.join(', ')}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.titleSmall,
+                        ),
+                      ),
+                      Text(listTime(when.toLocal(), ref.watch(clockProvider)()), style: text.bodySmall),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(m.subject, maxLines: 2, overflow: TextOverflow.ellipsis, style: text.titleMedium),
+                  for (final l in lines)
+                    Text(
+                      l.text,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall?.copyWith(color: l.problem ? Logbook.stampRed : null),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+    );
+  }
+}
+
+/// Said once per connection, the first time something has been sent through
+/// it: BPQ holds a new user's mail without saying so.
+class HeldMailTip extends ConsumerStatefulWidget {
+  const HeldMailTip({super.key, required this.connectionIds});
+
+  final Set<int> connectionIds;
+
+  static String prefKey(int connectionId) => 'tip.heldMail.$connectionId';
+
+  @override
+  ConsumerState<HeldMailTip> createState() => _HeldMailTipState();
+}
+
+class _HeldMailTipState extends ConsumerState<HeldMailTip> {
+  @override
+  Widget build(BuildContext context) {
+    final prefs = ref.watch(prefsProvider);
+    if (widget.connectionIds.every((id) => prefs.getBool(HeldMailTip.prefKey(id)) ?? false)) {
+      return const SizedBox.shrink();
+    }
+    final text = Theme.of(context).textTheme;
+    return Container(
+      key: const ValueKey('held-tip'),
+      margin: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: Logbook.paperDeep,
+        border: Border.all(color: Logbook.rule),
+        borderRadius: BorderRadius.circular(4),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CallsignStamp(to.isEmpty ? '?' : to.first, faded: sent),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'To ${to.join(', ')}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.titleSmall,
-                      ),
-                    ),
-                    Text(listTime(when.toLocal(), ref.watch(clockProvider)()), style: text.bodySmall),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(m.subject, maxLines: 2, overflow: TextOverflow.ellipsis, style: text.titleMedium),
-                if (!sent && notes.isEmpty) Text('Waiting to send', style: text.bodySmall),
-                for (final n in notes) Text(n, style: text.bodySmall?.copyWith(color: Logbook.stampRed)),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                "New users' mail may be held until the sysop approves you. If nobody receives it, ask the sysop.",
+                style: text.bodyMedium?.copyWith(color: Logbook.inkSoft),
+              ),
             ),
+          ),
+          IconButton(
+            tooltip: 'Got it',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.close, size: 18, color: Logbook.inkFaint),
+            onPressed: () {
+              for (final id in widget.connectionIds) {
+                prefs.setBool(HeldMailTip.prefKey(id), true);
+              }
+              setState(() {});
+            },
           ),
         ],
       ),

@@ -132,6 +132,25 @@ class FakeDriver extends Fake implements MailDriver {
     );
   }
 
+  /// Personal mail we sent, in order.
+  final sent = <({MailAddress to, String subject, String body})>[];
+
+  /// Callsigns the BBS refuses mail for, with what it says.
+  final refuse = <String, String>{};
+  var nextNumber = 5000;
+
+  @override
+  Future<SendReceipt> sendPersonal({
+    required MailAddress to,
+    required String subject,
+    required String body,
+    String? bid,
+  }) async {
+    if (refuse[to.call] case final why?) throw BbsError(BbsErrorKind.rejected, why);
+    sent.add((to: to, subject: subject, body: body));
+    return SendReceipt(number: nextNumber++, bid: bid ?? 'X', size: body.length);
+  }
+
   @override
   Future<void> kill(int number) async {
     killed.add(number);

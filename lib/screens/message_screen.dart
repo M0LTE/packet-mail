@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../compose.dart';
 import '../mailboxes.dart';
 import '../message_format.dart';
 import '../providers.dart';
@@ -11,6 +12,7 @@ import '../reflow.dart';
 import '../sync.dart';
 import '../theme.dart';
 import '../view_choice.dart';
+import 'compose_screen.dart';
 
 /// Opens a message for reading, downloading it first if the app hasn't got it.
 class MessageScreen extends ConsumerStatefulWidget {
@@ -363,6 +365,9 @@ class _Actions extends ConsumerWidget {
   final Message message;
   final VoidCallback onDelete;
 
+  void _compose(BuildContext context, ComposeDraft draft) =>
+      Navigator.of(context).push(MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: draft)));
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     Widget action(IconData icon, String label, VoidCallback? onTap) {
@@ -394,8 +399,12 @@ class _Actions extends ConsumerWidget {
         top: false,
         child: Row(
           children: [
-            action(Icons.reply, 'Reply', null),
-            action(Icons.forward, 'Forward', null),
+            action(Icons.reply, 'Reply', message.body == null ? null : () => _compose(context, ComposeDraft.reply(message))),
+            action(
+              Icons.forward,
+              'Forward',
+              message.body == null ? null : () => _compose(context, ComposeDraft.forward(message)),
+            ),
             action(
               message.starred ? Icons.star : Icons.star_outline,
               message.starred ? 'Starred' : 'Star',
