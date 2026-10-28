@@ -389,6 +389,19 @@ void main() {
       expect([c.homeBbs, c.source, c.name], [null, 'typed', 'John']);
     });
 
+    test('looking up a home BBS on demand asks White Pages and stores nothing', () async {
+      bbs.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+      expect(await engine.lookUpHomeBbs(conn, 'g8bpq'), 'GB7BPQ.#76.GBR.EU');
+      expect(await engine.lookUpHomeBbs(conn, 'G4APL'), isNull);
+      expect(bbs.calls, ['lookUpHomeBbs G8BPQ', 'disconnect', 'lookUpHomeBbs G4APL', 'disconnect']);
+      expect(await contacts(), isEmpty);
+
+      bbs.whitePages['G4APL'] = 'NOT AN ADDRESS';
+      expect(await engine.lookUpHomeBbs(conn, 'G4APL'), isNull);
+      bbs.caps = {DriverCapability.kill};
+      expect(engine.lookUpHomeBbs(conn, 'G8BPQ'), throwsUnsupportedError);
+    });
+
     test('a White Pages answer that is not an address is not stored', () async {
       bbs.whitePages['G8BPQ'] = 'NOT AN ADDRESS';
       await queue(['G8BPQ']);
@@ -839,6 +852,18 @@ void main() {
       bbs.calls.clear();
       await engine.sync(conn);
       expect(bbs.calls.where((c) => c.startsWith('send') || c.startsWith('lookUp')), isEmpty);
+    });
+
+    test('a held copy goes once released, using the address book', () async {
+      await queue(['G8BPQ']);
+      await engine.sync(conn);
+      expect((await recipients()).single.state, 'held');
+      await db.into(db.contacts).insert(
+          ContactsCompanion.insert(callsign: 'G8BPQ', source: 'typed', homeBbs: const Value('GB7BPQ.#23.GBR.EURO')));
+      expect(await engine.releaseHeld('g8bpq'), 1);
+      await engine.sync(conn);
+      final r = (await recipients()).single;
+      expect([r.state, r.address], ['sent', 'G8BPQ@GB7BPQ.#23.GBR.EURO']);
     });
 
     test('held without asking when the driver has no White Pages', () async {

@@ -175,6 +175,33 @@ class SyncEngine {
     return body;
   }
 
+  /// Asks White Pages on [connectionId] for [callsign]'s home BBS. Returns
+  /// the full address, or null if the BBS doesn't know it. Throws
+  /// [UnsupportedError] if the BBS has no White Pages. Changes nothing here:
+  /// the caller decides whether to keep the answer.
+  Future<String?> lookUpHomeBbs(int connectionId, String callsign) =>
+      _exclusive(connectionId, () async {
+        final driver = await connect(await _connection(connectionId));
+        try {
+          if (!driver.capabilities.contains(DriverCapability.whitePagesLookup)) {
+            throw UnsupportedError('This BBS has no White Pages lookup.');
+          }
+          final found = (await driver.lookUpHomeBbs(callsign.toUpperCase()))?.trim().toUpperCase();
+          if (found == null || found.isEmpty) return null;
+          final parsed = MailAddress.parse('${callsign.toUpperCase()}@$found');
+          return parsed.address?.at != null && !parsed.problems.any((p) => p.blocking) ? found : null;
+        } finally {
+          await _quietly(driver.disconnect);
+        }
+      });
+
+  /// Puts copies held for a bare [callsign] back in the queue, so the next
+  /// sync tries again, for example once the address book knows its home BBS.
+  /// Returns how many were released.
+  Future<int> releaseHeld(String callsign) => (store.update(store.outgoingRecipients)
+        ..where((r) => r.state.equals('held') & r.address.upper().equals(callsign.trim().toUpperCase())))
+      .write(const OutgoingRecipientsCompanion(state: Value('queued'), note: Value(null)));
+
   Future<Message> _message(int id) => (store.select(store.messages)..where((m) => m.id.equals(id))).getSingle();
 
   Future<Connection> _connection(int id) =>
