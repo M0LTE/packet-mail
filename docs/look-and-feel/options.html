@@ -1,0 +1,203 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#d9dce1;font-family:Inter,sans-serif;padding:28px}
+h1{font:600 26px Inter;color:#1b1e24;margin:0 0 4px}
+.sub{font:15px Inter;color:#4a505a;margin-bottom:18px}
+.row{display:flex;gap:28px;margin-bottom:40px}
+.phone{width:360px;height:740px;border-radius:38px;overflow:hidden;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.18);border:8px solid #111;display:flex;flex-direction:column}
+.status{height:30px;font-size:12px;display:flex;justify-content:space-between;padding:8px 22px 0;font-weight:600}
+.pre{white-space:pre;font-size:11.4px;line-height:1.45}
+
+/* ---------- A: Familiar ---------- */
+.A{background:#fff;color:#1c1c1e;font-family:Inter}
+.A .bar{padding:6px 18px 10px}
+.A .bar .back{color:#0a6cff;font-size:15px}
+.A .title{font:700 30px Inter;letter-spacing:-.5px;padding:2px 18px 8px}
+.A .search{margin:0 16px 8px;background:#eff0f3;border-radius:10px;padding:8px 12px;color:#8a8f98;font-size:14px}
+.A .item{display:flex;gap:10px;padding:11px 16px 11px 10px;border-bottom:1px solid #ececf0}
+.A .dot{width:9px;height:9px;border-radius:50%;background:#0a6cff;margin-top:6px;flex:none}
+.A .dot.off{background:transparent}
+.A .main{flex:1;min-width:0}
+.A .l1{display:flex;justify-content:space-between;font-size:15px}
+.A .from{font-weight:600}
+.A .time{color:#8a8f98;font-size:13px}
+.A .subj{font-size:14px;margin-top:1px}
+.A .snip{font-size:13.5px;color:#7b808a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.A .chip{display:inline-block;font-size:11px;font-weight:600;background:#e8f0ff;color:#0a55c8;border-radius:5px;padding:1px 6px;margin-right:5px}
+.A .tabs{margin-top:auto;display:flex;justify-content:space-around;border-top:1px solid #e3e4e8;padding:9px 0 22px;font-size:11px;color:#8a8f98;background:#fafafa}
+.A .tabs b{color:#0a6cff;font-weight:600}
+.A .ico{display:block;text-align:center;font-size:18px;line-height:22px}
+.A .mhead{padding:6px 18px 12px;border-bottom:1px solid #ececf0}
+.A .msubj{font:700 20px Inter;margin-bottom:10px;letter-spacing:-.2px}
+.A .who{display:flex;gap:10px;align-items:center}
+.A .av{width:38px;height:38px;border-radius:50%;background:#d7e5ff;color:#0a55c8;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.A .route{font-size:12px;color:#8a8f98}
+.A .body{padding:14px 18px;font-size:15px;line-height:1.5;flex:1}
+.A .body p{margin-bottom:10px}
+.A .quote{border-left:3px solid #c9d7f2;padding-left:10px;color:#6b717c;margin-bottom:10px}
+.A .toggle{display:flex;background:#eff0f3;border-radius:8px;margin:10px 18px 0;padding:2px;font-size:12.5px}
+.A .toggle span{flex:1;text-align:center;padding:5px;border-radius:6px;color:#555}
+.A .toggle .on{background:#fff;color:#111;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.A a{color:#0a6cff;text-decoration:none}
+
+/* ---------- B: Radio room ---------- */
+.B{background:#14171a;color:#d8dcd3;font-family:'IBM Plex Sans'}
+.B .status{color:#9aa39a}
+.B .top{display:flex;justify-content:space-between;align-items:baseline;padding:8px 18px 6px}
+.B .title{font:600 13px 'IBM Plex Mono';letter-spacing:2px;color:#ffb347;text-transform:uppercase}
+.B .sync{font:11px 'IBM Plex Mono';color:#7fd18b}
+.B .sync:before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#7fd18b;margin-right:6px;box-shadow:0 0 6px #7fd18b}
+.B .folders{display:flex;gap:6px;padding:4px 14px 10px;font:12px 'IBM Plex Mono'}
+.B .folders span{border:1px solid #2c3238;border-radius:4px;padding:4px 8px;color:#8b948b}
+.B .folders .on{border-color:#ffb347;color:#ffb347}
+.B .item{padding:10px 16px;border-bottom:1px solid #22272c;display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px}
+.B .call{font:600 13px 'IBM Plex Mono';color:#ffb347;grid-column:1/3}
+.B .call.read{color:#a8a08f}
+.B .time{font:11px 'IBM Plex Mono';color:#6c756c;text-align:right}
+.B .subj{grid-column:1/4;font-size:14.5px;color:#eef1ea}
+.B .subj.read{color:#a9afa6}
+.B .meta{grid-column:1/4;font:11px 'IBM Plex Mono';color:#6c756c}
+.B .tabs{margin-top:auto;display:flex;justify-content:space-around;border-top:1px solid #262b30;padding:10px 0 22px;font:10.5px 'IBM Plex Mono';color:#6c756c;background:#101315;text-transform:uppercase;letter-spacing:1px}
+.B .tabs b{color:#ffb347;font-weight:600}
+.B .mhead{padding:6px 18px 12px;border-bottom:1px solid #262b30}
+.B .back{font:12px 'IBM Plex Mono';color:#ffb347;padding:4px 18px 8px}
+.B .msubj{font:600 19px 'IBM Plex Sans';color:#f1f3ee;margin-bottom:10px}
+.B .hdr{font:11.5px/1.7 'IBM Plex Mono';color:#8b948b}
+.B .hdr b{color:#ffb347;font-weight:500}
+.B .body{padding:12px 18px;flex:1;font-size:14.5px;line-height:1.55;color:#d8dcd3}
+.B .term{font-family:'IBM Plex Mono';color:#cfe8cf;background:#0d100e;border:1px solid #23302a;border-radius:6px;padding:10px;margin:0}
+.B .toggle{display:flex;gap:0;margin:10px 18px 0;font:11px 'IBM Plex Mono';border:1px solid #2c3238;border-radius:4px;overflow:hidden}
+.B .toggle span{flex:1;text-align:center;padding:5px;color:#8b948b}
+.B .toggle .on{background:#ffb347;color:#14171a;font-weight:600}
+
+/* ---------- C: Logbook ---------- */
+.C{background:#f6f1e7;color:#2b2620;font-family:'Source Serif 4',serif}
+.C .status{color:#5c5345;font-family:Inter}
+.C .title{font:700 30px 'Source Serif 4';padding:4px 20px 0;color:#2b2620}
+.C .ident{font:12px Inter;color:#8a7f6c;padding:0 20px 12px;letter-spacing:.3px}
+.C .section{font:600 11px Inter;letter-spacing:1.5px;color:#b0482c;padding:10px 20px 6px;text-transform:uppercase}
+.C .item{padding:11px 20px;border-top:1px solid #e4dccb;display:flex;gap:12px}
+.C .stamp{flex:none;width:44px;height:44px;border:1.5px solid #b0482c;border-radius:4px;color:#b0482c;font:700 10px Inter;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.1;transform:rotate(-3deg)}
+.C .stamp.read{border-color:#c9bfae;color:#a99e8a}
+.C .main{flex:1;min-width:0}
+.C .l1{display:flex;justify-content:space-between;font:600 13px Inter;color:#2b2620}
+.C .l1 .t{font-weight:400;color:#8a7f6c;font-size:12px}
+.C .subj{font-size:16px;margin-top:2px;line-height:1.3}
+.C .subj.read{color:#6f6656}
+.C .tabs{margin-top:auto;display:flex;justify-content:space-around;border-top:1px solid #e1d8c5;padding:10px 0 22px;font:11px Inter;color:#8a7f6c;background:#efe8da}
+.C .tabs b{color:#b0482c}
+.C .back{font:14px Inter;color:#b0482c;padding:4px 20px 6px}
+.C .mhead{padding:4px 20px 14px;border-bottom:1px solid #e1d8c5}
+.C .msubj{font:700 22px/1.25 'Source Serif 4';margin-bottom:10px}
+.C .hdr{font:12.5px/1.6 Inter;color:#6f6656}
+.C .hdr b{color:#2b2620;font-weight:600}
+.C .body{padding:14px 20px;flex:1;font-size:16px;line-height:1.55}
+.C .body p{margin-bottom:10px}
+.C .quote{font-style:italic;color:#7d7362;border-left:2px solid #b0482c;padding-left:10px;margin-bottom:10px}
+.C .toggle{display:flex;margin:10px 20px 0;font:12px Inter;gap:14px;color:#8a7f6c}
+.C .toggle .on{color:#b0482c;font-weight:600;border-bottom:2px solid #b0482c}
+.C .term{font-family:'JetBrains Mono';font-size:11px;background:#efe8da;padding:10px;border-radius:4px;margin:0}
+</style></head><body>
+
+<h1>A. Familiar</h1>
+<div class="sub">Looks like the phone's own mail app. Nothing to learn; packet details stay out of the way until you tap.</div>
+<div class="row">
+ <div class="phone A">
+  <div class="status"><span>09:41</span><span>●●● 5G</span></div>
+  <div class="bar"><span class="back">‹ Mailboxes</span></div>
+  <div class="title">Inbox</div>
+  <div class="search">Search</div>
+  <div class="item"><div class="dot"></div><div class="main"><div class="l1"><span class="from">G8BPQ · John</span><span class="time">09:12</span></div><div class="subj">Re: FBB port behaviour on 6.0.25</div><div class="snip">Yes, the FBB port skips the prompts entirely, so send the user and…</div></div></div>
+  <div class="item"><div class="dot"></div><div class="main"><div class="l1"><span class="from">M9PSY</span><span class="time">Yesterday</span></div><div class="subj">Saturday net and the new node</div><div class="snip">Are you coming up to the hill on Saturday? I've got the Tait…</div></div></div>
+  <div class="item"><div class="dot off"></div><div class="main"><div class="l1"><span class="from">GB7RDG</span><span class="time">Mon</span></div><div class="subj"><span class="chip">WX@GBR</span>Weekly propagation summary</div><div class="snip">Solar flux 142, A index 8. 40 m open to EU most evenings…</div></div></div>
+  <div class="item"><div class="dot off"></div><div class="main"><div class="l1"><span class="from">G4XYZ · Mary</span><span class="time">Sun</span></div><div class="subj">QSL and thanks</div><div class="snip">Thanks for the contact on 2 m packet last week, card is in…</div></div></div>
+  <div class="item"><div class="dot off"></div><div class="main"><div class="l1"><span class="from">M0ABC</span><span class="time">12 Oct</span></div><div class="subj">Node outage tonight</div><div class="snip">GB7XYZ will be down from 20:00 for a firmware update…</div></div></div>
+  <div class="tabs"><span><b><span class="ico">✉</span>Mail</b></span><span><span class="ico">☰</span>Bulletins</span><span><span class="ico">☺</span>Contacts</span><span><span class="ico">⚙</span>Settings</span></div>
+ </div>
+ <div class="phone A">
+  <div class="status"><span>09:41</span><span>●●● 5G</span></div>
+  <div class="bar"><span class="back">‹ Inbox</span></div>
+  <div class="mhead"><div class="msubj">Re: FBB port behaviour on 6.0.25</div>
+   <div class="who"><div class="av">JW</div><div><div style="font-weight:600;font-size:14px">John · G8BPQ</div><div class="route">G8BPQ@GB7BPQ.#23.GBR.EURO · 09:12</div></div></div></div>
+  <div class="toggle"><span class="on">Readable</span><span>As sent</span></div>
+  <div class="body">
+   <div class="quote">Does the FBB port still send the callsign prompt on connect?</div>
+   <p>No. The FBB port skips the prompts entirely, so send the user and password straight away, each followed by a return.</p>
+   <p>Paging is off by default there too, which should make listings simpler to parse.</p>
+   <p>73, John</p>
+  </div>
+  <div class="tabs"><span><span class="ico">↩</span>Reply</span><span><span class="ico">↪</span>Forward</span><span><span class="ico">☆</span>Star</span><span><span class="ico">🗑</span>Delete</span></div>
+ </div>
+</div>
+
+<h1>B. Radio room</h1>
+<div class="sub">Dark, warm amber on charcoal. Callsigns and routes up front in a terminal face; a nod to the shack without being a terminal.</div>
+<div class="row">
+ <div class="phone B">
+  <div class="status"><span>09:41</span><span>●●● 5G</span></div>
+  <div class="top"><span class="title">Packet Mail</span><span class="sync">GB7RDG · synced 2m ago</span></div>
+  <div class="folders"><span class="on">INBOX 2</span><span>OUTBOX</span><span>SENT</span><span>★</span></div>
+  <div class="item"><span class="call">G8BPQ</span><span class="time">09:12</span><span class="subj">Re: FBB port behaviour on 6.0.25</span><span class="meta">@GB7BPQ.#23.GBR.EURO · 1.2k</span></div>
+  <div class="item"><span class="call">M9PSY</span><span class="time">YDA</span><span class="subj">Saturday net and the new node</span><span class="meta">@GB7RDG.#42.GBR.EURO · 640</span></div>
+  <div class="item"><span class="call read">G4XYZ</span><span class="time">SUN</span><span class="subj read">QSL and thanks</span><span class="meta">@GB7XYZ.#24.GBR.EURO · 410</span></div>
+  <div class="item"><span class="call read">M0ABC</span><span class="time">12 OCT</span><span class="subj read">Node outage tonight</span><span class="meta">@GB7ABC.#42.GBR.EURO · 300</span></div>
+  <div class="item"><span class="call read">2E0DEF</span><span class="time">10 OCT</span><span class="subj read">Antenna for sale</span><span class="meta">@GB7DEF.#31.GBR.EURO · 520</span></div>
+  <div class="tabs"><span><b>Mail</b></span><span>Bulletins</span><span>Contacts</span><span>Setup</span></div>
+ </div>
+ <div class="phone B">
+  <div class="status"><span>09:41</span><span>●●● 5G</span></div>
+  <div class="back">‹ INBOX</div>
+  <div class="mhead"><div class="msubj">Re: FBB port behaviour on 6.0.25</div>
+   <div class="hdr">FROM <b>G8BPQ</b>@GB7BPQ.#23.GBR.EURO<br>TO&nbsp;&nbsp;&nbsp;<b>M0LTE</b>@GB7RDG.#42.GBR.EURO<br>MID&nbsp;&nbsp;23456_GB7BPQ · 28 OCT 09:12Z</div></div>
+  <div class="toggle"><span>READABLE</span><span class="on">AS SENT</span></div>
+  <div class="body"><pre class="term pre">&gt; Does the FBB port still send the
+&gt; callsign prompt on connect?
+
+No. The FBB port skips the prompts
+entirely, so send the user and
+password straight away, each
+followed by a return.
+
+Paging is off by default there too,
+which should make listings simpler
+to parse.
+
+73, John</pre></div>
+  <div class="tabs"><span><b>Reply</b></span><span>Fwd</span><span>Star</span><span>Kill</span></div>
+ </div>
+</div>
+
+<h1>C. Logbook</h1>
+<div class="sub">Warm paper, serif type, a QSL-card red. Calm and readable, like a station log; feels more like letters than email.</div>
+<div class="row">
+ <div class="phone C">
+  <div class="status"><span>09:41</span><span>●●● 5G</span></div>
+  <div class="title">Inbox</div>
+  <div class="ident">M0LTE · via GB7RDG</div>
+  <div class="section">New</div>
+  <div class="item"><div class="stamp">G8BPQ</div><div class="main"><div class="l1"><span>John</span><span class="t">09:12</span></div><div class="subj">Re: FBB port behaviour on 6.0.25</div></div></div>
+  <div class="item"><div class="stamp">M9PSY</div><div class="main"><div class="l1"><span>M9PSY</span><span class="t">Yesterday</span></div><div class="subj">Saturday net and the new node</div></div></div>
+  <div class="section">Earlier</div>
+  <div class="item"><div class="stamp read">G4XYZ</div><div class="main"><div class="l1"><span>Mary</span><span class="t">Sun</span></div><div class="subj read">QSL and thanks</div></div></div>
+  <div class="item"><div class="stamp read">M0ABC</div><div class="main"><div class="l1"><span>M0ABC</span><span class="t">12 Oct</span></div><div class="subj read">Node outage tonight</div></div></div>
+  <div class="tabs"><span><b>Mail</b></span><span>Bulletins</span><span>Contacts</span><span>Settings</span></div>
+ </div>
+ <div class="phone C">
+  <div class="status"><span>09:41</span><span>●●● 5G</span></div>
+  <div class="back">‹ Inbox</div>
+  <div class="mhead"><div class="msubj">Re: FBB port behaviour on 6.0.25</div>
+   <div class="hdr"><b>John, G8BPQ</b> at GB7BPQ<br>28 October, 09:12</div></div>
+  <div class="toggle"><span class="on">Readable</span><span>As sent</span></div>
+  <div class="body">
+   <div class="quote">Does the FBB port still send the callsign prompt on connect?</div>
+   <p>No. The FBB port skips the prompts entirely, so send the user and password straight away, each followed by a return.</p>
+   <p>Paging is off by default there too, which should make listings simpler to parse.</p>
+   <p>73, John</p>
+  </div>
+  <div class="tabs"><span><b>Reply</b></span><span>Forward</span><span>Star</span><span>Delete</span></div>
+ </div>
+</div>
+</body></html>
