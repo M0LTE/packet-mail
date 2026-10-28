@@ -88,3 +88,54 @@ jobs:
         with:
           name: packet-mail-ios-unsigned
           path: packet-mail-unsigned.ipa
+
+  testflight:
+    name: Upload to TestFlight
+    needs: [test, bbs]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: macos-latest
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+    steps:
+      - name: Skip until signing is set up
+        id: ready
+        run: |
+          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ] && [ -n "$TEAM_ID" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "TestFlight upload skipped: needs secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 and variable APPLE_TEAM_ID."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go
+      - uses: subosito/flutter-action@v2
+        if: steps.ready.outputs.go
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Build, sign and upload
+        if: steps.ready.outputs.go
+        run: |
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$key"
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$key" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" archive \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic "${auth[@]}"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" "${auth[@]}"
+          rm -f "$key"
