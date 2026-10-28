@@ -50,6 +50,9 @@ class LineSession {
     w?.complete();
   }
 
+  /// What has arrived and not yet been read.
+  String get pending => _buffer.toString();
+
   /// Sends [text] followed by CR.
   Future<void> sendLine(String text) => transport.write(latin1.encode('$text\r'));
 
@@ -78,8 +81,10 @@ class LineSession {
     }
   }
 
+  /// Closes the transport first: cancelling a telnet filter waits for the
+  /// next bytes from the BBS, which may never come.
   Future<void> close() async {
-    await _sub.cancel();
     await transport.close();
+    await _sub.cancel();
   }
 }

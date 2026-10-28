@@ -44,23 +44,43 @@ class BpqDriver implements MailDriver {
   static final _anyPrompt = RegExp(r'(?:^|\r)([^\r]*>)\r');
   static final _loginRefused = RegExp(r'(?:user|password):\s*$');
   static const _refusedMessage = 'The BBS did not accept the user name or password.';
+  static const _telnetPortMessage =
+      "This looks like the BBS's telnet port. Choose Telnet port (experimental), or use the FBB port number.";
+  static const _fbbPortMessage = "No login prompt. This may be the BBS's FBB port; choose FBB port.";
+
+  /// How long a telnet port may take to ask for the user name. An FBB port
+  /// never asks.
+  static const _loginPromptWait = Duration(seconds: 5);
+
+  /// A telnet port opens with telnet negotiation (IAC, byte 255) and a
+  /// `user:` prompt; an FBB port sends nothing until we do.
+  static bool _telnetGreeting(String received) => received.startsWith('\u00FF') || received.startsWith('user:');
 
   @override
   Future<void> logIn({required String user, required String password, required String name}) async {
     if (port == BpqPort.telnet) {
-      await _session.readUntil('user:', timeout: timeout);
+      try {
+        await _session.readUntil('user:', timeout: timeout < _loginPromptWait ? timeout : _loginPromptWait);
+      } on SessionTimeout {
+        throw BbsError(BbsErrorKind.wrongPort, _fbbPortMessage);
+      }
       await _session.sendLine(user);
       await _session.readUntil('password:', timeout: timeout);
       await _session.sendLine(password);
       final r = await _session.readUntil(RegExp(r'Telnet Server\r|password:|user:'), timeout: timeout);
       if (_loginRefused.hasMatch(r)) throw BbsError(BbsErrorKind.loginFailed, _refusedMessage);
     } else {
+      if (_telnetGreeting(_session.pending)) throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);
       await _session.sendLine(user);
       await _session.sendLine(password);
     }
     await _session.sendLine('BBS');
 
     var text = await _session.readUntil(RegExp('${_anyPrompt.pattern}|user:|password:'), timeout: timeout);
+    // A bad user name on an FBB port also gets `user:`, but never telnet negotiation.
+    if (port == BpqPort.fbb && text.startsWith('\u00FF')) {
+      throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);
+    }
     if (_loginRefused.hasMatch(text)) throw BbsError(BbsErrorKind.loginFailed, _refusedMessage);
     if (text.contains('Please enter your Name')) {
       await _session.sendLine(_safeText(name.trim().isEmpty ? 'Packet Mail user' : name.trim()));

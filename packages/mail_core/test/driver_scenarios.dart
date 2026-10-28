@@ -129,4 +129,25 @@ void defineScenarios(Connect connect) {
     await expectLater(d.sendBulletin(to: area, subject: 'Once only', body: 'Body.', bid: 'DUPTEST2'), isDuplicate);
     await d.disconnect();
   });
+  test('FBB chosen on the telnet port says so', () async {
+    final d = driverFor(await connect('fbb-on-telnet-port', BpqPort.telnet), BpqPort.fbb);
+    await expectLater(
+      d.logIn(user: 'user', password: 'user', name: 'x'),
+      throwsA(isA<BbsError>()
+          .having((e) => e.kind, 'kind', BbsErrorKind.wrongPort)
+          .having((e) => e.message, 'message', contains("telnet port. Choose Telnet port"))),
+    );
+    await d.disconnect();
+  });
+
+  test('telnet chosen on the FBB port says so', () async {
+    final d = driverFor(await connect('telnet-on-fbb-port', BpqPort.fbb), BpqPort.telnet);
+    await expectLater(
+      d.logIn(user: 'user', password: 'user', name: 'x'),
+      throwsA(isA<BbsError>()
+          .having((e) => e.kind, 'kind', BbsErrorKind.wrongPort)
+          .having((e) => e.message, 'message', startsWith('No login prompt.'))),
+    );
+    await d.disconnect();
+  });
 }

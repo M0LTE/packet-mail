@@ -24,6 +24,9 @@ enum BbsErrorKind {
 
   /// The BBS said something we don't understand.
   protocol,
+
+  /// The port answers like the other kind (telnet or FBB) to the one chosen.
+  wrongPort,
 }
 
 class BbsError implements Exception {

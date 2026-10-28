@@ -1,15 +1,14 @@
 # Recorded by driver_live_test.dart against test-bbs; do not edit.
-{"t":0.007,"dir":"rx","data":"ÿû\u0003ÿû\u0001user:"}
-{"t":0.008,"dir":"tx","data":"user\r"}
-{"t":0.018,"dir":"rx","data":"password:"}
-{"t":0.018,"dir":"tx","data":"user\r"}
-{"t":0.028,"dir":"rx","data":"\r\n"}
-{"t":0.069,"dir":"rx","data":"Connected to Q0TST's Telnet Server\r\n\r\n"}
+{"t":0.009,"dir":"rx","data":"ÿû\u0003ÿû\u0001user:"}
+{"t":0.009,"dir":"tx","data":"user\r"}
+{"t":0.019,"dir":"rx","data":"password:"}
+{"t":0.019,"dir":"tx","data":"user\r"}
+{"t":0.029,"dir":"rx","data":"\r\n"}
+{"t":0.07,"dir":"rx","data":"Connected to Q0TST's Telnet Server\r\n\r\n"}
 {"t":0.07,"dir":"tx","data":"BBS\r"}
-{"t":0.098,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r\n"}
-{"t":0.199,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\r\nHello Tom User. Latest Message is 4, Last listed is -19\r\nPlease enter your Home BBS using the Home command.\r\nYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\r\nde Q0TST>\r\n"}
-{"t":0.2,"dir":"tx","data":"LB\r"}
-{"t":0.3,"dir":"rx","data":"3      28-Oct BN      16 ALL    @GBR    Q0USR  Driver bulletin\r\nde Q0TST>\r\n"}
-{"t":0.301,"dir":"tx","data":"B\r"}
-{"t":1.402,"dir":"rx","data":"*** Disconnected from Stream 1\r\n"}
-{"t":1.402,"dir":"close"}
+{"t":0.099,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r\n"}
+{"t":0.2,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\r\nHello Tom User. Latest Message is 4, Last listed is -19\r\nPlease enter your Home BBS using the Home command.\r\nYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\r\nde Q0TST>\r\n"}
+{"t":0.201,"dir":"tx","data":"LB\r"}
+{"t":0.301,"dir":"rx","data":"3      28-Oct BN      16 ALL    @GBR    Q0USR  Driver bulletin\r\nde Q0TST>\r\n"}
+{"t":0.302,"dir":"tx","data":"B\r"}
+{"t":1.403,"dir":"rx","data":"*** Disconnected from Stream 1\r\n"}

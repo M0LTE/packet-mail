@@ -28,9 +28,8 @@ class TcpTransport implements Transport {
     await _socket.flush();
   }
 
+  /// Closes at once. Waiting for the BBS to close its side can take half a
+  /// minute (an FBB port waiting for a login), and every write is already flushed.
   @override
-  Future<void> close() async {
-    await _socket.close();
-    _socket.destroy();
-  }
+  Future<void> close() async => _socket.destroy();
 }

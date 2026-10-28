@@ -137,7 +137,8 @@ class RecordingTransport implements Transport {
         _controller.add(d);
       },
       onDone: () {
-        _events.add(RecordedEvent('close', const [], _elapsed));
+        // Only the BBS closing is part of the conversation.
+        if (!_closedByUs) _events.add(RecordedEvent('close', const [], _elapsed));
         _controller.close();
       },
       onError: _controller.addError,
@@ -148,6 +149,7 @@ class RecordingTransport implements Transport {
   final _controller = StreamController<List<int>>();
   final _events = <RecordedEvent>[];
   final _clock = Stopwatch()..start();
+  bool _closedByUs = false;
 
   double get _elapsed => _clock.elapsedMicroseconds / 1e6;
 
@@ -163,5 +165,8 @@ class RecordingTransport implements Transport {
   }
 
   @override
-  Future<void> close() => _inner.close();
+  Future<void> close() {
+    _closedByUs = true;
+    return _inner.close();
+  }
 }
