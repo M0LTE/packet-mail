@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
+import 'package:packetmail/mailboxes.dart';
 
 import 'helpers.dart';
 
@@ -251,6 +253,22 @@ void main() {
     app.gate!.complete();
     await settleAll(app, tester);
     expect(tester.takeException(), isNull);
+    await app.dispose(tester);
+  });
+
+  testWidgets('a message is no longer watched once its view closes', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    final id = await addMessage(app, tester, c, number: 51, subject: 'Watch me', body: 'Hi', read: true);
+    await app.pump(tester);
+    await settleAll(app, tester);
+    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    await tester.tap(find.text('Watch me'));
+    await settleAll(app, tester);
+    expect(container.exists(messageProvider(id)), isTrue);
+    await tester.tap(find.text('Inbox').first);
+    await settleAll(app, tester);
+    expect(container.exists(messageProvider(id)), isFalse);
     await app.dispose(tester);
   });
 }

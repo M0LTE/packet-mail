@@ -78,7 +78,7 @@ final contactNamesProvider = StreamProvider<Map<String, String>>((ref) {
   );
 });
 
-final messageProvider = StreamProvider.family<Message?, int>((ref, id) {
+final messageProvider = StreamProvider.autoDispose.family<Message?, int>((ref, id) {
   final store = ref.watch(storeProvider);
   return (store.select(store.messages)..where((m) => m.id.equals(id))).watchSingleOrNull();
 });
