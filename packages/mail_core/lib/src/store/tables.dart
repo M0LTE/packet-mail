@@ -101,7 +101,9 @@ class OutgoingRecipients extends Table {
   /// As typed (or resolved): CALL@BBS.ROUTE, or CATEGORY@AREA for bulletins.
   TextColumn get address => text()();
 
-  /// 'queued', 'sent', 'held' (waiting, with a reason) or 'failed'.
+  /// 'queued', 'sending' (tried, not yet confirmed; sent again with the same
+  /// bbsBid, which the BBS refuses if it already has it), 'sent', 'held'
+  /// (waiting, with a reason) or 'failed'.
   TextColumn get state => text().withDefault(const Constant('queued'))();
   IntColumn get bbsNumber => integer().nullable()();
   TextColumn get bbsBid => text().nullable()();

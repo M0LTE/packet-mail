@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:mail_core/mail_core.dart';
@@ -26,6 +28,12 @@ class FakeBbs implements MailDriver {
   var nextNumber = 1000;
   var disconnects = 0;
   var refuseSendTo = <String>{};
+
+  /// IDs the BBS holds; a second copy is refused, as BPQ does.
+  final bids = <String>{};
+
+  /// Lets a test look at the store while a send is under way.
+  Future<void> Function()? duringSend;
   Set<DriverCapability> caps = DriverCapability.values.toSet();
   String? failOn;
   int failAfter = 1;
@@ -52,7 +60,8 @@ class FakeBbs implements MailDriver {
           date: day),
       bid: '${n}_GB7RDG');
 
-  void addBulletin(int n, {String to = 'ALL', String at = 'GBR', String subject = 'News', String? bid}) =>
+  void addBulletin(int n,
+          {String to = 'ALL', String at = 'GBR', String subject = 'News', String? bid, DateTime? date}) =>
       bulletins[n] = FakeMessage(
           MessageHeader(
               number: n,
@@ -62,7 +71,7 @@ class FakeBbs implements MailDriver {
               to: to,
               at: at,
               subject: subject,
-              date: day),
+              date: date ?? day),
           body: 'Bulletin $n',
           bid: bid ?? '${n}_GB7BPQ');
 
@@ -119,18 +128,22 @@ class FakeBbs implements MailDriver {
   }
 
   @override
-  Future<SendReceipt> sendPersonal({required MailAddress to, required String subject, required String body}) async {
+  Future<SendReceipt> sendPersonal(
+      {required MailAddress to, required String subject, required String body, String? bid}) async {
+    await duringSend?.call();
     _call('sendPersonal $to');
     if (refuseSendTo.contains(to.toString())) throw BbsError(BbsErrorKind.rejected, 'Not accepted by the BBS.');
+    if (bid != null && !bids.add(bid)) throw BbsError(BbsErrorKind.duplicate, 'The BBS already has this message.');
     sent.add('P $to $subject');
     final n = nextNumber++;
-    return SendReceipt(number: n, bid: '${n}_GB7RDG', size: body.length);
+    return SendReceipt(number: n, bid: bid ?? '${n}_GB7RDG', size: body.length);
   }
 
   @override
   Future<SendReceipt> sendBulletin(
       {required BulletinAddress to, required String subject, required String body, String? bid}) async {
     _call('sendBulletin $to');
+    if (bid != null && !bids.add(bid)) throw BbsError(BbsErrorKind.duplicate, 'The BBS already has this message.');
     sent.add('B $to $subject ${bid ?? ''}'.trim());
     final n = nextNumber++;
     return SendReceipt(
@@ -290,12 +303,31 @@ void main() {
       expect(m.lastListedAt.toUtc(), clock);
     });
 
-    test('personal mail the BBS stops listing stays in the app', () async {
-      bbs.addPersonal(10);
+    test('the BBS no longer listing it: removed unless downloaded or starred', () async {
+      bbs
+        ..addPersonal(10)
+        ..addPersonal(11)
+        ..addPersonal(12);
       await engine.sync(conn);
+      await engine.openMessage((await message(11)).id);
+      await (db.update(db.messages)..where((m) => m.bbsNumber.equals(12)))
+          .write(const MessagesCompanion(starred: Value(true)));
       bbs.personal.clear();
       await engine.sync(conn);
-      expect((await messages()).single.bbsNumber, 10);
+      expect((await messages()).map((m) => m.bbsNumber), [11, 12]);
+    });
+
+    test('a number the BBS reuses for a new message replaces the old one', () async {
+      conn = await addConnection(download: 'atSync', name: 'Other');
+      bbs.addPersonal(10, subject: 'Old');
+      await engine.sync(conn);
+      await (db.update(db.messages)).write(const MessagesCompanion(read: Value(true)));
+      bbs.addPersonal(10, subject: 'Brand new');
+      final r = await engine.sync(conn);
+      expect(r.newMessages, 1);
+      final m = (await messages()).single;
+      expect([m.subject, m.read], ['Brand new', false]);
+      expect(reads(bbs).length, 2); // the new text was downloaded
     });
 
     test('at sync, bodies download and stay unread here', () async {
@@ -328,6 +360,7 @@ void main() {
           toCall: 'M0LTE',
           subject: 'Gone',
           date: day,
+          starred: const Value(true), // starred, so kept though no longer listed
           lastListedAt: now));
       bbs.addPersonal(10);
       final r = await engine.sync(conn);
@@ -505,7 +538,8 @@ void main() {
     test('the same bulletin ID is stored once across connections', () async {
       await subscribe();
       final other = await addConnection(name: 'Other');
-      final b2 = FakeBbs()..addBulletin(500, bid: 'NEWS1');
+      // Each BBS dates it from when it arrived there, so the listings differ.
+      final b2 = FakeBbs()..addBulletin(500, bid: 'NEWS1', date: day.add(const Duration(days: 1)));
       bbs.addBulletin(20, bid: 'NEWS1');
       engine = SyncEngine(db, (c) async => c.id == other ? b2 : bbs, clock: () => clock);
 
@@ -520,6 +554,51 @@ void main() {
       expect((await engine.sync(other)).newBulletins, 0);
       expect(reads(b2), isEmpty);
       expect((await visible()).length, 1);
+    });
+
+    test('a hidden duplicate comes back when the other copy goes', () async {
+      await subscribe();
+      final other = await addConnection(name: 'Other');
+      final b2 = FakeBbs()..addBulletin(500, bid: 'NEWS1', date: day.add(const Duration(days: 1)));
+      bbs.addBulletin(20, bid: 'NEWS1');
+      engine = SyncEngine(db, (c) async => c.id == other ? b2 : bbs, clock: () => clock);
+      await engine.sync(conn);
+      await engine.sync(other);
+      bbs.bulletins.clear();
+      await engine.sync(conn);
+      expect((await visible()).map((m) => (m.connectionId, m.bbsNumber)), [(other, 500)]);
+      await engine.sync(other);
+      expect((await visible()).single.body, 'Bulletin 500');
+    });
+
+    test('the same header on two connections is stored once until downloaded', () async {
+      final other = await addConnection(name: 'Other');
+      final b2 = FakeBbs()..addBulletin(500);
+      bbs.addBulletin(20);
+      engine = SyncEngine(db, (c) async => c.id == other ? b2 : bbs, clock: () => clock);
+      expect((await engine.sync(conn)).newBulletins, 1);
+      expect((await engine.sync(other)).newBulletins, 0);
+      expect((await messages()).single.bbsNumber, 20);
+
+      // Once the first connection's copy goes, the other one's is stored.
+      bbs.bulletins.clear();
+      await engine.sync(conn);
+      await engine.sync(other);
+      expect((await messages()).map((m) => (m.connectionId, m.bbsNumber)), [(other, 500)]);
+    });
+
+    test('a number the BBS reuses for a new bulletin replaces the old one', () async {
+      await subscribe();
+      bbs.addBulletin(20, subject: 'Old');
+      await engine.sync(conn);
+      await db.update(db.messages).write(const MessagesCompanion(starred: Value(true)));
+      bbs.bulletins.clear();
+      await engine.sync(conn);
+      bbs.addBulletin(20, subject: 'Brand new');
+      final r = await engine.sync(conn);
+      expect(r.newBulletins, 1);
+      final m = (await messages()).single;
+      expect([m.subject, m.starred, m.body], ['Brand new', false, 'Bulletin 20']);
     });
 
     test('a listing that carries the ID is matched without downloading', () async {
@@ -537,7 +616,7 @@ void main() {
     test('different bulletins with the same title are both kept', () async {
       await subscribe();
       final other = await addConnection(name: 'Other');
-      final b2 = FakeBbs()..addBulletin(500, bid: 'NEWS2');
+      final b2 = FakeBbs()..addBulletin(500, bid: 'NEWS2', date: day.add(const Duration(days: 1)));
       bbs.addBulletin(20, bid: 'NEWS1');
       engine = SyncEngine(db, (c) async => c.id == other ? b2 : bbs, clock: () => clock);
       await engine.sync(other);
@@ -561,7 +640,8 @@ void main() {
       final rs = await recipients();
       expect(rs.map((r) => r.state), ['sent', 'sent']);
       expect(rs.map((r) => r.bbsNumber), [1000, 1001]);
-      expect(rs.first.bbsBid, '1000_GB7RDG');
+      expect(rs.first.bbsBid, matches(RegExp(r'^[0-9A-Z]{12}$')));
+      expect(rs.first.bbsBid, isNot(rs.last.bbsBid));
       expect(rs.first.note, isNull);
       expect(await sentAt(), now);
     });
@@ -648,6 +728,14 @@ void main() {
       expect(bbs.calls, isNot(contains('lookUpHomeBbs G8BPQ')));
     });
 
+    test('each bulletin recipient gets its own ID unless there is only one', () async {
+      await queue(['ALL@GBR', 'ALL@WW'], type: 'bulletin', bid: 'NET42');
+      await engine.sync(conn);
+      final rs = await recipients();
+      expect(rs.map((r) => r.state), ['sent', 'sent']);
+      expect(rs.map((r) => r.bbsBid), everyElement(matches(RegExp(r'^[0-9A-Z]{12}$'))));
+    });
+
     test('sent mail is not sent again', () async {
       await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
       await engine.sync(conn);
@@ -666,7 +754,7 @@ void main() {
       final r = await engine.sync(conn);
       expect(r.ok, isFalse);
       expect(r.summary, 'Sync stopped: The BBS stopped answering. Before that: 1 sent.');
-      expect((await recipients()).map((r) => r.state), ['sent', 'queued']);
+      expect((await recipients()).map((r) => r.state), ['sent', 'sending']);
       expect(await sentAt(), isNull);
       expect(bbs.calls.last, 'disconnect');
       expect(await messages(), isEmpty);
@@ -725,6 +813,89 @@ void main() {
       expect((await messages()).map((m) => m.body), ['Bulletin 20', 'Bulletin 21']);
     });
 
+    test('lost after the BBS stored it: the retry is refused as a duplicate and counts as sent', () async {
+      await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+      final inner = bbs;
+      final lossy = _LostAfterSend(inner, SessionTimeout('prompt', ''));
+      engine = SyncEngine(db, (c) async => lossy, clock: () => clock);
+      final r = await engine.sync(conn);
+      expect(r.summary, 'Sync stopped: The BBS stopped answering.');
+      final first = (await recipients()).single;
+      expect(first.state, 'sending');
+
+      await engine.sync(conn);
+      expect(bbs.sent.length, 1);
+      final r2 = (await recipients()).single;
+      expect([r2.state, r2.bbsBid], ['sent', first.bbsBid]);
+      expect(r2.note, 'The BBS already had it from an earlier try.');
+      expect(await sentAt(), now);
+    });
+
+    test('a recipient is marked sending, with its ID and address, before the send', () async {
+      bbs.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+      await queue(['G8BPQ']);
+      OutgoingRecipient? during;
+      bbs.duringSend = () async => during = (await recipients()).single;
+      await engine.sync(conn);
+      expect([during!.state, during!.address], ['sending', 'G8BPQ@GB7BPQ.#76.GBR.EU']);
+      expect(during!.bbsBid, (await recipients()).single.bbsBid);
+    });
+
+    test('an unclear reply after the message is sent again at once', () async {
+      await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+      final inner = bbs;
+      final unclear = BbsError(BbsErrorKind.protocol, 'The BBS did not confirm the message.');
+      engine = SyncEngine(db, (c) async => _LostAfterSend(inner, unclear), clock: () => clock);
+      final r = await engine.sync(conn);
+      expect([r.ok, r.sent], [true, 1]);
+      expect(bbs.sent.length, 1);
+      expect((await recipients()).single.state, 'sent');
+    });
+
+    test('an unclear reply twice leaves it to try at the next sync', () async {
+      await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+      final inner = bbs;
+      engine = SyncEngine(db, (c) async => _Unclear(inner), clock: () => clock);
+      await engine.sync(conn);
+      final r = (await recipients()).single;
+      expect(r.state, 'sending');
+      expect(r.note, startsWith('Not sure the BBS took it'));
+      expect(await sentAt(), isNull);
+
+      engine = SyncEngine(db, (c) async => bbs, clock: () => clock);
+      await engine.sync(conn);
+      expect((await recipients()).single.state, 'sent');
+    });
+
+    test('an unexpected error is reported, not thrown', () async {
+      final inner = bbs;
+      engine = SyncEngine(db, (c) async => _BrokenList(inner), clock: () => clock);
+      final r = await engine.sync(conn);
+      expect(r.summary, startsWith('Sync stopped: Something went wrong talking to the BBS: RangeError'));
+      expect((await connection()).lastSyncResult, r.summary);
+      expect(bbs.disconnects, 1);
+    });
+
+    test('opening a message waits for a sync on the same connection', () async {
+      bbs.addPersonal(10);
+      await engine.sync(conn);
+      final gate = Completer<void>();
+      var active = 0, most = 0;
+      final inner = bbs;
+      engine = SyncEngine(db, (c) async {
+        most = ++active > most ? active : most;
+        return _Gated(inner, gate.future, () => active--);
+      }, clock: () => clock);
+      final syncing = engine.sync(conn);
+      final opening = engine.openMessage((await message(10)).id);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(bbs.calls.where((c) => c.startsWith('read')), isEmpty);
+      gate.complete();
+      await syncing;
+      expect(await opening, 'Body text');
+      expect(most, 1);
+    });
+
     test('a disconnect that fails does not hide the result', () async {
       bbs.addPersonal(10);
       final inner = bbs;
@@ -750,8 +921,9 @@ abstract class _Wrapper implements MailDriver {
   @override
   Future<ReadMessage> read(int number) => inner.read(number);
   @override
-  Future<SendReceipt> sendPersonal({required MailAddress to, required String subject, required String body}) =>
-      inner.sendPersonal(to: to, subject: subject, body: body);
+  Future<SendReceipt> sendPersonal(
+          {required MailAddress to, required String subject, required String body, String? bid}) =>
+      inner.sendPersonal(to: to, subject: subject, body: body, bid: bid);
   @override
   Future<SendReceipt> sendBulletin(
           {required BulletinAddress to, required String subject, required String body, String? bid}) =>
@@ -773,7 +945,8 @@ class _NotFoundKill extends _Wrapper {
 class _RejectsSubject extends _Wrapper {
   _RejectsSubject(super.inner);
   @override
-  Future<SendReceipt> sendPersonal({required MailAddress to, required String subject, required String body}) async =>
+  Future<SendReceipt> sendPersonal(
+          {required MailAddress to, required String subject, required String body, String? bid}) async =>
       throw ArgumentError.value(subject, 'subject', 'must not be empty');
 }
 
@@ -781,6 +954,54 @@ class _BadDisconnect extends _Wrapper {
   _BadDisconnect(super.inner);
   @override
   Future<void> disconnect() async => throw SessionClosed('');
+}
+
+/// Stores the message, then fails as if the reply were lost.
+class _LostAfterSend extends _Wrapper {
+  _LostAfterSend(super.inner, this.failure);
+  final Exception failure;
+  var lose = true;
+  @override
+  Future<SendReceipt> sendPersonal(
+      {required MailAddress to, required String subject, required String body, String? bid}) async {
+    final r = await inner.sendPersonal(to: to, subject: subject, body: body, bid: bid);
+    if (!lose) return r;
+    lose = false;
+    throw failure;
+  }
+}
+
+/// Never confirms a message.
+class _Unclear extends _Wrapper {
+  _Unclear(super.inner);
+  @override
+  Future<SendReceipt> sendPersonal(
+          {required MailAddress to, required String subject, required String body, String? bid}) async =>
+      throw BbsError(BbsErrorKind.protocol, 'The BBS did not confirm the message.');
+}
+
+class _BrokenList extends _Wrapper {
+  _BrokenList(super.inner);
+  @override
+  Future<List<MessageHeader>> listPersonal() async => throw RangeError('bad line');
+}
+
+/// Holds the personal listing until [gate] opens.
+class _Gated extends _Wrapper {
+  _Gated(super.inner, this.gate, this.onDisconnect);
+  final Future<void> gate;
+  final void Function() onDisconnect;
+  @override
+  Future<List<MessageHeader>> listPersonal() async {
+    await gate;
+    return inner.listPersonal();
+  }
+
+  @override
+  Future<void> disconnect() async {
+    onDisconnect();
+    await inner.disconnect();
+  }
 }
 
 /// A driver whose listings carry bulletin IDs.

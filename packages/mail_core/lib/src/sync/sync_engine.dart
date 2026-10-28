@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 
@@ -12,6 +13,13 @@ import '../transport/line_session.dart';
 /// Returns a driver that is connected and logged in for [connection]. If it
 /// fails, it must clean up after itself and throw.
 typedef DriverFactory = Future<MailDriver> Function(Connection connection);
+
+final _random = Random.secure();
+const _bidChars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+/// A new bulletin or message ID for something we send: 12 letters and
+/// digits, so a retry can't make a second copy.
+String newBid() => String.fromCharCodes([for (var i = 0; i < 12; i++) _bidChars.codeUnitAt(_random.nextInt(36))]);
 
 /// What one sync session did.
 class SyncResult {
@@ -86,7 +94,8 @@ class SyncResult {
 /// disconnect. The same logic serves every driver. See docs/plan.md, Sync rules.
 ///
 /// Each step stores its changes as it goes, so a session that fails part way
-/// keeps what it had already done.
+/// keeps what it had already done. Only one session runs per connection at a
+/// time; opening a message waits for a sync on its connection to finish.
 class SyncEngine {
   SyncEngine(this.store, this.connect, {DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
@@ -95,17 +104,31 @@ class SyncEngine {
   final DateTime Function() _clock;
 
   final _running = <int, Future<SyncResult>>{};
+  final _queues = <int, Future<void>>{};
 
-  /// Syncs one connection. A second call while one is running joins it.
-  Future<SyncResult> sync(int connectionId) => _running[connectionId] ??= _sync(connectionId).whenComplete(() {
+  /// Syncs one connection. Never throws: what went wrong is in the result.
+  /// A second call while one is running joins it.
+  Future<SyncResult> sync(int connectionId) =>
+      _running[connectionId] ??= _exclusive(connectionId, () => _sync(connectionId)).whenComplete(() {
         _running.remove(connectionId);
       });
 
+  /// Runs [work] after anything already queued on the connection.
+  Future<T> _exclusive<T>(int connectionId, Future<T> Function() work) {
+    final result = (_queues[connectionId] ?? Future<void>.value()).then((_) => work());
+    final done = result.then<void>((_) {}, onError: (Object _) {});
+    _queues[connectionId] = done;
+    done.then((_) {
+      if (identical(_queues[connectionId], done)) _queues.remove(connectionId);
+    });
+    return result;
+  }
+
   Future<SyncResult> _sync(int connectionId) async {
-    final connection = await _connection(connectionId);
     final s = _Session();
     MailDriver? driver;
     try {
+      final connection = await _connection(connectionId);
       driver = await connect(connection);
       s.connected = true;
       await _sendOutbox(driver, connection, s);
@@ -116,7 +139,7 @@ class SyncEngine {
         await _listBulletins(driver, connection, s);
         await _downloadSubscribed(driver, connection, s);
       }
-    } on Exception catch (e) {
+    } catch (e) {
       s.error = describeError(e);
     } finally {
       if (driver != null) await _quietly(driver.disconnect);
@@ -131,8 +154,11 @@ class SyncEngine {
 
   /// Returns a message's text, downloading it if the app doesn't have it yet
   /// (on BPQ that marks it read on the BBS). Marks it read here either way.
-  Future<String> openMessage(int messageId) async {
-    final message = await (store.select(store.messages)..where((m) => m.id.equals(messageId))).getSingle();
+  Future<String> openMessage(int messageId) async =>
+      _exclusive((await _message(messageId)).connectionId, () => _open(messageId));
+
+  Future<String> _open(int messageId) async {
+    final message = await _message(messageId);
     var body = message.body;
     if (body == null) {
       final driver = await connect(await _connection(message.connectionId));
@@ -149,6 +175,8 @@ class SyncEngine {
     return body;
   }
 
+  Future<Message> _message(int id) => (store.select(store.messages)..where((m) => m.id.equals(id))).getSingle();
+
   Future<Connection> _connection(int id) =>
       (store.select(store.connections)..where((c) => c.id.equals(id))).getSingle();
 
@@ -162,10 +190,9 @@ class SyncEngine {
     for (final message in waiting) {
       final recipients =
           await (store.select(store.outgoingRecipients)..where((r) => r.outgoingId.equals(message.id))).get();
-      for (final r in recipients.where((r) => r.state == 'queued')) {
-        final update = message.type == 'bulletin'
-            ? await _sendBulletin(driver, message, r)
-            : await _sendPersonal(driver, message, r);
+      // 'sending' means an earlier session may or may not have got it through.
+      for (final r in recipients.where((r) => r.state == 'queued' || r.state == 'sending')) {
+        final update = await _sendOne(driver, message, r, only: recipients.length == 1);
         switch (update.state.value) {
           case 'sent':
             s.sent++;
@@ -186,33 +213,47 @@ class SyncEngine {
     }
   }
 
-  Future<OutgoingRecipientsCompanion> _sendPersonal(MailDriver driver, OutgoingData m, OutgoingRecipient r) async {
-    final parsed = MailAddress.parse(r.address);
-    final problems = parsed.problems.where((p) => p.blocking).toList();
-    if (parsed.address == null || problems.isNotEmpty) return _failed(problems.join(' '));
-    var to = parsed.address!;
+  /// Sends one copy under its own ID, recorded before sending so a retry
+  /// reuses it and the BBS refuses a second copy. A bulletin's chosen ID is
+  /// used when it has only one recipient.
+  Future<OutgoingRecipientsCompanion> _sendOne(MailDriver driver, OutgoingData m, OutgoingRecipient r,
+      {required bool only}) async {
+    final bid = r.bbsBid ?? (m.type == 'bulletin' && only ? m.bid : null) ?? newBid();
+    final Future<SendReceipt> Function() send;
+    var address = r.address;
     String? found;
-    if (to.isBare) {
-      final home = await _homeBbs(driver, to.call);
-      final full = home == null ? null : MailAddress.parse('${to.call}@${home.address}').address;
-      if (home == null || full == null) {
-        return OutgoingRecipientsCompanion(
-          state: const Value('held'),
-          note: Value('No home BBS known for ${to.call}; add one to the address and send again.'),
-        );
+    if (m.type == 'bulletin') {
+      final parsed = BulletinAddress.parse(r.address);
+      final problems = parsed.problems.where((p) => p.blocking).toList();
+      if (parsed.address == null || problems.isNotEmpty) return _failed(problems.join(' '));
+      send = () => driver.sendBulletin(to: parsed.address!, subject: m.subject, body: m.body, bid: bid);
+    } else {
+      final parsed = MailAddress.parse(r.address);
+      final problems = parsed.problems.where((p) => p.blocking).toList();
+      if (parsed.address == null || problems.isNotEmpty) return _failed(problems.join(' '));
+      var to = parsed.address!;
+      if (to.isBare) {
+        final home = await _homeBbs(driver, to.call);
+        final full = home == null ? null : MailAddress.parse('${to.call}@${home.address}').address;
+        if (home == null || full == null) {
+          return OutgoingRecipientsCompanion(
+            state: const Value('held'),
+            note: Value('No home BBS known for ${to.call}; add one to the address and send again.'),
+          );
+        }
+        to = full;
+        address = to.toString();
+        found = 'Home BBS for ${to.call} from ${home.source}: ${to.at}.';
       }
-      to = full;
-      found = 'Home BBS for ${to.call} from ${home.source}: ${to.at}.';
+      send = () => driver.sendPersonal(to: to, subject: m.subject, body: m.body, bid: bid);
     }
-    return _attempt(() => driver.sendPersonal(to: to, subject: m.subject, body: m.body),
-        address: found == null ? null : to.toString(), note: found);
-  }
-
-  Future<OutgoingRecipientsCompanion> _sendBulletin(MailDriver driver, OutgoingData m, OutgoingRecipient r) async {
-    final parsed = BulletinAddress.parse(r.address);
-    final problems = parsed.problems.where((p) => p.blocking).toList();
-    if (parsed.address == null || problems.isNotEmpty) return _failed(problems.join(' '));
-    return _attempt(() => driver.sendBulletin(to: parsed.address!, subject: m.subject, body: m.body, bid: m.bid));
+    await (store.update(store.outgoingRecipients)..where((t) => t.id.equals(r.id))).write(OutgoingRecipientsCompanion(
+      state: const Value('sending'),
+      address: Value(address),
+      bbsBid: Value(bid),
+      note: Value(found),
+    ));
+    return _attempt(send, note: found);
   }
 
   /// The address book first, then White Pages.
@@ -225,24 +266,40 @@ class SyncEngine {
     return wp == null ? null : (address: wp, source: 'White Pages');
   }
 
-  /// Sends one copy. The BBS refusing it fails that recipient; losing the
-  /// connection stops the session and leaves it queued.
-  Future<OutgoingRecipientsCompanion> _attempt(Future<SendReceipt> Function() send,
-      {String? address, String? note}) async {
-    try {
-      final receipt = await send();
-      final notes = [?note, ...receipt.notes];
-      return OutgoingRecipientsCompanion(
-        address: address == null ? const Value.absent() : Value(address),
-        state: const Value('sent'),
-        bbsNumber: Value(receipt.number),
-        bbsBid: Value(receipt.bid),
-        note: Value(notes.isEmpty ? null : notes.join(' ')),
-      );
-    } on BbsError catch (e) {
-      return _failed(e.message);
-    } on ArgumentError catch (e) {
-      return _failed('The ${e.name ?? 'message'} is not something the BBS can take.');
+  /// The BBS refusing a copy fails that recipient. A copy it already has
+  /// counts as sent. When it is unclear whether the BBS took it, it is sent
+  /// again once; losing the connection stops the session, to retry next time.
+  Future<OutgoingRecipientsCompanion> _attempt(Future<SendReceipt> Function() send, {String? note}) async {
+    for (var tries = 1;; tries++) {
+      try {
+        final receipt = await send();
+        final notes = [?note, ...receipt.notes];
+        return OutgoingRecipientsCompanion(
+          state: const Value('sent'),
+          bbsNumber: Value(receipt.number),
+          bbsBid: Value(receipt.bid),
+          note: Value(notes.isEmpty ? null : notes.join(' ')),
+        );
+      } on BbsError catch (e) {
+        switch (e.kind) {
+          case BbsErrorKind.duplicate:
+            return OutgoingRecipientsCompanion(
+              state: const Value('sent'),
+              note: Value([?note, 'The BBS already had it from an earlier try.'].join(' ')),
+            );
+          case BbsErrorKind.protocol when tries < 2:
+            continue;
+          case BbsErrorKind.protocol:
+            return OutgoingRecipientsCompanion(
+              state: const Value('sending'),
+              note: Value('Not sure the BBS took it, so it will be tried again at the next sync. ${e.message}'),
+            );
+          default:
+            return _failed(e.message);
+        }
+      } on ArgumentError catch (e) {
+        return _failed('The ${e.name ?? 'message'} is not something the BBS can take.');
+      }
     }
   }
 
@@ -280,8 +337,20 @@ class SyncEngine {
 
   // Personal mail
 
+  /// Messages the BBS no longer lists are removed unless their text is here
+  /// to read, or they are starred.
   Future<void> _listPersonal(MailDriver driver, Connection connection, _Session s) async {
-    s.newMessages += (await _storeHeaders(connection.id, await driver.listPersonal())).length;
+    final headers = await driver.listPersonal();
+    s.newMessages += (await _storeHeaders(connection.id, headers)).length;
+    final listed = {for (final h in headers) h.number};
+    final stored = await (store.select(store.messages)
+          ..where((m) =>
+              m.connectionId.equals(connection.id) &
+              m.type.equals('bulletin').not() &
+              m.body.isNull() &
+              m.starred.equals(false)))
+        .get();
+    await _deleteIds([for (final m in stored) if (!listed.contains(m.bbsNumber)) m.id]);
   }
 
   Future<void> _downloadPersonal(MailDriver driver, Connection connection) async {
@@ -301,21 +370,46 @@ class SyncEngine {
 
   // Bulletins
 
+  /// The same bulletin seen through two connections is stored once. A listed
+  /// bulletin another connection already has (by ID, or by the same sender,
+  /// category, area, title and day) is not stored again; once the other copy
+  /// goes, the next listing here stores it.
   Future<void> _listBulletins(MailDriver driver, Connection connection, _Session s) async {
     final headers = await driver.listBulletins();
-    final fresh = <MessageHeader>[];
+    final mine = {
+      for (final m in await (store.select(store.messages)..where((m) => m.connectionId.equals(connection.id))).get())
+        m.bbsNumber,
+    };
+    final keep = <MessageHeader>[];
     for (final h in headers) {
-      if (h.bid == null || !await _storedElsewhere(h.bid!, connection.id)) fresh.add(h);
+      if (mine.contains(h.number) || !await _listedElsewhere(h, connection.id)) keep.add(h);
     }
-    s.newBulletinIds.addAll(await _storeHeaders(connection.id, fresh));
+    s.newBulletinIds.addAll(await _storeHeaders(connection.id, keep));
 
     // The BBS decides how long bulletins live.
     final listed = {for (final h in headers) h.number};
     final stored = await (store.select(store.messages)
           ..where((m) => m.connectionId.equals(connection.id) & m.type.equals('bulletin') & m.starred.equals(false)))
         .get();
-    final gone = [for (final m in stored) if (!listed.contains(m.bbsNumber)) m.id];
-    if (gone.isNotEmpty) await (store.delete(store.messages)..where((m) => m.id.isIn(gone))).go();
+    await _deleteIds([for (final m in stored) if (!listed.contains(m.bbsNumber)) m.id]);
+    await _reviveDuplicates();
+  }
+
+  Future<bool> _listedElsewhere(MessageHeader h, int connectionId) async {
+    if (h.bid != null && await _storedElsewhere(h.bid!, connectionId)) return true;
+    final day = DateTime.utc(h.date.year, h.date.month, h.date.day);
+    final q = store.select(store.messages)
+      ..where((m) =>
+          m.connectionId.equals(connectionId).not() &
+          m.type.equals('bulletin') &
+          m.fromCall.equals(h.from) &
+          m.toCall.equals(h.to) &
+          m.at.equalsNullable(h.at) &
+          m.subject.equals(h.subject) &
+          m.date.isBiggerOrEqualValue(day) &
+          m.date.isSmallerThanValue(day.add(const Duration(days: 1))))
+      ..limit(1);
+    return (await q.get()).isNotEmpty;
   }
 
   /// True if another connection already holds the text of the bulletin with [bid].
@@ -326,10 +420,10 @@ class SyncEngine {
     return (await q.get()).isNotEmpty;
   }
 
-  /// Downloads subscribed bulletins. BPQ listings carry no bulletin ID, so a
-  /// bulletin already stored through another connection is only recognised
-  /// once read. Its row here is then kept as a hidden header with no text, so
-  /// it is neither shown twice nor downloaded again, until the BBS drops it.
+  /// Downloads subscribed bulletins. A bulletin another connection already
+  /// holds under the same ID (listings don't always carry it) is kept here as
+  /// a hidden header with its ID and no text, so it is neither shown twice
+  /// nor downloaded again.
   Future<void> _downloadSubscribed(MailDriver driver, Connection connection, _Session s) async {
     final subscriptions = await store.select(store.subscriptions).get();
     if (subscriptions.isEmpty) return;
@@ -354,6 +448,17 @@ class SyncEngine {
     }
   }
 
+  /// Shows hidden duplicates again once no other copy has the text. Only
+  /// duplicates are hidden headers with an ID: listed IDs are not stored.
+  Future<void> _reviveDuplicates() => store.customUpdate(
+        'UPDATE messages SET pending_kill = 0 '
+        "WHERE type = 'bulletin' AND pending_kill = 1 AND body IS NULL AND bid IS NOT NULL "
+        'AND NOT EXISTS (SELECT 1 FROM messages o '
+        'WHERE o.bid = messages.bid AND o.id <> messages.id AND o.body IS NOT NULL)',
+        updates: {store.messages},
+        updateKind: UpdateKind.update,
+      );
+
   /// A subscription matches on category (the To field) and area (the listed
   /// `@` part); null means any.
   static bool subscribed(Subscription s, Message m) => _matches(s.category, m.toCall) && _matches(s.area, m.at);
@@ -364,6 +469,7 @@ class SyncEngine {
   // Shared
 
   /// Inserts headers not yet stored and refreshes when the rest were listed.
+  /// A number the BBS has reused for a different message replaces the old row.
   /// Returns the ids of the new rows. New personal mail is unread here.
   Future<List<int>> _storeHeaders(int connectionId, List<MessageHeader> headers) async {
     final now = _clock();
@@ -371,16 +477,17 @@ class SyncEngine {
     await store.transaction(() async {
       final existing = {
         for (final m in await (store.select(store.messages)..where((m) => m.connectionId.equals(connectionId))).get())
-          m.bbsNumber: m.id,
+          m.bbsNumber: m,
       };
       for (final h in headers) {
-        final id = existing[h.number];
-        if (id != null) {
-          await (store.update(store.messages)..where((m) => m.id.equals(id)))
+        final old = existing[h.number];
+        if (old != null && _same(old, h)) {
+          await (store.update(store.messages)..where((m) => m.id.equals(old.id)))
               .write(MessagesCompanion(lastListedAt: Value(now)));
           continue;
         }
-        final newId = await store.into(store.messages).insert(MessagesCompanion.insert(
+        if (old != null) await (store.delete(store.messages)..where((m) => m.id.equals(old.id))).go();
+        final id = await store.into(store.messages).insert(MessagesCompanion.insert(
               connectionId: connectionId,
               bbsNumber: h.number,
               type: h.type.name,
@@ -390,14 +497,28 @@ class SyncEngine {
               subject: h.subject,
               date: h.date,
               size: Value(h.size),
-              bid: Value(h.bid),
               lastListedAt: now,
             ));
-        existing[h.number] = newId;
-        added.add(newId);
+        added.add(id);
       }
     });
     return added;
+  }
+
+  /// True if a stored row and a listed header are the same message. The
+  /// stored date may have gained a time when read, so only the day counts.
+  static bool _same(Message m, MessageHeader h) {
+    final a = m.date.toUtc(), b = h.date.toUtc();
+    return m.fromCall == h.from &&
+        m.toCall == h.to &&
+        m.subject == h.subject &&
+        a.year == b.year &&
+        a.month == b.month &&
+        a.day == b.day;
+  }
+
+  Future<void> _deleteIds(List<int> ids) async {
+    if (ids.isNotEmpty) await (store.delete(store.messages)..where((m) => m.id.isIn(ids))).go();
   }
 
   /// Reads a message, or returns null if the BBS no longer has it.
@@ -421,7 +542,7 @@ class SyncEngine {
   static Future<void> _quietly(Future<void> Function() f) async {
     try {
       await f();
-    } on Exception {
+    } catch (_) {
       // We are leaving anyway.
     }
   }
@@ -434,7 +555,7 @@ String describeError(Object e) => switch (e) {
       SessionClosed() => 'The BBS hung up.',
       SocketException() => e.osError?.message.isNotEmpty == true ? e.osError!.message : e.message,
       TimeoutException() => 'No answer in time.',
-      _ => e.toString(),
+      _ => 'Something went wrong talking to the BBS: $e',
     };
 
 /// Counts kept while a session runs.
