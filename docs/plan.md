@@ -15,7 +15,7 @@ A phone app for iPhone and Android, released on both app stores, that gives pack
 | How we talk to a BBS | As a user, the same way a person would at a terminal. Not as a forwarding partner, so no sysop setup is needed |
 | LinBPQ ports | Both the telnet port and the FBB port (the cleaner machine-to-machine port QtTermTCP uses) |
 | NTS traffic | Out of scope. Any type T message received shows as ordinary mail |
-| Sync | The app keeps its own copy. Opening marks read on the BBS, deleting kills on the BBS, Sent lives in the app |
+| Sync | The app keeps its own copy. Personal mail downloads when opened (default) or at every sync, the user's choice per connection; deleting kills on the BBS; Sent lives in the app |
 | Identity | Separate from connections. One identity in v1 |
 | Background sync | Later |
 | Away from home | Documented as Tailscale; a one-line warning when the host isn't a private or Tailscale address |
@@ -23,7 +23,7 @@ A phone app for iPhone and Android, released on both app stores, that gives pack
 | App ID | `m0lte.packetmail` (Android doesn't allow hyphens; it can never change after first publish) |
 | Demo BBS | Tom hosts a public one of his own hardened design, wire compatible with BPQ, reached through the LinBPQ driver's FBB port |
 
-Fixed behaviour throughout: no settings beyond what is listed here.
+Fixed behaviour throughout: no settings beyond what is listed here. The one exception is how personal mail downloads, which is a personal trade-off (see Sync rules).
 
 ## Layers
 
@@ -55,7 +55,7 @@ Capability flags let the app hide what a driver can't do (for example, no White 
 
 ### LinBPQ driver
 
-- Telnet port: answer the user and password prompts, then enter the BBS.
+- Telnet port: answer the user and password prompts, then enter the BBS. Tom warns that real-world telnet logins have nuances around timing and line endings; the FBB port is the recommended default, and the telnet path is only tested against the test BBS so far.
 - FBB port: send the user and password with no prompts, as QtTermTCP does.
 - Turn paging off at the start of each session so listings arrive in full.
 - Use the standard BPQMail commands for list (personal, new, bulletins), read, send personal, send bulletin and kill.
@@ -73,7 +73,11 @@ Capability flags let the app hide what a driver can't do (for example, no White 
 
 ## Sync rules
 
-- **Personal mail:** fetched in full. Opening a message marks it read on the BBS at the next sync. Deleting kills it on the BBS at the next sync and removes it from the app once confirmed.
+- **Personal mail:** on BPQ, downloading a message is what marks it read on the BBS, so the user chooses, per connection, between:
+  - **Download when opened** (the default): sync fetches the list only; opening a message downloads it, which marks it read on the BBS. The BBS's read marker stays true, but opening unread mail needs a connection.
+  - **Download everything at sync:** mail is there to read offline, and the app keeps its own unread state; the BBS shows it read once the app has it.
+  The connection screen explains the trade-off in a sentence or two. Messages already downloaded stay readable offline either way.
+- **Deleting** kills the message on the BBS at the next sync and removes it from the app once confirmed.
 - **Sent:** kept in the app only.
 - **Bulletins:** headers for everything listed; bodies for subscribed categories. The BBS decides how long they live: a bulletin stays in the app while the BBS still lists it, and is removed locally once it drops off, unless starred. Never killed on the BBS. The same bulletin ID is stored once, even if seen through two connections.
 - **On the LAN** everything subscribed is fetched in one go. The sync engine fetches headers and bodies as separate steps, so a slow radio link can fetch bodies only when opened.
