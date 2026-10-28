@@ -82,7 +82,7 @@ void main() {
     expect(find.text('John, G8BPQ'), findsOneWidget);
     await tester.tap(find.text('John, G8BPQ'));
     await tester.pump();
-    expect(find.text('G8BPQ@GB7BPQ.#23.GBR.EURO, '), findsOneWidget);
+    expect(find.text('G8BPQ@GB7BPQ.#23.GBR.EURO'), findsOneWidget);
 
     // No subject stops it.
     await type(tester, 'body', 'Short note.');

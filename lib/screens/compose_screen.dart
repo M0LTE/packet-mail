@@ -285,10 +285,11 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   static String _lastToken(String text) => text.split(_separator).last;
 
-  /// [text] with its last address replaced by [address], ready for the next.
+  /// [text] with its last address replaced by [address]. Nothing after it,
+  /// so a single address stays clean; typing a comma starts the next.
   static String _withLast(String text, String address) {
     final token = _lastToken(text);
-    return '${text.substring(0, text.length - token.length)}$address, ';
+    return '${text.substring(0, text.length - token.length)}$address';
   }
 }
 
