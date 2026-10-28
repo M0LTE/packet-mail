@@ -468,3 +468,20 @@ Idle timeout: the BBS sets the session idle time to 900 s (`USERIDLETIME`); the 
 5. Whether reading a P message addressed to `CALL` from a session logged in as `CALL-n` marks it read (the code compares base calls, so it should).
 6. How message bodies from other BBSs look in practice: R: line format and the character sets seen.
 7. Whether `L` re-shows the last-listed message (the range is inclusive of the stored last-listed number, so it appears to).
+
+## 17. Seen live on GB7RDG
+
+Recorded 2026-10-28 on LinBPQ 6.0.26.1 over the FBB port, logged in as `tf` (SYSOP, expert mode on). The recordings are in `packages/mail_core/test/fixtures/bpq-fbb/`. These answer some of the open questions above.
+
+- **Login** is silent, as the source says: nothing at all comes back for the username or password.
+- **Entering the BBS** gives `READNG:GB7RDG} Connected to BBS\r`, then `[BPQ-6.0.26.1-IHJM$]\rde GB7RDG>\r`. With expert mode on there is no welcome text between the SID and the prompt. (Open questions 1 and 2.)
+- **After `B`** the BBS sends `73 de GB7RDG\r` then `Disconnected from Node - Telnet Session kept\r\n` and the socket stays open at the node. `NODE` gives `73 de GB7RDG\r` then `Returned to Node READNG:GB7RDG\r`. The client should close the socket itself. (Open question 3.)
+- **No paging** was seen: a listing of about 75 lines came in one go for this user.
+- **Prefix matching bites:** `XYZZY` was taken as `X` and toggled expert mode (`Expert Mode off`, then `Expert Mode` when toggled back). The client must never send free text at the prompt, and must never send `X`.
+- **Listing line**, for example `4485   28-Oct PN    1279 M0LTE  @GB7RDG G4APL  Re: CIP access`. As SYSOP, `LN` and `LL` include SYSOP mail and killed messages (status `K`).
+- **Read header**: `From:`, `To:`, `Type/Status:` (the status before this read), `Date/Time: 28-Oct 05:20Z`, `Bid:`, `Title:`, a blank line, then `R:` routing lines. Mail that came through an internet gateway also has `T:From:`, `T:To:` and `T:Message-Id:` lines. Some messages have a `Body: <size>` line before the `R:` lines. The message ends `[End of Message #4485 from G4APL]\r` and then the prompt.
+- **Reading marks read:** unread personal 4485 went from `PN` to `PY` in `LM` after `R 4485`.
+- **Not found:** `Message 99999 not found\r`.
+- **White Pages:** `I G8BPQ` gives `G8BPQ  GB7BPQ.#76.GBR.EU   \r`. `HOMEBBS` with none set gives `HomeBBS is \r`.
+- **Send to a bare callsign** fills in the address from White Pages: `SP M0LTE` gave `Address @M9YYY.#42.GBR.EURO added from WP\r` (a stale entry), then `Enter Title (only):\r`, then `Enter Message Text (end with /ex or ctrl/z)\r`. After `/EX`: `Message: 4491 Bid:  4491_GB7RDG Size: 99\r` (note the two spaces after `Bid:`). The client should look the address up itself and send the full address, so a stale WP entry is visible to the user before sending.
+- **Kill:** `Message #4491 Killed\r`; a second kill gives `Message 4491 not found\r`.
