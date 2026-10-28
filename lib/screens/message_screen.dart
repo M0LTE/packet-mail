@@ -43,17 +43,20 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
       _opening = true;
       _problem = null;
     });
-    String? problem;
+    Exception? error;
     try {
       await ref.read(syncEngineProvider).openMessage(widget.messageId);
-    } on BbsError catch (e) {
-      problem = e.kind == BbsErrorKind.notFound
-          ? 'This message is no longer on ${_bbsName()}.'
-          : '${_bbsName()} would not send this message: ${e.message}';
-    } on Exception {
-      problem = "Can't reach ${_bbsName()} to download this message. Try again when you're connected.";
+    } on Exception catch (e) {
+      error = e;
     }
+    // The screen may have closed while it waited; ref is gone then.
     if (!mounted) return;
+    final problem = switch (error) {
+      null => null,
+      BbsError(kind: BbsErrorKind.notFound) => 'This message is no longer on ${_bbsName()}.',
+      BbsError(:final message) => '${_bbsName()} would not send this message: $message',
+      _ => "Can't reach ${_bbsName()} to download this message. Try again when you're connected.",
+    };
     setState(() {
       _opening = false;
       _problem = problem;
@@ -68,14 +71,16 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
 
   Future<void> _delete(Message m) async {
     final messenger = ScaffoldMessenger.of(context);
-    await setPendingKill(ref.read(storeProvider), m.id, true);
+    // Undo runs after this screen has gone, so it can't use ref.
+    final store = ref.read(storeProvider);
+    await setPendingKill(store, m.id, true);
     if (mounted) Navigator.of(context).pop();
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: const Text('Deleted. It goes from the BBS at the next sync.'),
-          action: SnackBarAction(label: 'Undo', onPressed: () => setPendingKill(ref.read(storeProvider), m.id, false)),
+          action: SnackBarAction(label: 'Undo', onPressed: () => setPendingKill(store, m.id, false)),
         ),
       );
   }

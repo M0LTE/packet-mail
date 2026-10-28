@@ -217,4 +217,40 @@ void main() {
     expect(find.text('GB7XYZ will be down from 20:00.', findRichText: true), findsOneWidget);
     await app.dispose(tester);
   });
+
+  testWidgets('Undo after deleting from the message view brings it back', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    final id = await addMessage(app, tester, c, number: 50, subject: 'Undo me', body: 'Hi', read: true);
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Undo me'));
+    await settleAll(app, tester);
+    await tester.tap(find.text('Delete'));
+    await settleAll(app, tester);
+    expect((await messageRow(app, tester, id)).pendingKill, isTrue);
+    await tester.tap(find.text('Undo'));
+    await settleAll(app, tester);
+    expect((await messageRow(app, tester, id)).pendingKill, isFalse);
+    await app.dispose(tester);
+  });
+
+  testWidgets('leaving the message view while a download is failing is quiet', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    app.bbs.add(40, subject: 'Node outage tonight', body: 'x');
+    await app.pump(tester);
+    await settleAll(app, tester);
+    app
+      ..offline = 'No reply.'
+      ..gate = Completer();
+    await tester.tap(find.text('Node outage tonight'));
+    await settleAll(app, tester);
+    await tester.tap(find.text('Inbox').first);
+    await settleAll(app, tester);
+    app.gate!.complete();
+    await settleAll(app, tester);
+    expect(tester.takeException(), isNull);
+    await app.dispose(tester);
+  });
 }
