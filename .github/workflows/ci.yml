@@ -142,3 +142,53 @@ jobs:
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" "${auth[@]}"
           rm -f "$key"
+
+  android-release:
+    name: Signed Android app bundle
+    needs: [test, bbs]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+    steps:
+      - name: Skip until signing is set up
+        id: ready
+        run: |
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Signed Android build skipped: needs the ANDROID_UPLOAD_* secrets."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go
+      - uses: actions/setup-java@v4
+        if: steps.ready.outputs.go
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        if: steps.ready.outputs.go
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Build signed app bundle
+        if: steps.ready.outputs.go
+        run: |
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          cat > android/key.properties <<PROPS
+          storeFile=$RUNNER_TEMP/upload.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          PROPS
+          flutter build appbundle --release --build-number=${{ github.run_number }}
+          rm -f android/key.properties "$RUNNER_TEMP/upload.jks"
+      - uses: actions/upload-artifact@v4
+        if: steps.ready.outputs.go
+        with:
+          name: packet-mail-android-bundle
+          path: build/app/outputs/bundle/release/app-release.aab
