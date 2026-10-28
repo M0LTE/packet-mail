@@ -1,0 +1,15 @@
+{"t":0.003,"dir":"rx","data":"ÿû\u0003ÿû\u0001user:"}
+{"t":2.022,"dir":"tx","data":"user\r"}
+{"t":2.032,"dir":"rx","data":"password:"}
+{"t":4.043,"dir":"tx","data":"user\r"}
+{"t":4.049,"dir":"rx","data":"\r\nConnected to Q0TST's Telnet Server\r\n\r\n"}
+{"t":6.063,"dir":"tx","data":"BBS\r"}
+{"t":6.086,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r\n"}
+{"t":6.116,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\r\nHello Tom User. Latest Message is 4, Last listed is -19\r\nde Q0TST>\r\n"}
+{"t":8.184,"dir":"tx","data":"LB\r"}
+{"t":8.233,"dir":"rx","data":"de Q0TST>\r\n"}
+{"t":10.305,"dir":"tx","data":"B\r"}
+{"t":11.35,"dir":"rx","data":"*** Disconnected from Stream 1\r\nDisconnected from Node - Telnet Session kept\r\n"}
+{"t":13.436,"dir":"tx","data":"B\r"}
+{"t":13.447,"dir":"rx","data":"*** Disconnected from Stream 1\r\nDisconnected from Node - Telnet Session kept\r\n"}
+{"t":15.458,"dir":"close"}

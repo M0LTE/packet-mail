@@ -1,0 +1,12 @@
+{"t":2.026,"dir":"tx","data":"other\r"}
+{"t":4.048,"dir":"tx","data":"other\r"}
+{"t":6.068,"dir":"tx","data":"BBS\r"}
+{"t":6.098,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":6.168,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rPlease enter your Name\r>\r"}
+{"t":8.189,"dir":"tx","data":"Olive Other\r"}
+{"t":8.285,"dir":"rx","data":"Hello Olive Other. Latest Message is 2, Last listed is -18\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":10.31,"dir":"tx","data":"HOMEBBS Q0TST.#42.GBR.EURO\r"}
+{"t":10.402,"dir":"rx","data":"HomeBBS is Q0TST.#42.GBR.EURO\rde Q0TST>\r"}
+{"t":12.431,"dir":"tx","data":"B\r"}
+{"t":13.519,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":15.563,"dir":"close"}

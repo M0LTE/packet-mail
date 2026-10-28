@@ -30,8 +30,13 @@ Every push to `master` builds an Android APK and an unsigned iOS app; find them 
 
 - `lib/`: the Flutter app (screens).
 - `packages/mail_core/`: everything below the screens (messages, addressing, BBS drivers, sync), in plain Dart with no Flutter dependency.
-- `docs/`: plan and design notes.
+- `docs/`: plan and design notes, including the [BPQMail protocol reference](docs/bpq-protocol.md).
+- `test-bbs/`: a local LinBPQ for recordings and tests.
 
 ## Licence
 
 [Mozilla Public License 2.0](LICENSE).
+
+## Test BBS
+
+`test-bbs/` runs a throwaway LinBPQ in Docker for recordings and end-to-end tests; see its README.

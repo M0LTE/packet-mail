@@ -485,3 +485,19 @@ Recorded 2026-10-28 on LinBPQ 6.0.26.1 over the FBB port, logged in as `tf` (SYS
 - **White Pages:** `I G8BPQ` gives `G8BPQ  GB7BPQ.#76.GBR.EU   \r`. `HOMEBBS` with none set gives `HomeBBS is \r`.
 - **Send to a bare callsign** fills in the address from White Pages: `SP M0LTE` gave `Address @M9YYY.#42.GBR.EURO added from WP\r` (a stale entry), then `Enter Title (only):\r`, then `Enter Message Text (end with /ex or ctrl/z)\r`. After `/EX`: `Message: 4491 Bid:  4491_GB7RDG Size: 99\r` (note the two spaces after `Bid:`). The client should look the address up itself and send the full address, so a stale WP entry is visible to the user before sending.
 - **Kill:** `Message #4491 Killed\r`; a second kill gives `Message 4491 not found\r`.
+
+## 18. Seen on a local test BBS as normal users
+
+Recorded 2026-10-28 with `test-bbs/record-all.sh` against Tom's `m0lte/linbpq:6.0.26.1` image; fixtures in `packages/mail_core/test/fixtures/bpq-local/`.
+
+- **First login** asks `Please enter your Name\r>\r`; the reply is taken as the name whatever it is (a command sent here becomes the name). Then `Hello <name>. Latest Message is N, Last listed is M\r`, a nudge to set a home BBS, and the prompt. The client must handle the name prompt before sending any command.
+- **New-user mail is held by default.** With `DontHoldNewUsers = 0` a new user's messages get a normal `Message: N` confirmation but status H, so nobody else sees them and the sender can't list them. The app should tell the user, once, when their sent mail never appears for anyone.
+- **The BBS's own notices use message numbers**: each new user creates a notice to the sysop, so numbers are not predictable from what a user can see.
+- **`LM` lists mail to me only**, not mail I sent. `L` lists new mail including what I sent. Sent items have to live in the app, as planned.
+- **Reading a bulletin changes nothing on the BBS**: it stays `BN` and stays in `LN`. Bulletin read state is the app's own.
+- **Kill rights**: the recipient can kill personal mail; the author can kill their own bulletin; anyone else gets `Not your message\r`. After a kill, `R n` gives `Message n not for you\r` to a normal user (not "not found").
+- **Bare callsign**: `SP Q0OTH` gave `Address @Q0TST.#42.GBR.EURO added from HomeBBS\r` (compare `added from WP` on GB7RDG).
+- **Cancel**: an empty title gives `*** Message Cancelled\r`.
+- **Bulletin to an area with no forwarding** adds `@BBS specified, but no forwarding info is available - msg may not be delivered\r` after the confirmation.
+- **Read output** ends with a blank line or two, then `[End of Message #N from CALL]\r`, then the prompt. Locally written messages have no `R:` lines.
+- **Telnet port** differs only at the start: telnet negotiation bytes (IAC WILL SUPPRESS-GO-AHEAD, IAC WILL ECHO), `user:` and `password:` prompts with no line end, `\r\nConnected to Q0TST's Telnet Server\r\n\r\n`, and CRLF line ends throughout. The FBB port uses CR only.

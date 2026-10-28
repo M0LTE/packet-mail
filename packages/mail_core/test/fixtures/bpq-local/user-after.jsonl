@@ -1,0 +1,20 @@
+{"t":2.027,"dir":"tx","data":"user\r"}
+{"t":4.048,"dir":"tx","data":"user\r"}
+{"t":6.068,"dir":"tx","data":"BBS\r"}
+{"t":6.097,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":6.197,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rHello Tom User. Latest Message is 4, Last listed is -19\rde Q0TST>\r"}
+{"t":8.29,"dir":"tx","data":"LM\r"}
+{"t":8.415,"dir":"rx","data":"de Q0TST>\r"}
+{"t":10.512,"dir":"tx","data":"LB\r"}
+{"t":10.633,"dir":"rx","data":"4      28-Oct BN      16 ALL    @GBR    Q0USR  Test bulletin\rde Q0TST>\r"}
+{"t":12.734,"dir":"tx","data":"R 3\r"}
+{"t":12.851,"dir":"rx","data":"Message 3 not for you\rde Q0TST>\r"}
+{"t":14.855,"dir":"tx","data":"R 4\r"}
+{"t":14.968,"dir":"rx","data":"From: Q0USR\rTo: ALL\rType/Status: BN\rDate/Time: 28-Oct 09:16Z\rBid: 4_Q0TST\rTitle: Test bulletin\r\rBulletin body.\r\r\r[End of Message #4 from Q0USR]\rde Q0TST>\r"}
+{"t":16.976,"dir":"tx","data":"K 4\r"}
+{"t":17.085,"dir":"rx","data":"Message #4 Killed\rde Q0TST>\r"}
+{"t":19.097,"dir":"tx","data":"LB\r"}
+{"t":19.202,"dir":"rx","data":"de Q0TST>\r"}
+{"t":21.218,"dir":"tx","data":"B\r"}
+{"t":22.319,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":24.35,"dir":"close"}

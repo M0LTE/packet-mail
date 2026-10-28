@@ -1,0 +1,34 @@
+{"t":2.028,"dir":"tx","data":"user\r"}
+{"t":4.05,"dir":"tx","data":"user\r"}
+{"t":6.07,"dir":"tx","data":"BBS\r"}
+{"t":6.099,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":6.139,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rHello Tom User. Latest Message is 2, Last listed is -19\rde Q0TST>\r"}
+{"t":8.191,"dir":"tx","data":"SP Q0OTH@Q0TST.#42.GBR.EURO\r"}
+{"t":8.257,"dir":"rx","data":"Enter Title (only):\r"}
+{"t":10.312,"dir":"tx","data":"Hello from user\r"}
+{"t":10.374,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
+{"t":12.433,"dir":"tx","data":"First line\r"}
+{"t":14.453,"dir":"tx","data":"\r"}
+{"t":16.473,"dir":"tx","data":"Third line after a blank.\r"}
+{"t":18.493,"dir":"tx","data":"/EX\r"}
+{"t":18.539,"dir":"rx","data":"Message: 3 Bid:  3_Q0TST Size: 41\rde Q0TST>\r"}
+{"t":20.614,"dir":"tx","data":"SB ALL@GBR\r"}
+{"t":20.656,"dir":"rx","data":"Enter Title (only):\r"}
+{"t":22.735,"dir":"tx","data":"Test bulletin\r"}
+{"t":22.774,"dir":"rx","data":"Enter Message Text (end with /ex or ctrl/z)\r"}
+{"t":24.856,"dir":"tx","data":"Bulletin body.\r"}
+{"t":26.876,"dir":"tx","data":"/EX\r"}
+{"t":26.908,"dir":"rx","data":"Message: 4 Bid:  4_Q0TST Size: 16\r@BBS specified, but no forwarding info is available - msg may not be delivered\rde Q0TST>\r"}
+{"t":28.997,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":29.126,"dir":"rx","data":"Address @Q0TST.#42.GBR.EURO added from HomeBBS\rEnter Title (only):\r"}
+{"t":31.219,"dir":"tx","data":"\r"}
+{"t":31.345,"dir":"rx","data":"*** Message Cancelled\rde Q0TST>\r"}
+{"t":33.441,"dir":"tx","data":"LM\r"}
+{"t":33.563,"dir":"rx","data":"de Q0TST>\r"}
+{"t":35.663,"dir":"tx","data":"LB\r"}
+{"t":35.781,"dir":"rx","data":"4      28-Oct BN      16 ALL    @GBR    Q0USR  Test bulletin\rde Q0TST>\r"}
+{"t":37.784,"dir":"tx","data":"L\r"}
+{"t":37.899,"dir":"rx","data":"4      28-Oct BN      16 ALL    @GBR    Q0USR  Test bulletin\r3      28-Oct PN      41 Q0OTH  @Q0TST  Q0USR  Hello from user\rde Q0TST>\r"}
+{"t":39.905,"dir":"tx","data":"B\r"}
+{"t":41.015,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":43.037,"dir":"close"}
