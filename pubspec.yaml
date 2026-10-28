@@ -20,6 +20,8 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   drift_flutter: ^0.3.1
   drift: ^2.35.3
+  shared_preferences: ^2.5.6
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
