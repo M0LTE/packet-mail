@@ -67,7 +67,7 @@ void main() {
     if (_wanted) await _loadFonts();
   });
 
-  Future<TestApp> station(WidgetTester tester) async {
+  Future<TestApp> station(WidgetTester tester, {Future<void> Function(MailStore store, int connectionId)? extra}) async {
     tester.view
       ..physicalSize = const Size(390 * 3, 780 * 3)
       ..devicePixelRatio = 3;
@@ -115,6 +115,7 @@ void main() {
         DateTime(2026, 10, 12, 8),
         read: true,
       );
+      await extra?.call(store, c);
     });
     await app.pump(
       tester,
@@ -150,6 +151,76 @@ void main() {
     await tester.tap(find.text('Saturday net and the new node'));
     await _settle(app, tester);
     await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/message-table.png'));
+    await app.dispose(tester);
+  });
+
+  testWidgets('compose', skip: !_wanted, (tester) async {
+    final app = await station(tester);
+    await tester.tap(find.byKey(const ValueKey('compose')));
+    await _settle(app, tester);
+    await tester.enterText(find.byKey(const ValueKey('to')), 'Q0ABC@GB7RDG.#42.GBR.EURO, Q0XYZ');
+    await tester.enterText(find.byKey(const ValueKey('subject')), 'Hill top on Saturday');
+    await tester.enterText(
+      find.byKey(const ValueKey('body')),
+      'Are you both coming up to the hill on Saturday? I will bring the '
+      'Yagi and the spare battery.\n\n73, Tom',
+    );
+    await _settle(app, tester);
+    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/compose.png'));
+    await app.dispose(tester);
+  });
+
+  testWidgets('sent', skip: !_wanted, (tester) async {
+    Future<void> add(
+      MailStore store,
+      int c,
+      String subject,
+      DateTime at,
+      List<(String, String, int?, String?)> to,
+    ) async {
+      final id = await store
+          .into(store.outgoing)
+          .insert(
+            OutgoingCompanion.insert(
+              connectionId: c,
+              type: 'personal',
+              subject: subject,
+              body: 'Hello.',
+              createdAt: at,
+              sentAt: Value(at),
+            ),
+          );
+      for (final (address, state, number, note) in to) {
+        await store
+            .into(store.outgoingRecipients)
+            .insert(
+              OutgoingRecipientsCompanion.insert(
+                outgoingId: id,
+                address: address,
+                state: Value(state),
+                bbsNumber: Value(number),
+                note: Value(note),
+              ),
+            );
+      }
+    }
+
+    final app = await station(
+      tester,
+      extra: (store, c) async {
+        await add(store, c, 'Hill top on Saturday', DateTime(2026, 10, 28, 10, 21), [
+          ('Q0ABC@GB7RDG.#42.GBR.EURO', 'sent', 4530, null),
+          ('Q0XYZ@GB7XYZ.#23.GBR.EURO', 'sent', 4531, null),
+          ('Q0DEF@GB7RDG.#42.GBR.EURO', 'failed', null, 'No such user at this BBS.'),
+        ]);
+        await add(store, c, 'Thanks for the QSL', DateTime(2026, 10, 26, 18, 5), [
+          ('Q0ABC@GB7RDG.#42.GBR.EURO', 'sent', 4490, null),
+        ]);
+      },
+    );
+    await tester.tap(find.byKey(const ValueKey('mailbox-sent')));
+    await _settle(app, tester);
+    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/sent.png'));
     await app.dispose(tester);
   });
 
