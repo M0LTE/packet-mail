@@ -10,12 +10,13 @@ import '../theme.dart';
 import 'compose_screen.dart';
 
 /// Opens bulletin compose, with the category and area filled in if given.
-Future<void> openBulletinCompose(BuildContext context, {String? category, String? area}) => Navigator.of(context).push(
-  MaterialPageRoute<void>(
-    fullscreenDialog: true,
-    builder: (_) => BulletinComposeScreen(category: category, area: area),
-  ),
-);
+Future<void> openBulletinCompose(BuildContext context, {String? category, String? area}) =>
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => BulletinComposeScreen(category: category, area: area),
+      ),
+    );
 
 /// Writes a bulletin: a category at an area, a subject and the text.
 class BulletinComposeScreen extends ConsumerStatefulWidget {

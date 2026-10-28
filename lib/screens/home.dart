@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
@@ -22,6 +23,15 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   var _tab = 0;
 
+  /// Each tab keeps its own stack of screens, so the bar stays put and
+  /// switching tabs comes back to where you were.
+  final _navigators = List.generate(4, (_) => GlobalKey<NavigatorState>());
+
+  /// Tabs opened so far; the rest are built on first visit.
+  final _visited = {0};
+
+  static const _roots = [MailTab(), BulletinsTab(), ContactsTab(), SettingsTab()];
+
   @override
   void initState() {
     super.initState();
@@ -31,24 +41,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  void _select(int i) {
+    if (i == _tab) {
+      // Tapping the current tab again goes back to its top.
+      _navigators[i].currentState?.popUntil((r) => r.isFirst);
+      return;
+    }
+    setState(() {
+      _tab = i;
+      _visited.add(i);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: switch (_tab) {
-        0 => const MailTab(),
-        1 => const BulletinsTab(),
-        2 => const ContactsTab(),
-        _ => const SettingsTab(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final nav = _navigators[_tab].currentState;
+        if (nav != null && await nav.maybePop()) return;
+        if (_tab != 0) {
+          setState(() => _tab = 0);
+        } else {
+          await SystemNavigator.pop();
+        }
       },
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.mail_outline), selectedIcon: Icon(Icons.mail), label: 'Mail'),
-          NavigationDestination(icon: Icon(Icons.article_outlined), selectedIcon: Icon(Icons.article), label: 'Bulletins'),
-          NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Contacts'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
-        ],
+      child: Scaffold(
+        // Hidden tabs stay built but offstage, with their animations paused.
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            for (final i in _visited)
+              Offstage(
+                key: ValueKey('tab-$i'),
+                offstage: i != _tab,
+                child: TickerMode(
+                  enabled: i == _tab,
+                  child: ExcludeFocus(
+                    excluding: i != _tab,
+                    child: Navigator(
+                      key: _navigators[i],
+                      onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => _roots[i]),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _tab,
+          onDestinationSelected: _select,
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.mail_outline), selectedIcon: Icon(Icons.mail), label: 'Mail'),
+            NavigationDestination(
+              icon: Icon(Icons.article_outlined),
+              selectedIcon: Icon(Icons.article),
+              label: 'Bulletins',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.people_outline),
+              selectedIcon: Icon(Icons.people),
+              label: 'Contacts',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -80,8 +142,9 @@ class SettingsTab extends ConsumerWidget {
               title: Text('${identity.callsign}, ${identity.name}', style: text.titleMedium),
               subtitle: Text('@${identity.homeBbs}', style: text.labelMedium),
               trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
-              onTap: () => Navigator.of(context)
-                  .push(MaterialPageRoute<void>(builder: (_) => IdentityScreen(identity: identity))),
+              onTap: () =>
+                  Navigator.of(context)
+                      .push(MaterialPageRoute<void>(builder: (_) => IdentityScreen(identity: identity))),
             ),
           const Divider(indent: 24),
           Padding(
@@ -91,13 +154,13 @@ class SettingsTab extends ConsumerWidget {
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 24),
             title: Text('Connections', style: text.titleMedium),
-            subtitle: Text(
-              switch (connections.length) { 0 => 'None yet', 1 => connections.single.name, final n => '$n connections' },
-              style: text.labelMedium,
-            ),
+            subtitle: Text(switch (connections.length) {
+              0 => 'None yet',
+              1 => connections.single.name,
+              final n => '$n connections',
+            }, style: text.labelMedium),
             trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
-            onTap: () =>
-                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen())),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen())),
           ),
           const Divider(indent: 24),
           Padding(

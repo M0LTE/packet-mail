@@ -403,6 +403,7 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
 Future<void> showSubscribeSheet(BuildContext context, {required String category, String? area}) =>
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Logbook.paper,
       showDragHandle: true,
       builder: (_) => _SubscribeSheet(category: category, area: area),

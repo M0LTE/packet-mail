@@ -49,7 +49,7 @@ class _MailTabState extends ConsumerState<MailTab> {
                   key: const ValueKey('compose'),
                   tooltip: 'New message',
                   icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
-                  onPressed: () => Navigator.of(context).push(
+                  onPressed: () => Navigator.of(context, rootNavigator: true).push(
                     MaterialPageRoute<bool>(builder: (_) => const ComposeScreen()),
                   ),
                 ),

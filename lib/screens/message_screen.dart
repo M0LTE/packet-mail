@@ -370,8 +370,10 @@ class _Actions extends ConsumerWidget {
   final Message message;
   final VoidCallback onDelete;
 
-  void _compose(BuildContext context, ComposeDraft draft) =>
-      Navigator.of(context).push(MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: draft)));
+  void _compose(BuildContext context, ComposeDraft draft) => Navigator.of(
+    context,
+    rootNavigator: true,
+  ).push(MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: draft)));
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -404,7 +406,11 @@ class _Actions extends ConsumerWidget {
         top: false,
         child: Row(
           children: [
-            action(Icons.reply, 'Reply', message.body == null ? null : () => _compose(context, ComposeDraft.reply(message))),
+            action(
+              Icons.reply,
+              'Reply',
+              message.body == null ? null : () => _compose(context, ComposeDraft.reply(message)),
+            ),
             action(
               Icons.forward,
               'Forward',

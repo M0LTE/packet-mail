@@ -163,6 +163,8 @@ void main() {
     await settleAll(app, tester);
     await tester.tap(find.byKey(const ValueKey('area-WX-GBR')));
     await settleAll(app, tester);
+    // The tab bar stays inside a group.
+    expect(find.byType(NavigationBar), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('subscribe')));
     await settleAll(app, tester);
