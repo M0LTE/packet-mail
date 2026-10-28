@@ -120,11 +120,13 @@ class BpqDriver implements MailDriver {
   }
 
   @override
-  Future<SendReceipt> sendPersonal({required MailAddress to, required String subject, required String body}) {
+  Future<SendReceipt> sendPersonal(
+      {required MailAddress to, required String subject, required String body, String? bid}) {
     if (!isCallsign(to.call)) throw ArgumentError.value(to, 'to', 'not a callsign');
+    if (bid != null && !_bidPattern.hasMatch(bid)) throw ArgumentError.value(bid, 'bid');
     // The spaced "@ via" form stops BPQ mistaking a short route for an email address.
     final at = to.at == null ? '' : ' @ ${to.at}';
-    return _send('SP ${to.call}$at', subject, body);
+    return _send('SP ${to.call}$at${bid == null ? '' : ' \$$bid'}', subject, body);
   }
 
   static final _bidPattern = RegExp(r'^[A-Z0-9_\-]{1,12}$');
@@ -151,6 +153,9 @@ class BpqDriver implements MailDriver {
         timeout: timeout);
     final said = _lines(first).where((l) => l.isNotEmpty && '$l\r' != _prompt).toList();
     if (!first.endsWith('Enter Title (only):\r')) {
+      if (said.any((l) => l.contains('Duplicate BID'))) {
+        throw BbsError(BbsErrorKind.duplicate, 'The BBS already has this message.');
+      }
       throw BbsError(BbsErrorKind.rejected, said.join(' '));
     }
     final notes = said.where((l) => !l.startsWith('Enter Title')).toList();
@@ -173,7 +178,8 @@ class BpqDriver implements MailDriver {
         );
       }
     }
-    throw BbsError(BbsErrorKind.rejected, reply.join(' '));
+    // The message may or may not be stored; sending again with the same BID is safe.
+    throw BbsError(BbsErrorKind.protocol, 'The BBS did not confirm the message: ${reply.join(' ')}');
   }
 
   @override

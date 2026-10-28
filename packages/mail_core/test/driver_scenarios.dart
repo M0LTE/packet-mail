@@ -113,4 +113,20 @@ void defineScenarios(Connect connect) {
     );
     await d.disconnect();
   });
+
+  test('a second copy with the same ID is refused as a duplicate', () async {
+    final d = driverFor(await connect('duplicate-bid', BpqPort.fbb), BpqPort.fbb);
+    await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+    final isDuplicate = throwsA(isA<BbsError>().having((e) => e.kind, 'kind', BbsErrorKind.duplicate));
+
+    final to = MailAddress.parse('Q0OTH@Q0TST.#42.GBR.EURO').address!;
+    final p = await d.sendPersonal(to: to, subject: 'Once only', body: 'Body.', bid: 'DUPTEST1');
+    expect(p.bid, 'DUPTEST1');
+    await expectLater(d.sendPersonal(to: to, subject: 'Once only', body: 'Body.', bid: 'DUPTEST1'), isDuplicate);
+
+    final area = BulletinAddress.parse('ALL@GBR').address!;
+    await d.sendBulletin(to: area, subject: 'Once only', body: 'Body.', bid: 'DUPTEST2');
+    await expectLater(d.sendBulletin(to: area, subject: 'Once only', body: 'Body.', bid: 'DUPTEST2'), isDuplicate);
+    await d.disconnect();
+  });
 }

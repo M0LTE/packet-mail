@@ -15,8 +15,12 @@ enum BbsErrorKind {
   /// The BBS refused: not your message, or not visible to you.
   notAllowed,
 
-  /// The BBS would not accept a message (filters, duplicate BID, bad address).
+  /// The BBS would not accept a message (filters, bad address).
   rejected,
+
+  /// The BBS already has a message with this bulletin or message ID, so an
+  /// earlier attempt got through.
+  duplicate,
 
   /// The BBS said something we don't understand.
   protocol,
@@ -47,7 +51,14 @@ abstract interface class MailDriver {
   Future<List<MessageHeader>> listBulletins();
 
   Future<ReadMessage> read(int number);
-  Future<SendReceipt> sendPersonal({required MailAddress to, required String subject, required String body});
+  /// Sends personal mail. A [bid] makes it safe to send again: the BBS
+  /// refuses a second copy with [BbsErrorKind.duplicate].
+  Future<SendReceipt> sendPersonal({
+    required MailAddress to,
+    required String subject,
+    required String body,
+    String? bid,
+  });
   Future<SendReceipt> sendBulletin({
     required BulletinAddress to,
     required String subject,
