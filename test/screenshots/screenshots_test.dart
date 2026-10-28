@@ -98,7 +98,7 @@ void main() {
               bid: Value('${n}_GB7BPQ'),
               routing: Value(
                 'R:261028/0914Z 4511@GB7RDG.#42.GBR.EURO LinBPQ6.0.26\n'
-                'R:261028/0912Z ${n}@GB7BPQ.#23.GBR.EURO LinBPQ6.0.25',
+                'R:261028/0912Z $n@GB7BPQ.#23.GBR.EURO LinBPQ6.0.25',
               ),
               read: Value(read),
               lastListedAt: DateTime(2026, 10, 28),
