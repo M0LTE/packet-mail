@@ -1,0 +1,117 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../providers.dart';
+import '../theme.dart';
+import 'connections_screen.dart';
+import 'identity_screen.dart';
+
+/// The app after first run: Mail, Bulletins, Contacts and Settings.
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  var _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: switch (_tab) {
+        0 => const _ComingSoon(title: 'Mail'),
+        1 => const _ComingSoon(title: 'Bulletins'),
+        2 => const _ComingSoon(title: 'Contacts'),
+        _ => const SettingsTab(),
+      },
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.mail_outline), selectedIcon: Icon(Icons.mail), label: 'Mail'),
+          NavigationDestination(icon: Icon(Icons.article_outlined), selectedIcon: Icon(Icons.article), label: 'Bulletins'),
+          NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Contacts'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComingSoon extends StatelessWidget {
+  const _ComingSoon({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: text.displaySmall),
+            const SizedBox(height: 8),
+            Text('Coming soon.', style: text.titleMedium?.copyWith(color: Logbook.inkSoft)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Your station and your connections.
+class SettingsTab extends ConsumerWidget {
+  const SettingsTab({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = Theme.of(context).textTheme;
+    final identity = ref.watch(identityProvider).value;
+    final connections = ref.watch(connectionsProvider).value ?? [];
+    return SafeArea(
+      child: ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Text('Settings', style: text.displaySmall),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+            child: Text('YOUR STATION', style: Logbook.sectionLabel),
+          ),
+          if (identity != null)
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+              title: Text('${identity.callsign}, ${identity.name}', style: text.titleMedium),
+              subtitle: Text('@${identity.homeBbs}', style: text.labelMedium),
+              trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute<void>(builder: (_) => IdentityScreen(identity: identity))),
+            ),
+          const Divider(indent: 24),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+            child: Text('MAIL', style: Logbook.sectionLabel),
+          ),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            title: Text('Connections', style: text.titleMedium),
+            subtitle: Text(
+              switch (connections.length) { 0 => 'None yet', 1 => connections.single.name, final n => '$n connections' },
+              style: text.labelMedium,
+            ),
+            trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
+            onTap: () =>
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen())),
+          ),
+          const Divider(indent: 24),
+        ],
+      ),
+    );
+  }
+}

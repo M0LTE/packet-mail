@@ -1,12 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'providers.dart';
+import 'screens/first_run.dart';
+import 'screens/home.dart';
 import 'theme.dart';
 
 void main() {
   LicenseRegistry.addLicense(_fontLicences);
-  runApp(const PacketMailApp());
+  runApp(const ProviderScope(child: PacketMailApp()));
 }
 
 Stream<LicenseEntry> _fontLicences() async* {
@@ -27,11 +31,22 @@ class PacketMailApp extends StatelessWidget {
     return MaterialApp(
       title: 'Packet Mail',
       theme: Logbook.theme,
-      home: Scaffold(
-        body: Center(
-          child: Text('Packet Mail', style: Logbook.theme.textTheme.displaySmall),
-        ),
-      ),
+      home: const _Start(),
     );
+  }
+}
+
+/// First run until there is an identity, then the mail screens.
+class _Start extends ConsumerWidget {
+  const _Start();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return switch (ref.watch(identityProvider)) {
+      AsyncData(value: null) => const FirstRunScreen(),
+      AsyncData() => const HomeScreen(),
+      AsyncError(:final error) => Scaffold(body: Center(child: Text('Could not open the mail store: $error'))),
+      _ => const Scaffold(),
+    };
   }
 }

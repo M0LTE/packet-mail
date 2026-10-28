@@ -71,6 +71,16 @@ abstract final class Logbook {
         scrolledUnderElevation: 0,
         titleTextStyle: text.headlineSmall,
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        labelStyle: _style(sans, 14, 400, inkSoft),
+        floatingLabelStyle: _style(sans, 13, 500, stampRed),
+        hintStyle: _style(sans, 14, 400, inkFaint),
+        helperStyle: _style(sans, 12, 400, inkSoft),
+        helperMaxLines: 3,
+        errorMaxLines: 3,
+        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: rule)),
+        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: stampRed, width: 1.5)),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: paperDeep,
         indicatorColor: stampRed.withValues(alpha: 0.12),
