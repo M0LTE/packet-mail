@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import 'bulletins_tab.dart';
 import 'connections_screen.dart';
+import 'contacts_tab.dart';
 import 'identity_screen.dart';
 import 'mail_tab.dart';
 
@@ -33,8 +35,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       body: switch (_tab) {
         0 => const MailTab(),
-        1 => const _ComingSoon(title: 'Bulletins'),
-        2 => const _ComingSoon(title: 'Contacts'),
+        1 => const BulletinsTab(),
+        2 => const ContactsTab(),
         _ => const SettingsTab(),
       },
       bottomNavigationBar: NavigationBar(
@@ -46,30 +48,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Contacts'),
           NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
         ],
-      ),
-    );
-  }
-}
-
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: text.displaySmall),
-            const SizedBox(height: 8),
-            Text('Coming soon.', style: text.titleMedium?.copyWith(color: Logbook.inkSoft)),
-          ],
-        ),
       ),
     );
   }

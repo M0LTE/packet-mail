@@ -1,0 +1,164 @@
+import 'package:drift/drift.dart' show OrderingTerm, Value;
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mail_core/mail_core.dart';
+
+import 'helpers.dart';
+
+Future<void> settleAll(TestApp app, WidgetTester tester) async {
+  for (var i = 0; i < 4; i++) {
+    await app.settle(tester);
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+}
+
+Future<List<Contact>> contacts(TestApp app, WidgetTester tester) async => (await tester.runAsync(
+  () => (app.store.select(app.store.contacts)..orderBy([(c) => OrderingTerm(expression: c.callsign)])).get(),
+))!;
+
+Future<void> openContacts(TestApp app, WidgetTester tester) async {
+  await app.pump(tester);
+  await tester.tap(find.text('Contacts'));
+  await settleAll(app, tester);
+}
+
+void main() {
+  testWidgets('the address book lists, searches and shows where each came from', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    await tester.runAsync(
+      () => app.store.batch(
+        (b) => b.insertAll(app.store.contacts, [
+          ContactsCompanion.insert(
+            callsign: 'Q0ABC',
+            name: const Value('Alice'),
+            homeBbs: const Value('Q0BBS.#42.GBR.EURO'),
+            source: 'mail',
+          ),
+          ContactsCompanion.insert(callsign: 'Q0XYZ', source: 'whitepages', homeBbs: const Value('Q0WPS.GBR.EURO')),
+          ContactsCompanion.insert(callsign: 'Q1DEF', name: const Value('Dave'), source: 'typed'),
+        ]),
+      ),
+    );
+    await openContacts(app, tester);
+
+    expect(find.text('3 contacts'), findsOneWidget);
+    expect(find.text('Alice, Q0ABC'), findsOneWidget);
+    expect(find.text('@Q0BBS.#42.GBR.EURO'), findsOneWidget);
+    expect(find.text('From received mail'), findsOneWidget);
+    expect(find.text('From White Pages'), findsOneWidget);
+    expect(find.text('Added by you'), findsOneWidget);
+    expect(find.text('No home BBS yet'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const ValueKey('contact-search')), 'dave');
+    await tester.pump();
+    expect(find.text('Dave, Q1DEF'), findsOneWidget);
+    expect(find.text('Alice, Q0ABC'), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('contact-search')), 'nobody');
+    await tester.pump();
+    expect(find.text('No one matches.'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
+  testWidgets('an edited contact is marked so sync never overwrites it', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    await tester.runAsync(
+      () => app.store
+          .into(app.store.contacts)
+          .insert(ContactsCompanion.insert(callsign: 'Q0ABC', homeBbs: const Value('Q0BBS.GBR.EURO'), source: 'mail')),
+    );
+    await openContacts(app, tester);
+    await tester.tap(find.text('Q0ABC').last);
+    await settleAll(app, tester);
+    expect(find.text('From received mail'), findsOneWidget);
+
+    await enter(tester, 'Name', 'Alice');
+    await enter(tester, 'Home BBS', 'Q0NEW.#42.GBR.EURO');
+    await tester.tap(find.byKey(const ValueKey('save-contact')));
+    await settleAll(app, tester);
+
+    final c = (await contacts(app, tester)).single;
+    expect([c.name, c.homeBbs, c.source, c.edited], ['Alice', 'Q0NEW.#42.GBR.EURO', 'mail', true]);
+    expect(find.text('From received mail, edited by you'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
+  testWidgets('adding a contact checks it and releases mail held for it', (tester) async {
+    final app = TestApp();
+    final conn = await seedStation(app, tester);
+    final held = (await tester.runAsync(() async {
+      final id = await app.store
+          .into(app.store.outgoing)
+          .insert(
+            OutgoingCompanion.insert(
+              connectionId: conn,
+              type: 'personal',
+              subject: 'Hi',
+              body: 'Hi',
+              createdAt: DateTime(2026, 10, 28),
+            ),
+          );
+      return app.store
+          .into(app.store.outgoingRecipients)
+          .insert(
+            OutgoingRecipientsCompanion.insert(
+              outgoingId: id,
+              address: 'Q0ABC',
+              state: const Value('held'),
+              note: const Value('No home BBS known for Q0ABC.'),
+            ),
+          );
+    }))!;
+    await openContacts(app, tester);
+    expect(find.textContaining('No contacts yet'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('add-contact')));
+    await settleAll(app, tester);
+
+    await enter(tester, 'Callsign', 'Q0ABC-1');
+    await tester.tap(find.byKey(const ValueKey('save-contact')));
+    await settleAll(app, tester);
+    expect(find.text('Leave off the SSID; just the callsign, such as M0ABC.'), findsOneWidget);
+
+    await enter(tester, 'Callsign', 'q0abc');
+    await enter(tester, 'Home BBS', 'Q0BBS.#42..EURO');
+    await tester.tap(find.byKey(const ValueKey('save-contact')));
+    await settleAll(app, tester);
+    expect(find.textContaining('empty part'), findsOneWidget);
+
+    // Look up needs White Pages, which this BBS lacks.
+    await tester.tap(find.byKey(const ValueKey('look-up')));
+    await settleAll(app, tester);
+    expect(find.text('GB7RDG has no White Pages to ask.'), findsOneWidget);
+
+    await enter(tester, 'Home BBS', 'Q0BBS.#42.GBR.EURO');
+    await tester.tap(find.byKey(const ValueKey('save-contact')));
+    await settleAll(app, tester);
+    final c = (await contacts(app, tester)).single;
+    expect([c.callsign, c.homeBbs, c.source, c.edited], ['Q0ABC', 'Q0BBS.#42.GBR.EURO', 'typed', true]);
+    final r = (await tester.runAsync(
+      () => (app.store.select(app.store.outgoingRecipients)..where((r) => r.id.equals(held))).getSingle(),
+    ))!;
+    expect(r.state, 'queued');
+    await app.dispose(tester);
+  });
+
+  testWidgets('deleting a contact asks first', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    await tester.runAsync(
+      () => app.store.into(app.store.contacts).insert(ContactsCompanion.insert(callsign: 'Q0ABC', source: 'typed')),
+    );
+    await openContacts(app, tester);
+    await tester.tap(find.text('Q0ABC').last);
+    await settleAll(app, tester);
+    await tester.tap(find.byTooltip('Delete'));
+    await settleAll(app, tester);
+    expect(find.text('Delete Q0ABC?'), findsOneWidget);
+    await tester.tap(find.text('Delete').last);
+    await settleAll(app, tester);
+    expect(await contacts(app, tester), isEmpty);
+    expect(find.textContaining('No contacts yet'), findsOneWidget);
+    await app.dispose(tester);
+  });
+}
