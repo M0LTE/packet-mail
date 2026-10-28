@@ -12,14 +12,14 @@ void main() {
     await tapText(tester, 'Next');
     expect(find.text('Enter your callsign.'), findsOneWidget);
     expect(find.text('Enter your name.'), findsOneWidget);
-    expect(find.text('Enter your home BBS, such as GB7RDG.#42.GBR.EURO.'), findsOneWidget);
+    expect(find.text('Enter your home BBS, such as GB7XYZ.#42.GBR.EURO.'), findsOneWidget);
 
     await enter(tester, 'Callsign', 'M0LTE-1');
     expect(find.text('Leave off the SSID; just the callsign, such as M0ABC.'), findsOneWidget);
     await enter(tester, 'Callsign', 'HELLO');
     expect(find.text('That does not look like a callsign, such as M0ABC.'), findsOneWidget);
     await enter(tester, 'Home BBS', 'M0LTE@GB7RDG');
-    expect(find.text('Just the part after @, such as GB7RDG.#42.GBR.EURO.'), findsOneWidget);
+    expect(find.text('Just the part after @, such as GB7XYZ.#42.GBR.EURO.'), findsOneWidget);
     await enter(tester, 'Home BBS', 'GB7RDG..GBR');
     expect(find.textContaining('empty part'), findsOneWidget);
     await enter(tester, 'Home BBS', 'GB7RDG.#42.GBR');
@@ -103,6 +103,19 @@ void main() {
     expect(find.text('No mail yet. Pull down to check.'), findsOneWidget);
     final c = (await tester.runAsync(() => app.store.select(app.store.connections).getSingle()))!;
     expect(app.passwords.passwords[c.id], 'secret');
+    await app.dispose(tester);
+  });
+
+  testWidgets('examples use your own home BBS once known', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    await app.pump(tester);
+    await tapText(tester, 'Settings');
+    await tapText(tester, 'M0LTE, Tom');
+    await app.settle(tester);
+    await enter(tester, 'Home BBS', '');
+    await app.settle(tester);
+    expect(find.text('Enter your home BBS, such as GB7RDG.#42.GBR.EURO.'), findsOneWidget);
     await app.dispose(tester);
   });
 }

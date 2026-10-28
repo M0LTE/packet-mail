@@ -12,11 +12,21 @@ String? checkCallsign(String? text, {String empty = 'Enter your callsign.'}) {
 
 String? checkRequired(String? text, String what) => (text ?? '').trim().isEmpty ? 'Enter $what.' : null;
 
-/// The home BBS is the part after @ in an address, such as GB7RDG.#42.GBR.EURO.
-String? checkHomeBbs(String? text) {
+/// A made-up home BBS for examples, before the user has given their own.
+const exampleHomeBbs = 'GB7XYZ.#42.GBR.EURO';
+
+/// The user's own home BBS to use as an example, or a made-up one.
+String homeBbsExample(String? own) {
+  final s = (own ?? '').trim().toUpperCase();
+  return s.isEmpty || checkHomeBbs(s) != null ? exampleHomeBbs : s;
+}
+
+/// The home BBS is the part after @ in an address, such as GB7XYZ.#42.GBR.EURO.
+/// [example] is shown in the messages.
+String? checkHomeBbs(String? text, {String example = exampleHomeBbs}) {
   final s = (text ?? '').trim();
-  if (s.isEmpty) return 'Enter your home BBS, such as GB7RDG.#42.GBR.EURO.';
-  if (s.contains('@')) return 'Just the part after @, such as GB7RDG.#42.GBR.EURO.';
+  if (s.isEmpty) return 'Enter your home BBS, such as $example.';
+  if (s.contains('@')) return 'Just the part after @, such as $example.';
   final blocking = MailAddress.parse('Q0AAA@$s').problems.where((p) => p.blocking);
   return blocking.isEmpty ? null : blocking.first.message;
 }

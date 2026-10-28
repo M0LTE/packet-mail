@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
 import '../providers.dart';
+import '../validation.dart';
 import 'identity_fields.dart';
 
 /// Edits the one identity.
@@ -51,7 +52,12 @@ class _IdentityScreenState extends ConsumerState<IdentityScreen> {
           Form(
             key: _form,
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: IdentityFields(callsign: _callsign, name: _name, homeBbs: _homeBbs),
+            child: IdentityFields(
+              callsign: _callsign,
+              name: _name,
+              homeBbs: _homeBbs,
+              example: homeBbsExample(widget.identity.homeBbs),
+            ),
           ),
           const SizedBox(height: 28),
           FilledButton(onPressed: _save, child: const Text('Save')),

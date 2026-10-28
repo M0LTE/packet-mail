@@ -4,11 +4,20 @@ import '../validation.dart';
 
 /// Callsign, name and home BBS, for first run and for editing the identity.
 class IdentityFields extends StatefulWidget {
-  const IdentityFields({super.key, required this.callsign, required this.name, required this.homeBbs});
+  const IdentityFields({
+    super.key,
+    required this.callsign,
+    required this.name,
+    required this.homeBbs,
+    this.example = exampleHomeBbs,
+  });
 
   final TextEditingController callsign;
   final TextEditingController name;
   final TextEditingController homeBbs;
+
+  /// The home BBS shown as an example: the user's own once known.
+  final String example;
 
   @override
   State<IdentityFields> createState() => _IdentityFieldsState();
@@ -53,13 +62,13 @@ class _IdentityFieldsState extends State<IdentityFields> {
           controller: widget.homeBbs,
           decoration: InputDecoration(
             labelText: 'Home BBS',
-            hintText: 'GB7RDG.#42.GBR.EURO',
+            hintText: widget.example,
             helperText: homeBbsWarning(widget.homeBbs.text) ??
                 'Where your mail is kept: the part after @ in your address.',
           ),
           textCapitalization: TextCapitalization.characters,
           autocorrect: false,
-          validator: checkHomeBbs,
+          validator: (s) => checkHomeBbs(s, example: widget.example),
         ),
       ],
     );

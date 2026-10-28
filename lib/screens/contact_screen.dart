@@ -162,12 +162,14 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                   controller: _homeBbs,
                   decoration: InputDecoration(
                     labelText: 'Home BBS',
-                    hintText: 'GB7RDG.#42.GBR.EURO',
+                    hintText: homeBbsExample(ref.watch(identityProvider).value?.homeBbs),
                     helperText: homeBbsWarning(_homeBbs.text) ?? 'Where their mail is kept: the part after @.',
                   ),
                   textCapitalization: TextCapitalization.characters,
                   autocorrect: false,
-                  validator: (s) => (s ?? '').trim().isEmpty ? null : checkHomeBbs(s),
+                  validator: (s) => (s ?? '').trim().isEmpty
+                      ? null
+                      : checkHomeBbs(s, example: homeBbsExample(ref.read(identityProvider).value?.homeBbs)),
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
