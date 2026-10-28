@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:packetmail/compose.dart';
 import 'package:packetmail/connections.dart';
+import 'package:packetmail/contacts.dart';
 import 'package:packetmail/screens/mail_tab.dart';
 
 import 'helpers.dart';
@@ -35,6 +36,20 @@ Future<void> showBox(TestApp app, WidgetTester tester, String name) async {
 }
 
 void main() {
+  testWidgets('To suggestions come from the address book', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    await app.pump(tester, overrides: [
+      contactsProvider.overrideWith(
+          (ref) => Stream.value(const [Contact(callsign: 'Q0ABC', name: 'Alice', source: 'typed', edited: true)])),
+    ]);
+    await settleAll(app, tester);
+    await openCompose(app, tester);
+    await type(tester, 'to', 'q0');
+    expect(find.text('Alice, Q0ABC'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
   testWidgets('To is checked as you type, suggests contacts, and a plain message goes straight out', (tester) async {
     final app = TestApp();
     await seedStation(app, tester);

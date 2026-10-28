@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
 import '../compose.dart';
+import '../contacts.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
@@ -135,7 +136,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     final text = Theme.of(context).textTheme;
     final connections = ref.watch(connectionsProvider).value ?? const [];
     final connection = _connection(connections);
-    final contacts = ref.watch(composeContactsProvider).value ?? const [];
+    final contacts = ref.watch(contactsProvider).value ?? const [];
 
     final toError = _to.text.trim().isEmpty && !_tried ? null : recipientsError(_to.text);
     final toWarnings = recipientsWarnings(_to.text);

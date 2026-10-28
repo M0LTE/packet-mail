@@ -2,9 +2,9 @@ import 'package:mail_core/mail_core.dart';
 
 /// Form checks, each returning one plain line or null when the text is fine.
 
-String? checkCallsign(String? text) {
+String? checkCallsign(String? text, {String empty = 'Enter your callsign.'}) {
   final s = (text ?? '').trim();
-  if (s.isEmpty) return 'Enter your callsign.';
+  if (s.isEmpty) return empty;
   if (s.contains('-')) return 'Leave off the SSID; just the callsign, such as M0ABC.';
   if (!isCallsign(s)) return 'That does not look like a callsign, such as M0ABC.';
   return null;

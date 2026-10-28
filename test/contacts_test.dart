@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
+
+import 'package:packetmail/validation.dart';
 
 import 'helpers.dart';
 
@@ -81,6 +85,39 @@ void main() {
     final c = (await contacts(app, tester)).single;
     expect([c.name, c.homeBbs, c.source, c.edited], ['Alice', 'Q0NEW.#42.GBR.EURO', 'mail', true]);
     expect(find.text('From received mail, edited by you'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
+  testWidgets('leaving while a White Pages lookup is under way is quiet', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    app.bbs.whitePages = {'Q0ABC': 'Q0BBS.#42.GBR.EURO'};
+    await openContacts(app, tester);
+    await tester.tap(find.byKey(const ValueKey('add-contact')));
+    await settleAll(app, tester);
+    await enter(tester, 'Callsign', 'Q0ABC');
+    app.gate = Completer();
+    await tester.tap(find.byKey(const ValueKey('look-up')));
+    await settleAll(app, tester);
+    await tester.pageBack();
+    await settleAll(app, tester);
+    app.gate!.complete();
+    await settleAll(app, tester);
+    expect(tester.takeException(), isNull);
+    await app.dispose(tester);
+  });
+
+  testWidgets('a new contact needs a callsign', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    await openContacts(app, tester);
+    await tester.tap(find.byKey(const ValueKey('add-contact')));
+    await settleAll(app, tester);
+    await tester.tap(find.byKey(const ValueKey('save-contact')));
+    await settleAll(app, tester);
+    expect(find.text('Enter a callsign.'), findsOneWidget);
+    expect(checkCallsign('', empty: 'Enter a callsign.'), 'Enter a callsign.');
+    expect(checkCallsign(''), 'Enter your callsign.');
     await app.dispose(tester);
   });
 

@@ -47,10 +47,8 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
   }
 
   String? _checkCall(String? s) {
-    final t = (s ?? '').trim().toUpperCase();
-    if (t.isEmpty) return 'Enter a callsign.';
-    if (t.contains('-')) return 'Leave off the SSID; just the callsign, such as M0ABC.';
-    if (!isCallsign(t)) return 'That does not look like a callsign, such as M0ABC.';
+    if (checkCallsign(s, empty: 'Enter a callsign.') case final problem?) return problem;
+    final t = s!.trim().toUpperCase();
     if (_isNew && (ref.read(contactsProvider).value ?? const []).any((c) => c.callsign == t)) {
       return '$t is already in your contacts.';
     }
@@ -100,14 +98,12 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
     if (connection == null) return say('Add a connection in Settings first.');
     setState(() => _looking = true);
     String message;
+    String? home;
     try {
-      final home = await ref.read(syncEngineProvider).lookUpHomeBbs(connection.id, call);
-      if (home == null) {
-        message = "${connection.name}'s White Pages doesn't know $call.";
-      } else {
-        _homeBbs.text = home;
-        message = 'Found $call@$home. Save to keep it.';
-      }
+      home = await ref.read(syncEngineProvider).lookUpHomeBbs(connection.id, call);
+      message = home == null
+          ? "${connection.name}'s White Pages doesn't know $call."
+          : 'Found $call@$home. Save to keep it.';
     } on UnsupportedError {
       message = '${connection.name} has no White Pages to ask.';
     } on BbsError catch (e) {
@@ -115,7 +111,9 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
     } on Exception {
       message = "Can't reach ${connection.name}. Try again when you're connected.";
     }
+    // The screen may have closed while it waited, taking the field with it.
     if (!mounted) return;
+    if (home != null) _homeBbs.text = home;
     setState(() => _looking = false);
     say(message);
   }

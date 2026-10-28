@@ -112,8 +112,15 @@ class FakeDriver extends Fake implements MailDriver {
         body: body,
       );
 
+  /// When set, the BBS has White Pages and knows these home BBSs.
+  Map<String, String>? whitePages;
+
   @override
-  Set<DriverCapability> get capabilities => {DriverCapability.kill};
+  Set<DriverCapability> get capabilities =>
+      {DriverCapability.kill, if (whitePages != null) DriverCapability.whitePagesLookup};
+
+  @override
+  Future<String?> lookUpHomeBbs(String callsign) async => whitePages?[callsign];
 
   @override
   Future<List<MessageHeader>> listPersonal() async => [for (final m in personal.values) m.header];

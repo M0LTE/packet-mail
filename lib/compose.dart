@@ -1,9 +1,6 @@
-import 'package:drift/drift.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
 import 'message_format.dart';
-import 'providers.dart';
 
 /// What the compose screen starts with: empty, a reply or a forward.
 class ComposeDraft {
@@ -166,12 +163,6 @@ bool canCancel(List<OutgoingRecipient> recipients) =>
 /// Takes an unsent message out of the outbox.
 Future<void> cancelOutgoing(MailStore store, int outgoingId) =>
     (store.delete(store.outgoing)..where((o) => o.id.equals(outgoingId))).go();
-
-/// The address book, for To suggestions.
-final composeContactsProvider = StreamProvider<List<Contact>>((ref) {
-  final store = ref.watch(storeProvider);
-  return (store.select(store.contacts)..orderBy([(c) => OrderingTerm(expression: c.callsign)])).watch();
-});
 
 /// Address book entries matching [typed]: callsign start or name.
 List<Contact> suggestContacts(List<Contact> contacts, String typed) {
