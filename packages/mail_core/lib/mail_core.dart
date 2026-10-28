@@ -8,6 +8,7 @@ export 'src/bpq/bpq_driver.dart';
 export 'src/bpq/bpq_format.dart';
 export 'src/driver.dart';
 export 'src/message.dart';
+export 'src/store/mail_store.dart';
 export 'src/transport/line_session.dart';
 export 'src/transport/recording.dart';
 export 'src/transport/tcp_transport.dart';
