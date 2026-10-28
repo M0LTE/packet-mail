@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -51,30 +50,15 @@ typedef ReportSender = Future<void> Function(ProblemReport report, Rect? origin)
 
 final reportSenderProvider = Provider<ReportSender>((ref) => sendReport);
 
-/// Opens an email to [reportAddress] with the traffic attached, or the share
-/// sheet with the address in the text when no mail app can take attachments.
+/// Opens the share sheet with the traffic attached and the subject set.
+/// The user picks their own email app and pastes [reportAddress].
 Future<void> sendReport(ProblemReport report, Rect? origin) async {
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/$reportFileName');
   await file.writeAsString(report.attachment);
-
-  try {
-    final can = await FlutterEmailSender.getCapabilities();
-    if (can.canSend && can.supportsAttachments) {
-      await FlutterEmailSender.send(Email(
-        recipients: const [reportAddress],
-        subject: reportSubject,
-        body: report.body,
-        attachmentPaths: [file.path],
-      ));
-      return;
-    }
-  } on FlutterEmailSenderException {
-    // No mail app that takes attachments; share instead.
-  }
   await SharePlus.instance.share(ShareParams(
     subject: reportSubject,
-    text: 'Please email this to $reportAddress with the attached file.\n\n${report.body}',
+    text: report.body,
     files: [XFile(file.path, mimeType: 'text/plain')],
     sharePositionOrigin: origin,
   ));

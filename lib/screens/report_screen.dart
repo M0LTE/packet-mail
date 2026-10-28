@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../report.dart';
 import '../theme.dart';
 
 /// Report a problem: a description and the last 15 minutes of BBS traffic,
-/// by email.
+/// shared to the user's own email app.
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({super.key});
 
@@ -48,7 +49,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     } on Exception {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not open email or sharing. Please try again.')));
+            .showSnackBar(const SnackBar(content: Text('Could not open sharing. Please try again.')));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -98,7 +99,25 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             child: const Text('Send'),
           ),
           const SizedBox(height: 12),
-          Text('Opens an email to $reportAddress. Nothing is sent until you send it there.', style: text.bodySmall),
+          Text('Choose your email app, then paste the address.', style: text.bodySmall),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(child: SelectableText(reportAddress, style: text.titleMedium)),
+              TextButton.icon(
+                key: const ValueKey('copy-address'),
+                onPressed: () {
+                  Clipboard.setData(const ClipboardData(text: reportAddress));
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(const SnackBar(content: Text('Address copied.')));
+                },
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('Copy'),
+              ),
+            ],
+          ),
+          Text('Nothing is sent until you send it from your email app.', style: text.bodySmall),
         ],
       ),
     );
@@ -119,7 +138,7 @@ class ReportPreviewScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         children: [
-          Text('EMAIL TO $reportAddress', style: Logbook.sectionLabel),
+          Text('EMAIL TEXT, TO $reportAddress', style: Logbook.sectionLabel),
           const SizedBox(height: 8),
           SelectableText(report.body, style: text.bodyMedium),
           const SizedBox(height: 24),

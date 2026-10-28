@@ -48,6 +48,13 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
+    expect(find.text('Choose your email app, then paste the address.'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('copy-address')));
+    await tester.tap(find.byKey(const ValueKey('copy-address')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Address copied.'), findsOneWidget);
+
     await tapText(tester, 'Send');
     final report = sent.single;
     expect(report.body, startsWith('Message 4490 looks odd.\n'));
