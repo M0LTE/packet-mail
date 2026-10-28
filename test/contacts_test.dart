@@ -66,11 +66,15 @@ void main() {
 
   testWidgets('an edited contact is marked so sync never overwrites it', (tester) async {
     final app = TestApp();
-    await seedStation(app, tester);
+    final conn = await seedStation(app, tester, personalDownload: 'atSync');
     await tester.runAsync(
-      () => app.store
-          .into(app.store.contacts)
-          .insert(ContactsCompanion.insert(callsign: 'Q0ABC', homeBbs: const Value('Q0BBS.GBR.EURO'), source: 'mail')),
+      () => app.store.batch(
+        (b) => b.insertAll(app.store.contacts, [
+          ContactsCompanion.insert(callsign: 'Q0ABC', homeBbs: const Value('Q0BBS.GBR.EURO'), source: 'mail'),
+          // Not edited: sync should move it, to show the sync did learn routes.
+          ContactsCompanion.insert(callsign: 'Q0XYZ', homeBbs: const Value('Q0BBS.GBR.EURO'), source: 'mail'),
+        ]),
+      ),
     );
     await openContacts(app, tester);
     await tester.tap(find.text('Q0ABC').last);
@@ -81,10 +85,22 @@ void main() {
     await enter(tester, 'Home BBS', 'Q0NEW.#42.GBR.EURO');
     await tester.tap(find.byKey(const ValueKey('save-contact')));
     await settleAll(app, tester);
-
-    final c = (await contacts(app, tester)).single;
-    expect([c.name, c.homeBbs, c.source, c.edited], ['Alice', 'Q0NEW.#42.GBR.EURO', 'mail', true]);
     expect(find.text('From received mail, edited by you'), findsOneWidget);
+
+    // Mail from both, through a different BBS, then a sync.
+    app.bbs
+      ..add(70, from: 'Q0ABC@Q0OTH.#23.GBR.EURO')
+      ..add(71, from: 'Q0XYZ@Q0OTH.#23.GBR.EURO');
+    SyncResult? result;
+    SyncEngine(app.store, (_) async => app.bbs).sync(conn).then((r) => result = r);
+    for (var i = 0; i < 10 && result == null; i++) {
+      await settleAll(app, tester);
+    }
+    expect(result?.newMessages, 2);
+
+    final [abc, xyz] = await contacts(app, tester);
+    expect([abc.name, abc.homeBbs, abc.source, abc.edited], ['Alice', 'Q0NEW.#42.GBR.EURO', 'mail', true]);
+    expect(xyz.homeBbs, 'Q0OTH.#23.GBR.EURO');
     await app.dispose(tester);
   });
 
