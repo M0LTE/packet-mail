@@ -106,11 +106,13 @@ class _ConnectionEditScreenState extends ConsumerState<ConnectionEditScreen> {
 
   Future<void> _delete() async {
     final c = widget.connection!;
+    final contents = await ConnectionContents.count(ref.read(storeProvider), c.id);
+    if (!mounted) return;
     final sure = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Delete ${c.name}?'),
-        content: const Text('Mail fetched through it is removed from this phone. Nothing changes on the BBS.'),
+        content: Text(contents.warning),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),

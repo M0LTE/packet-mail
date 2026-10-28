@@ -88,6 +88,47 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('deleting says what goes with it, unsent mail first', (tester) async {
+    final app = await seeded(tester);
+    await tester.runAsync(() async {
+      final store = app.store;
+      final id = (await store.select(store.connections).getSingle()).id;
+      for (final (n, type) in [(1, 'personal'), (2, 'traffic'), (3, 'bulletin')]) {
+        await store.into(store.messages).insert(MessagesCompanion.insert(
+              connectionId: id,
+              bbsNumber: n,
+              type: type,
+              fromCall: 'G8BPQ',
+              toCall: 'M0LTE',
+              subject: 'Hello',
+              date: DateTime(2026, 10, 28),
+              lastListedAt: DateTime(2026, 10, 28),
+            ));
+      }
+      for (final sent in [null, null, DateTime(2026, 10, 27)]) {
+        await store.into(store.outgoing).insert(OutgoingCompanion.insert(
+            connectionId: id,
+            type: 'personal',
+            subject: 'Hi',
+            body: 'Hi',
+            createdAt: DateTime(2026, 10, 27),
+            sentAt: Value(sent)));
+      }
+    });
+    await tapText(tester, 'Home BBS');
+    await app.settle(tester);
+    await tester.tap(find.byTooltip('Delete'));
+    await app.settle(tester);
+    await tester.pumpAndSettle();
+    expect(
+        find.text('2 messages in the Outbox have not been sent and will be lost. '
+            'Removed from this phone: 2 messages, 1 bulletin and 1 item in Sent. Nothing changes on the BBS.'),
+        findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await app.dispose(tester);
+  });
+
   testWidgets('deletes a connection after asking', (tester) async {
     final app = await seeded(tester);
     await tapText(tester, 'Home BBS');

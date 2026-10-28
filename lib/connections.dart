@@ -84,6 +84,50 @@ Future<int> saveConnection(
   return id;
 }
 
+/// What deleting a connection removes from this phone with it.
+class ConnectionContents {
+  const ConnectionContents({this.messages = 0, this.bulletins = 0, this.unsent = 0, this.sent = 0});
+
+  final int messages;
+  final int bulletins;
+
+  /// In the Outbox, not yet sent.
+  final int unsent;
+
+  /// In Sent.
+  final int sent;
+
+  static Future<ConnectionContents> count(MailStore store, int id) async {
+    Future<int> n(String sql) async =>
+        (await store.customSelect(sql, variables: [Variable.withInt(id)]).getSingle()).read<int>('n');
+    return ConnectionContents(
+      messages: await n("SELECT COUNT(*) AS n FROM messages WHERE connection_id = ? AND type != 'bulletin'"),
+      bulletins: await n("SELECT COUNT(*) AS n FROM messages WHERE connection_id = ? AND type = 'bulletin'"),
+      unsent: await n('SELECT COUNT(*) AS n FROM outgoing WHERE connection_id = ? AND sent_at IS NULL'),
+      sent: await n('SELECT COUNT(*) AS n FROM outgoing WHERE connection_id = ? AND sent_at IS NOT NULL'),
+    );
+  }
+
+  /// What the delete dialog says, in plain words.
+  String get warning {
+    String count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
+    final removed = [
+      if (messages > 0) count(messages, 'message'),
+      if (bulletins > 0) count(bulletins, 'bulletin'),
+      if (sent > 0) '${count(sent, 'item')} in Sent',
+    ];
+    return [
+      if (unsent > 0)
+        '${count(unsent, 'message')} in the Outbox ${unsent == 1 ? 'has' : 'have'} not been sent and will be lost.',
+      if (removed.isNotEmpty) 'Removed from this phone: ${_list(removed)}.',
+      'Nothing changes on the BBS.',
+    ].join(' ');
+  }
+
+  static String _list(List<String> items) =>
+      items.length == 1 ? items.single : '${items.sublist(0, items.length - 1).join(', ')} and ${items.last}';
+}
+
 Future<void> deleteConnection(MailStore store, PasswordStore passwords, int id) async {
   await (store.delete(store.connections)..where((c) => c.id.equals(id))).go();
   await passwords.delete(id);
