@@ -67,19 +67,20 @@ class ConnectionDraft {
 }
 
 /// Saves a new connection (no [id]) or updates one, with its password.
+/// A null [password] leaves the stored one as it is.
 Future<int> saveConnection(
   MailStore store,
   PasswordStore passwords,
   ConnectionDraft draft, {
   int? id,
-  required String password,
+  required String? password,
 }) async {
   if (id == null) {
     id = await store.into(store.connections).insert(draft.toCompanion());
   } else {
     await (store.update(store.connections)..where((c) => c.id.equals(id!))).write(draft.toCompanion());
   }
-  await passwords.write(id, password);
+  if (password != null) await passwords.write(id, password);
   return id;
 }
 

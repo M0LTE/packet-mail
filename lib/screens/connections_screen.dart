@@ -4,6 +4,7 @@ import 'package:mail_core/mail_core.dart';
 
 import '../connections.dart';
 import '../providers.dart';
+import '../theme.dart';
 import 'connection_form.dart';
 
 /// Every connection, with its last sync result.
@@ -81,11 +82,23 @@ class ConnectionEditScreen extends ConsumerStatefulWidget {
 }
 
 class _ConnectionEditScreenState extends ConsumerState<ConnectionEditScreen> {
-  late final Future<String?> _password = widget.connection == null
-      ? Future.value(null)
-      : ref.read(passwordsProvider).read(widget.connection!.id);
+  /// The stored password, or null with [_passwordUnreadable] set if the
+  /// phone would not give it back.
+  late final Future<String?> _password = _readPassword();
+  var _passwordUnreadable = false;
 
-  Future<void> _save(ConnectionDraft draft, String password) async {
+  Future<String?> _readPassword() async {
+    final c = widget.connection;
+    if (c == null) return null;
+    try {
+      return await ref.read(passwordsProvider).read(c.id);
+    } on Exception {
+      _passwordUnreadable = true;
+      return null;
+    }
+  }
+
+  Future<void> _save(ConnectionDraft draft, String? password) async {
     await saveConnection(ref.read(storeProvider), ref.read(passwordsProvider), draft,
         id: widget.connection?.id, password: password);
     if (mounted) Navigator.of(context).pop();
@@ -129,6 +142,13 @@ class _ConnectionEditScreenState extends ConsumerState<ConnectionEditScreen> {
             children: [
               if (c != null) ...[
                 Text(lastSyncLine(c), style: text.bodySmall),
+                const SizedBox(height: 8),
+              ],
+              if (_passwordUnreadable) ...[
+                Text(
+                  "Couldn't read the saved password. It stays as it is unless you type a new one.",
+                  style: text.bodyMedium?.copyWith(color: Logbook.stampRed),
+                ),
                 const SizedBox(height: 8),
               ],
               ConnectionForm(

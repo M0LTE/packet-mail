@@ -26,7 +26,9 @@ class ConnectionForm extends ConsumerStatefulWidget {
   /// The identity's name, answering a first-time name prompt during a test.
   final String Function() loginNameForTest;
   final String saveLabel;
-  final Future<void> Function(ConnectionDraft draft, String password) onSave;
+
+  /// [password] is null when the field was not changed.
+  final Future<void> Function(ConnectionDraft draft, String? password) onSave;
 
   @override
   ConsumerState<ConnectionForm> createState() => _ConnectionFormState();
@@ -105,7 +107,12 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
     if (!_check()) return;
     setState(() => _saving = true);
     try {
-      await widget.onSave(_draft, _password.text);
+      final changed = widget.initial == null || _password.text != (widget.initialPassword ?? '');
+      await widget.onSave(_draft, changed ? _password.text : null);
+    } on Exception {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save. Try again.')));
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

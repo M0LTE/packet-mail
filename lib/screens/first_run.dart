@@ -40,7 +40,7 @@ class _FirstRunScreenState extends ConsumerState<FirstRunScreen> {
     if (_identityForm.currentState!.validate()) setState(() => _step = 1);
   }
 
-  Future<void> _save(ConnectionDraft draft, String password) async {
+  Future<void> _save(ConnectionDraft draft, String? password) async {
     final store = ref.read(storeProvider);
     await saveConnection(store, ref.read(passwordsProvider), draft, password: password);
     await store.into(store.identities).insert(IdentitiesCompanion(

@@ -73,6 +73,21 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('a password the phone will not give back is kept, and the form says so', (tester) async {
+    final app = await seeded(tester);
+    app.passwords.readFailure = Exception('locked');
+    await tapText(tester, 'Home BBS');
+    await app.settle(tester);
+    expect(find.textContaining("Couldn't read the saved password."), findsOneWidget);
+    app.passwords.readFailure = null;
+    await enter(tester, 'Host', 'bbs.lan');
+    await tapText(tester, 'Save');
+    await app.settle(tester);
+    expect(find.text('bbs.lan:8011, FBB port'), findsOneWidget);
+    expect(app.passwords.passwords.values.single, 'secret');
+    await app.dispose(tester);
+  });
+
   testWidgets('deletes a connection after asking', (tester) async {
     final app = await seeded(tester);
     await tapText(tester, 'Home BBS');

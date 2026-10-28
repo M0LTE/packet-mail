@@ -29,11 +29,21 @@ class SecurePasswordStore implements PasswordStore {
 class MemoryPasswordStore implements PasswordStore {
   final passwords = <int, String>{};
 
-  @override
-  Future<String?> read(int connectionId) async => passwords[connectionId];
+  /// When set, reads or writes throw this, as a locked keychain might.
+  Exception? readFailure;
+  Exception? writeFailure;
 
   @override
-  Future<void> write(int connectionId, String password) async => passwords[connectionId] = password;
+  Future<String?> read(int connectionId) async {
+    if (readFailure case final e?) throw e;
+    return passwords[connectionId];
+  }
+
+  @override
+  Future<void> write(int connectionId, String password) async {
+    if (writeFailure case final e?) throw e;
+    passwords[connectionId] = password;
+  }
 
   @override
   Future<void> delete(int connectionId) async => passwords.remove(connectionId);
