@@ -13,9 +13,10 @@ String _two(int n) => n.toString().padLeft(2, '0');
 /// For a message list: "09:12" today, "Yesterday", "Sun" this week,
 /// "12 Oct" this year, "12 Oct 2025" before that. Both times are local.
 String listTime(DateTime when, DateTime now) {
-  final day = DateTime(when.year, when.month, when.day);
-  final today = DateTime(now.year, now.month, now.day);
-  final daysAgo = today.difference(day).inHours ~/ 24;
+  // Calendar days, counted in UTC so a clock change can't make a day 23 or 25 hours long.
+  final day = DateTime.utc(when.year, when.month, when.day);
+  final today = DateTime.utc(now.year, now.month, now.day);
+  final daysAgo = today.difference(day).inDays;
   if (daysAgo <= 0) return '${_two(when.hour)}:${_two(when.minute)}';
   if (daysAgo == 1) return 'Yesterday';
   if (daysAgo < 7) return _days[when.weekday - 1];

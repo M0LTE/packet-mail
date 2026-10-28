@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:packetmail/message_format.dart';
 
@@ -12,6 +14,13 @@ void main() {
     expect(listTime(DateTime(2026, 10, 21, 8), now), '21 Oct');
     expect(listTime(DateTime(2025, 12, 31), now), '31 Dec 2025');
   });
+
+  test('days are calendar days, even across a clock change', () async {
+    // The time zone is fixed when a process starts, so this runs in its own.
+    final r = await Process.run('dart', ['run', 'test/support/dst_probe.dart'], environment: {'TZ': 'Europe/London'});
+    expect(r.exitCode, 0, reason: '${r.stderr}');
+    expect((r.stdout as String).trim(), 'Yesterday,Sat');
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('full times', () {
     expect(fullTime(DateTime(2026, 10, 28, 9, 12), now), '28 October, 09:12');
