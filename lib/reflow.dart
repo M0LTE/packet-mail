@@ -1,6 +1,7 @@
 /// Turns a message body as the BBS delivered it into blocks for the
 /// readable view: paragraphs rejoined from hard-wrapped lines, quoted text,
-/// and laid-out text kept exactly as sent. Pure Dart, no Flutter.
+/// laid-out text kept exactly as sent, folded mail-gateway headers and
+/// garbled lines. Pure Dart, no Flutter.
 library;
 
 /// One piece of a readable body.
@@ -50,6 +51,36 @@ final class PreformattedBlock extends BodyBlock {
   String toString() => 'Pre(${lines.map(_show).toList()})';
 }
 
+/// Mail-gateway headers at the top of a message (`>From`, `Received:`,
+/// `Message-Id:` and the like), kept exactly as sent and folded away.
+final class GatewayHeadersBlock extends BodyBlock {
+  const GatewayHeadersBlock(this.lines);
+  final List<String> lines;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GatewayHeadersBlock && other.lines.length == lines.length && _allEqual(other.lines, lines);
+  @override
+  int get hashCode => Object.hashAll(lines);
+  @override
+  String toString() => 'Headers(${lines.map(_show).toList()})';
+}
+
+/// Lines mangled on the way, with control characters or mostly high-bit
+/// bytes: shown as they are, dimmed, rather than read as text.
+final class GarbledBlock extends BodyBlock {
+  const GarbledBlock(this.lines);
+  final List<String> lines;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GarbledBlock && other.lines.length == lines.length && _allEqual(other.lines, lines);
+  @override
+  int get hashCode => Object.hashAll(lines);
+  @override
+  String toString() => 'Garbled(${lines.map(_show).toList()})';
+}
+
 bool _allEqual(List<Object> a, List<Object> b) {
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
@@ -61,11 +92,59 @@ String _show(String s) => '"${s.replaceAll('\n', r'\n')}"';
 
 /// Splits [body] into blocks for the readable view.
 List<BodyBlock> readableBlocks(String body) {
-  final lines = body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
-  return _blocks([for (final l in lines) l.trimRight()]);
+  final lines = [
+    for (final l in body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n')) l.trimRight(),
+  ];
+  var start = 0;
+  while (start < lines.length && lines[start].isEmpty) {
+    start++;
+  }
+  final headers = _gatewayHeaders(lines, start);
+  if (headers == 0) return _blocks(lines);
+  return [GatewayHeadersBlock(lines.sublist(start, start + headers)), ..._blocks(lines.sublist(start + headers))];
 }
 
-enum _Kind { blank, quote, laidOut, text }
+final _header = RegExp(
+  r'^(?:>?From[: ]|Received:|Message-Id:|X-[\w-]+:|To:|Date:|Subject:|Return-Path:|Cc:|Reply-To:|Sender:'
+  r'|MIME-Version:|Content-[\w-]+:)',
+  caseSensitive: false,
+);
+final _strongHeader = RegExp(r'^(?:>?From \S*[@%]|Received:|Message-Id:|Return-Path:|X-[\w-]+:)', caseSensitive: false);
+
+/// How many lines from [start] are a mail gateway's headers: at least two
+/// header lines, one of them only a gateway would write, with any
+/// tab-continued lines. Zero when there is no such block.
+int _gatewayHeaders(List<String> lines, int start) {
+  var i = start;
+  var count = 0;
+  var strong = false;
+  while (i < lines.length) {
+    final l = lines[i];
+    if (_header.hasMatch(l)) {
+      count++;
+      strong |= _strongHeader.hasMatch(l);
+    } else if (count > 0 && l.isNotEmpty && (l.startsWith('\t') || l.startsWith(' '))) {
+      // Continues the header above.
+    } else {
+      break;
+    }
+    i++;
+  }
+  return count >= 2 && strong ? i - start : 0;
+}
+
+/// True for a line with control characters, or mostly high-bit bytes
+/// (Latin-1 0x80 to 0xFF, as the BBS bytes are decoded).
+bool isGarbled(String line) {
+  var high = 0;
+  for (final c in line.codeUnits) {
+    if ((c < 0x20 && c != 0x09) || (c >= 0x7f && c < 0xa0)) return true;
+    if (c >= 0x80 && c <= 0xff) high++;
+  }
+  return high * 2 > line.length;
+}
+
+enum _Kind { blank, garbled, quote, laidOut, text }
 
 final _quote = RegExp(r'^\s*>');
 final _spaceRun = RegExp(r'\S {3,}\S');
@@ -81,6 +160,7 @@ final _listItem = RegExp(r'^\s*(?:[-*•]|\d{1,2}[.)]|[a-z][.)])\s+\S');
 
 _Kind _kind(String line) {
   if (line.trim().isEmpty) return _Kind.blank;
+  if (isGarbled(line)) return _Kind.garbled;
   if (_quote.hasMatch(line)) return _Kind.quote;
   if (_looksLaidOut(line)) return _Kind.laidOut;
   return _Kind.text;
@@ -129,6 +209,8 @@ List<BodyBlock> _blocks(List<String> lines) {
     switch (kind) {
       case _Kind.blank:
         break;
+      case _Kind.garbled:
+        blocks.add(GarbledBlock(run));
       case _Kind.quote:
         final inner = [for (final l in run) l.replaceFirst(RegExp(r'^\s*> ?'), '')];
         final quoted = _blocks(inner);

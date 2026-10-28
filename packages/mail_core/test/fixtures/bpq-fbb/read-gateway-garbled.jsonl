@@ -1,0 +1,13 @@
+# GB7RDG LinBPQ 6.0.26.1, FBB port, 2026-10-28, user tf. Public bulletin 4487 (PACKET@WW): JNOS gateway headers and a line of binary garbage, as received. Password redacted.
+{"t":2.027,"dir":"tx","data":"tf\r"}
+{"t":4.049,"dir":"tx","data":"PASSWORD\r"}
+{"t":6.069,"dir":"tx","data":"BBS\r"}
+{"t":6.099,"dir":"rx","data":"READNG:GB7RDG} Connected to BBS\r"}
+{"t":6.11,"dir":"rx","data":"[BPQ-6.0.26.1-IHJM$]\rde GB7RDG>\r"}
+{"t":8.19,"dir":"tx","data":"R 4487\r"}
+{"t":8.266,"dir":"rx","data":"From: KF7PSM\rTo: PACKET\rType/Status: B$\rDate/Time: 27-Oct 17:47Z\rBid: 16201_KE0GB\rTitle: Packet with Tandy Color Computer\r\rR:261028/0513Z @:GB7CIP.#32.GBR.EURO #:9342 [Caterham Surrey GBR] $:16201_KE0GB\rR:261027/1750z @:I0OJJ.ITA.EU [Ro"}
+{"t":8.268,"dir":"rx","data":"me] $:16201_KE0GB\rR:261027/1750z @:N2NOV.#RICH.NY.USA.NOAM $:16201_KE0GB\rR:261027/1749z @:K7EK.#NOKY.KY.USA.NOAM $:16201_KE0GB\rR:261027/1748Z 59130@K5DAT.#NEWI.WI.USA.NOAM LinBPQ6.0.26\rR:261027/1747Z 16201@KE0GB.#SECO.CO.USA.NOAM LinBPQ6.0.25\r\r>From kf7psm%ke0gb.#seco.co.usa.noam@i0ojj.ampr.org Tue Oct 27 18:50:22 2026\rReceived: from i0ojj.ampr.org by i0ojj.ampr.org (JNOS2.0q.1) with SMTP\r\tid AA17070996 ; Tue, 27 Oct 2026 18:50:22 +0100\rMessage-Id: <16201_KE0GB@n2nov.bbs>\r>From: kf7psm@ke0gb.#seco.co.usa.noam\rX-JNOS-User-Port: Circuit  (ARECS:N2NOV-7 N2NOV-7)  -> Sending message\r\rA good friend and packeteer Gene N7WDZ has written a nice terminal\rprogram for the Tandy Color Computer 3 for interfacing with his\rTNC via the serial port. He has published the code for anyone\r>àn ¦aðto use or modify on his github page.\rto use or modify on his github page.\rhttps://github.com/tremors834/picoterm \r\r73 KF7PSM\r\r\r\r\r[End of Message #"}
+{"t":8.277,"dir":"rx","data":"4487 from KF7PSM]\rde GB7RDG>\r"}
+{"t":10.311,"dir":"tx","data":"B\r"}
+{"t":11.424,"dir":"rx","data":"73 de GB7RDG\r"}
+{"t":11.427,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}

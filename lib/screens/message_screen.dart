@@ -301,9 +301,69 @@ class ReadableBody extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Text(lines.join('\n'), softWrap: false, style: Logbook.asSent),
           ),
+          GatewayHeadersBlock(:final lines) => _GatewayHeaders(lines),
+          GarbledBlock(:final lines) => SingleChildScrollView(
+            key: const ValueKey('garbled'),
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              lines.map(_visible).join('\n'),
+              softWrap: false,
+              style: Logbook.asSent.copyWith(color: Logbook.inkFaint),
+            ),
+          ),
         },
       ),
   ];
+
+  /// Control characters as dots, so a garbled line still lines up.
+  static String _visible(String line) =>
+      String.fromCharCodes(line.codeUnits.map((c) => (c < 0x20 && c != 0x09) || (c >= 0x7f && c < 0xa0) ? 0x2e : c));
+}
+
+/// Mail-gateway headers, folded under a quiet toggle.
+class _GatewayHeaders extends StatefulWidget {
+  const _GatewayHeaders(this.lines);
+  final List<String> lines;
+
+  @override
+  State<_GatewayHeaders> createState() => _GatewayHeadersState();
+}
+
+class _GatewayHeadersState extends State<_GatewayHeaders> {
+  var _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = Theme.of(context).textTheme.labelMedium?.copyWith(color: Logbook.inkFaint);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          key: const ValueKey('gateway-headers'),
+          onTap: () => setState(() => _open = !_open),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Gateway headers', style: label),
+                Icon(_open ? Icons.expand_less : Icons.expand_more, size: 16, color: Logbook.inkFaint),
+              ],
+            ),
+          ),
+        ),
+        if (_open)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              widget.lines.join('\n'),
+              softWrap: false,
+              style: Logbook.asSent.copyWith(fontSize: 11, color: Logbook.inkSoft),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _Paragraph extends StatefulWidget {

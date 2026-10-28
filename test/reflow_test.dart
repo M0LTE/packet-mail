@@ -6,8 +6,10 @@ import 'package:mail_core/mail_core.dart';
 import 'package:packetmail/reflow.dart';
 
 /// A message body as the driver parses it from the recorded GB7RDG session.
-String recordedBody(int number) {
-  final recording = Recording.parse(File('packages/mail_core/test/fixtures/bpq-fbb/read.jsonl').readAsStringSync());
+String recordedBody(int number, {String fixture = 'read'}) {
+  final recording = Recording.parse(
+    File('packages/mail_core/test/fixtures/bpq-fbb/$fixture.jsonl').readAsStringSync(),
+  );
   // The BBS's reply to R n: everything it sent until our next command.
   final text = StringBuffer();
   var inReply = false;
@@ -19,6 +21,35 @@ String recordedBody(int number) {
 }
 
 void main() {
+  group('gateway bulletin', () {
+    // Bulletin 4487 from GB7RDG: JNOS gateway headers, then a line of
+    // binary garbage in the middle of the text.
+    final body = recordedBody(4487, fixture: 'read-gateway-garbled');
+
+    test('folds the gateway headers and sets the garbage apart', () {
+      final blocks = readableBlocks(body);
+      final headers = blocks.first as GatewayHeadersBlock;
+      expect(headers.lines.first, startsWith('>From kf7psm%ke0gb'));
+      expect(headers.lines, contains(startsWith('\tid AA17070996')));
+      expect(headers.lines.last, startsWith('X-JNOS-User-Port:'));
+      expect(blocks.whereType<QuoteBlock>(), isEmpty);
+      final garbled = blocks.whereType<GarbledBlock>().single;
+      expect(garbled.lines.single, endsWith('to use or modify on his github page.'));
+      expect(blocks[1], isA<ParagraphBlock>());
+      expect((blocks[1] as ParagraphBlock).text, startsWith('A good friend and packeteer Gene N7WDZ'));
+      expect(blocks.last, const ParagraphBlock('73 KF7PSM'));
+    });
+
+    test('ordinary mail starting with To: is not taken for headers', () {
+      expect(readableBlocks('To: all members\nDate: Saturday\n\nSee you there.').first, isA<ParagraphBlock>());
+    });
+
+    test('a line of accented text is not garbled', () {
+      expect(isGarbled('Café in Zürich, très bien'), isFalse);
+      expect(isGarbled('\u00e0\u00e9\u00ff\u00f0 x'), isTrue);
+    });
+  });
+
   group('readableBlocks', () {
     test('rejoins hard-wrapped lines into one paragraph', () {
       const body =
