@@ -148,3 +148,28 @@ List<String> suggest(Iterable<String> seen, Iterable<String> common) {
   final byUse = counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
   return {...byUse, ...common}.toList();
 }
+
+/// Puts a bulletin in the outbox. Returns the outgoing id.
+Future<int> queueBulletin(
+  MailStore store, {
+  required int connectionId,
+  required BulletinAddress to,
+  required OutgoingText text,
+  required DateTime now,
+}) => store.transaction(() async {
+  final id = await store
+      .into(store.outgoing)
+      .insert(
+        OutgoingCompanion.insert(
+          connectionId: connectionId,
+          type: 'bulletin',
+          subject: text.subject,
+          body: text.body,
+          createdAt: now,
+        ),
+      );
+  await store
+      .into(store.outgoingRecipients)
+      .insert(OutgoingRecipientsCompanion.insert(outgoingId: id, address: to.toString()));
+  return id;
+});

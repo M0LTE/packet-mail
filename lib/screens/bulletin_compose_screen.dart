@@ -1,12 +1,13 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
 import '../bulletins.dart';
+import '../compose.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import 'compose_screen.dart';
 
 /// Opens bulletin compose, with the category and area filled in if given.
 Future<void> openBulletinCompose(BuildContext context, {String? category, String? area}) => Navigator.of(context).push(
@@ -48,61 +49,44 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
   Future<void> _send() async {
     if (!_form.currentState!.validate()) return;
     final connections = ref.read(connectionsProvider).value ?? const [];
-    final connectionId = _connectionId ?? connections.firstOrNull?.id;
+    final connection = connections.where((c) => c.id == _connectionId).firstOrNull ?? connections.firstOrNull;
     final messenger = ScaffoldMessenger.of(context);
-    if (connectionId == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('Add a connection in Settings first.')));
-      return;
-    }
+    void say(String s) => messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(s)));
+    if (connection == null) return say('Add a connection in Settings before sending.');
     final to = BulletinAddress.parse('${_category.text.trim()}@${_area.text.trim()}').address!;
-    final prepared = prepareOutgoing(_subject.text, _body.text);
-    if (!prepared.canSend) {
-      messenger.showSnackBar(SnackBar(content: Text(prepared.problems.firstWhere((p) => p.blocking).message)));
-      return;
+    final out = prepareOutgoing(_subject.text, _body.text);
+    if (out.unsendable.isNotEmpty) {
+      return say(
+        "These characters can't be sent as plain text: ${out.unsendable.join(' ')}. Take them out and try again.",
+      );
     }
-    if (_changed(prepared)) {
-      final go = await showDialog<bool>(
-        context: context,
-        builder: (_) => SendPreviewDialog(to: to.toString(), prepared: prepared),
+    final blocking = out.problems.where((p) => p.blocking).toList();
+    if (blocking.isNotEmpty) return say(blocking.first.message);
+    final changes = visibleChanges(_subject.text, _body.text, out);
+    final warnings = [for (final p in out.problems) p.message];
+    if (changes.isNotEmpty || warnings.isNotEmpty) {
+      final go = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => SendPreviewScreen(to: to.toString(), text: out, changes: changes, warnings: warnings),
+        ),
       );
       if (go != true || !mounted) return;
     }
     setState(() => _sending = true);
-    final store = ref.read(storeProvider);
-    final now = ref.read(clockProvider)();
-    await store.transaction(() async {
-      final id = await store
-          .into(store.outgoing)
-          .insert(
-            OutgoingCompanion.insert(
-              connectionId: connectionId,
-              type: 'bulletin',
-              subject: prepared.subject,
-              body: prepared.body,
-              createdAt: now,
-            ),
-          );
-      await store
-          .into(store.outgoingRecipients)
-          .insert(
-            OutgoingRecipientsCompanion.insert(outgoingId: id, address: to.toString(), state: const Value('queued')),
-          );
-    });
+    await queueBulletin(
+      ref.read(storeProvider),
+      connectionId: connection.id,
+      to: to,
+      text: out,
+      now: ref.read(clockProvider)(),
+    );
     if (!mounted) return;
+    ref.read(syncingProvider.notifier).sync(connection.id);
     Navigator.of(context).pop();
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Bulletin to $to is in the outbox. Sending now.')));
-    // Sync runs after sending; the outbox shows how it went.
-    ref.read(syncingProvider.notifier).sync(connectionId);
-  }
-
-  /// True if what will be sent differs from what was typed, beyond trailing spaces.
-  bool _changed(OutgoingText prepared) {
-    if (prepared.problems.isNotEmpty) return true;
-    if (prepared.subject != _subject.text.trim()) return true;
-    final typed = _body.text.replaceAll('\r\n', '\n').split('\n').map((l) => l.trimRight()).join('\n').trimRight();
-    return prepared.body.trimRight() != typed;
+    say('Bulletin to $to is in the outbox. Sending through ${connection.name} now.');
   }
 
   @override
@@ -222,50 +206,6 @@ class _Choices extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-/// Shows exactly what will be sent, and why it differs from what was typed.
-/// Returns true to send.
-class SendPreviewDialog extends StatelessWidget {
-  const SendPreviewDialog({super.key, required this.to, required this.prepared});
-
-  final String to;
-  final OutgoingText prepared;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return AlertDialog(
-      backgroundColor: Logbook.paper,
-      title: const Text('Check before sending'),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              prepared.problems.isEmpty
-                  ? 'Packet mail is plain text in short lines, so this is how it will go.'
-                  : prepared.problems.map((p) => p.message).join('\n'),
-              style: text.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            Text('To $to', style: text.titleSmall),
-            Text(prepared.subject, style: text.titleSmall),
-            const SizedBox(height: 6),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Text(prepared.body, softWrap: false, style: Logbook.asSent.copyWith(fontSize: 11)),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Edit')),
-        TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Send')),
-      ],
     );
   }
 }

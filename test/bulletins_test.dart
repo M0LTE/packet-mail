@@ -253,14 +253,15 @@ void main() {
     await settleAll(app, tester);
     expect(find.text('Check before sending'), findsOneWidget);
     expect(find.text('Club "news"'), findsOneWidget);
+    expect(find.textContaining('curly quotes'), findsOneWidget);
 
-    await tester.tap(find.text('Edit'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Edit'));
     await settleAll(app, tester);
     expect((await tester.runAsync(() => app.store.select(app.store.outgoing).get()))!, isEmpty);
 
     await tester.tap(find.byKey(const ValueKey('send-bulletin')));
     await settleAll(app, tester);
-    await tester.tap(find.widgetWithText(TextButton, 'Send').last);
+    await tester.tap(find.byKey(const ValueKey('send-as-shown')));
     await settleAll(app, tester);
     final to = (await tester.runAsync(() => app.store.select(app.store.outgoingRecipients).get()))!.single;
     expect(to.address, 'NEWS@WW');
