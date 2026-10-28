@@ -107,12 +107,29 @@ class SyncEngine {
   final _running = <int, Future<SyncResult>>{};
   final _queues = <int, Future<void>>{};
 
+  /// Connections whose running session has already read its outbox.
+  final _outboxRead = <int>{};
+
+  /// The session queued to run after the current one, by connection.
+  final _next = <int, Future<SyncResult>>{};
+
   /// Syncs one connection. Never throws: what went wrong is in the result.
-  /// A second call while one is running joins it.
-  Future<SyncResult> sync(int connectionId) =>
-      _running[connectionId] ??= _exclusive(connectionId, () => _sync(connectionId)).whenComplete(() {
+  /// A second call while one is running joins it, unless that session has
+  /// already read its outbox: then one more session runs after it, so
+  /// anything queued since is sent. Calls in the meantime share that one.
+  Future<SyncResult> sync(int connectionId) {
+    final running = _running[connectionId];
+    if (running == null) {
+      return _running[connectionId] = _exclusive(connectionId, () => _sync(connectionId)).whenComplete(() {
         _running.remove(connectionId);
       });
+    }
+    if (!_outboxRead.contains(connectionId)) return running;
+    return _next[connectionId] ??= running.then((_) {
+      _next.remove(connectionId);
+      return sync(connectionId);
+    });
+  }
 
   /// Runs [work] after anything already queued on the connection.
   Future<T> _exclusive<T>(int connectionId, Future<T> Function() work) {
@@ -146,6 +163,7 @@ class SyncEngine {
           ? describeConnectionProblem(e, host: connection.host, port: connection.port)
           : describeError(e);
     } finally {
+      _outboxRead.remove(connectionId);
       if (driver != null) await _quietly(driver.disconnect);
     }
     final result = s.result();
@@ -214,6 +232,7 @@ class SyncEngine {
   // Outbox
 
   Future<void> _sendOutbox(MailDriver driver, Connection connection, _Session s) async {
+    _outboxRead.add(connection.id);
     final waiting = await (store.select(store.outgoing)
           ..where((o) => o.connectionId.equals(connection.id) & o.sentAt.isNull())
           ..orderBy([(o) => OrderingTerm(expression: o.createdAt)]))

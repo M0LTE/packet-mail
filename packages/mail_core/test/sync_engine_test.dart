@@ -277,6 +277,26 @@ void main() {
       await engine.sync(conn);
       expect(bbs.disconnects, 2);
     });
+
+    test('a sync asked for after the outbox step runs once more, to send what was queued', () async {
+      final gate = Completer<void>();
+      final listing = Completer<void>();
+      engine = SyncEngine(db, (c) async => _Gated(bbs, gate.future, () {}, onList: () {
+            if (!listing.isCompleted) listing.complete();
+          }), clock: () => clock);
+      final first = engine.sync(conn);
+      await listing.future;
+      await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+      final second = engine.sync(conn);
+      final third = engine.sync(conn);
+      expect(identical(second, third), isTrue);
+      gate.complete();
+      await first;
+      expect((await second).sent, 1);
+      expect(bbs.sent, hasLength(1));
+      expect(bbs.disconnects, 2);
+      expect(await sentAt(), isNotNull);
+    });
   });
 
   group('address book', () {
@@ -1134,11 +1154,13 @@ class _BrokenList extends _Wrapper {
 
 /// Holds the personal listing until [gate] opens.
 class _Gated extends _Wrapper {
-  _Gated(super.inner, this.gate, this.onDisconnect);
+  _Gated(super.inner, this.gate, this.onDisconnect, {this.onList});
   final Future<void> gate;
   final void Function() onDisconnect;
+  final void Function()? onList;
   @override
   Future<List<MessageHeader>> listPersonal() async {
+    onList?.call();
     await gate;
     return inner.listPersonal();
   }
