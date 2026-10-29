@@ -6,6 +6,8 @@ library;
 export 'src/address.dart';
 export 'src/bpq/bpq_driver.dart';
 export 'src/bpq/bpq_format.dart';
+export 'src/xrouter/xrouter_driver.dart';
+export 'src/xrouter/xrouter_format.dart';
 export 'src/compose.dart';
 export 'src/driver.dart';
 export 'src/message.dart';

@@ -989,6 +989,77 @@ void main() {
   });
 
   group('interrupted sessions', () {
+    group('on a BBS that cannot refuse a second copy', () {
+      setUp(() async {
+        bbs.caps = DriverCapability.values.toSet()..remove(DriverCapability.refusesDuplicates);
+        await db.into(db.identities).insert(
+            IdentitiesCompanion.insert(callsign: 'M0LTE', name: 'Tom', homeBbs: 'GB7RDG.#42.GBR.EURO'));
+      });
+
+      test('an unclear reply is not sent again at once', () async {
+        await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+        final inner = bbs;
+        final unclear = BbsError(BbsErrorKind.protocol, 'The BBS did not confirm the message.');
+        engine = SyncEngine(db, (c) async => _LostAfterSend(inner, unclear), clock: () => clock);
+        await engine.sync(conn);
+        expect(bbs.sent.length, 1);
+        expect((await recipients()).single.state, 'sending');
+      });
+
+      test('a copy an interrupted try left on the BBS counts as sent', () async {
+        await queue(['G8BPQ@GB7BPQ.#76.GBR.EU'], subject: 'A subject longer than the listing has room for');
+        final inner = bbs;
+        engine = SyncEngine(db, (c) async => _LostAfterSend(inner, SessionTimeout('prompt', '')), clock: () => clock);
+        await engine.sync(conn);
+        expect((await recipients()).single.state, 'sending');
+
+        bbs.fromUs[1000] = FakeMessage(MessageHeader(
+            number: 1000,
+            type: MessageType.personal,
+            status: r'$',
+            from: 'M0LTE',
+            to: 'G8BPQ',
+            at: 'GB7BPQ',
+            subject: 'A subject longer than the listing',
+            date: day));
+        engine = SyncEngine(db, (c) async => bbs, clock: () => clock);
+        await engine.sync(conn);
+        expect(bbs.sent.length, 1);
+        final r = (await recipients()).single;
+        expect([r.state, r.bbsNumber, r.note], ['sent', 1000, 'The BBS already had it from an earlier try.']);
+      });
+
+      test('with no copy on the BBS it is sent again', () async {
+        await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+        final inner = bbs;
+        final lossy = _LostAfterSend(inner, SessionTimeout('prompt', ''));
+        engine = SyncEngine(db, (c) async => lossy, clock: () => clock);
+        await engine.sync(conn);
+        bbs
+          ..sent.clear()
+          ..bids.clear(); // this BBS keeps no IDs
+        await engine.sync(conn);
+        expect(bbs.sent, ['P G8BPQ@GB7BPQ.#76.GBR.EU Test']);
+        expect((await recipients()).single.state, 'sent');
+      });
+    });
+
+    test('a listing that cuts subjects short keeps the downloaded text and the whole subject', () async {
+      const whole = 'A subject longer than the listing has room for';
+      const cut = 'A subject longer than the listing';
+      bbs.addPersonal(10, subject: cut);
+      await engine.sync(conn);
+      final id = (await message(10)).id;
+      bbs.addPersonal(10, subject: whole); // what reading it gives
+      await engine.openMessage(id);
+      expect((await message(10)).subject, whole);
+
+      bbs.addPersonal(10, subject: cut, status: 'Y');
+      await engine.sync(conn);
+      final m = await message(10);
+      expect([m.id, m.subject, m.body], [id, whole, 'Body text']);
+    });
+
     test('lost while sending: earlier sends kept, the rest stay queued', () async {
       await queue(['G8BPQ@GB7BPQ.#76.GBR.EU', 'M0LTE@GB7RDG.#42.GBR.EURO']);
       bbs

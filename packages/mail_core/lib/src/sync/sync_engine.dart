@@ -320,13 +320,42 @@ class SyncEngine {
       }
       send = () => driver.sendPersonal(to: to, subject: m.subject, body: m.body, bid: bid);
     }
+    final retrySafely = driver.capabilities.contains(DriverCapability.refusesDuplicates);
+    if (r.state == 'sending' && !retrySafely) {
+      final earlier = await _alreadySent(driver, m, address);
+      if (earlier != null) {
+        return OutgoingRecipientsCompanion(
+          state: const Value('sent'),
+          bbsNumber: Value(earlier),
+          note: Value([?found, 'The BBS already had it from an earlier try.'].join(' ')),
+        );
+      }
+    }
     await (store.update(store.outgoingRecipients)..where((t) => t.id.equals(r.id))).write(OutgoingRecipientsCompanion(
       state: const Value('sending'),
       address: Value(address),
       bbsBid: Value(bid),
       note: Value(found),
     ));
-    return _attempt(send, note: found);
+    return _attempt(send, note: found, retry: retrySafely);
+  }
+
+  /// For a BBS that can't refuse a second copy: the number of a copy of [m]
+  /// to [address] that an earlier, interrupted try left on the BBS, judged
+  /// by addressee and subject (listings may cut subjects short), or null.
+  Future<int?> _alreadySent(MailDriver driver, OutgoingData m, String address) async {
+    if (!driver.capabilities.contains(DriverCapability.listSent)) return null;
+    final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
+    final call = identity == null ? '' : identity.callsign.trim().toUpperCase().split('-').first;
+    if (!isCallsign(call)) return null;
+    final to = address.split('@').first.toUpperCase();
+    final type = m.type == 'bulletin' ? MessageType.bulletin : MessageType.personal;
+    for (final h in await driver.listSent(call)) {
+      if (h.type == type && h.to == to && h.subject.isNotEmpty && m.subject.trim().startsWith(h.subject)) {
+        return h.number;
+      }
+    }
+    return null;
   }
 
   /// The address book first, then White Pages.
@@ -382,7 +411,10 @@ class SyncEngine {
   /// The BBS refusing a copy fails that recipient. A copy it already has
   /// counts as sent. When it is unclear whether the BBS took it, it is sent
   /// again once; losing the connection stops the session, to retry next time.
-  Future<OutgoingRecipientsCompanion> _attempt(Future<SendReceipt> Function() send, {String? note}) async {
+  /// Without [retry] (the BBS can't refuse a second copy) an unclear reply is
+  /// left for the next sync, which looks for the copy before sending again.
+  Future<OutgoingRecipientsCompanion> _attempt(Future<SendReceipt> Function() send,
+      {String? note, bool retry = true}) async {
     for (var tries = 1;; tries++) {
       try {
         final receipt = await send();
@@ -390,7 +422,7 @@ class SyncEngine {
         return OutgoingRecipientsCompanion(
           state: const Value('sent'),
           bbsNumber: Value(receipt.number),
-          bbsBid: Value(receipt.bid),
+          bbsBid: receipt.bid.isEmpty ? const Value.absent() : Value(receipt.bid),
           note: Value(notes.isEmpty ? null : notes.join(' ')),
         );
       } on BbsError catch (e) {
@@ -400,7 +432,7 @@ class SyncEngine {
               state: const Value('sent'),
               note: Value([?note, 'The BBS already had it from an earlier try.'].join(' ')),
             );
-          case BbsErrorKind.protocol when tries < 2:
+          case BbsErrorKind.protocol when retry && tries < 2:
             continue;
           case BbsErrorKind.protocol:
             return OutgoingRecipientsCompanion(
@@ -672,11 +704,16 @@ class SyncEngine {
     final a = m.date.toUtc(), b = h.date.toUtc();
     return m.fromCall == h.from &&
         m.toCall == h.to &&
-        m.subject == h.subject &&
+        sameSubject(m.subject, h.subject) &&
         a.year == b.year &&
         a.month == b.month &&
         a.day == b.day;
   }
+
+  /// True if a stored subject and a listed one are the same: some BBSes
+  /// (XRouter) cut subjects short in listings, and reading gives the whole.
+  static bool sameSubject(String stored, String listed) =>
+      stored == listed || (listed.length >= 20 && stored.startsWith(listed));
 
   Future<void> _deleteIds(List<int> ids) async {
     if (ids.isNotEmpty) await (store.delete(store.messages)..where((m) => m.id.isIn(ids))).go();
@@ -699,6 +736,10 @@ class SyncEngine {
       routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
       bid: Value(read.bid.isEmpty ? m.bid : read.bid),
       date: Value(read.date),
+      // The whole subject, where the listing cut it short.
+      subject: read.subject.length > m.subject.length && read.subject.startsWith(m.subject)
+          ? Value(read.subject)
+          : const Value.absent(),
     ));
     if (m.type != 'bulletin') await _learnFromSender(read);
   }

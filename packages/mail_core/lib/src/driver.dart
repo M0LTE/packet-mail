@@ -2,7 +2,16 @@ import 'address.dart';
 import 'message.dart';
 
 /// What a driver can do beyond the basics. The app hides features a driver lacks.
-enum DriverCapability { whitePagesLookup, kill, bulletins, listSent }
+enum DriverCapability {
+  whitePagesLookup,
+  kill,
+  bulletins,
+  listSent,
+
+  /// The BBS takes our ID with a message and refuses a second copy, so a
+  /// send that may or may not have got through can safely be sent again.
+  refusesDuplicates,
+}
 
 /// Why a BBS action failed, in terms the app can act on.
 enum BbsErrorKind {

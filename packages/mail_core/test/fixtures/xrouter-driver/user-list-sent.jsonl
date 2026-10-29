@@ -1,0 +1,24 @@
+# Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
+{"t":0.009,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.009,"dir":"tx","data":"Q0USR\r"}
+{"t":0.019,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.019,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.02,"dir":"tx","data":"PMS\r"}
+{"t":0.029,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":0.071,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.072,"dir":"tx","data":"NP 0\r"}
+{"t":0.08,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.08,"dir":"tx","data":"L< Q0USR\r"}
+{"t":0.09,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    2 P$ 07:54  328  Q0OTH  @GB7XYZ Q0USR  A subject longer than the listing \r\n    3 B$ 07:54  288  ALL    @GBR    Q0USR  Driver bulletin\r\n    4 PN 07:54  281  Q0ZZZ          Q0USR  For someone else\r\n\r\n[0"}
+{"t":0.132,"dir":"rx","data":"] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.133,"dir":"tx","data":"RH 4\r"}
+{"t":0.141,"dir":"rx","data":"Msg#: 4  Type: PN  Size: 281\r\nRcvd: 29/10/26 at 07:54   Created: 29/10/26 at 07:54Z\r\nFrom: Q0USR\r\nTo:   Q0ZZZ\r\nMID:  AE2FBA8040XR\r\nSubj: For someone else\r\n\r\nR:261029/0754Z @:Q0XR.#42.GBR.EURO [] #:4 XrLin505p\r\nDate: Thu, 29 Oct 2026 07:54:16 +0000\r\nFrom: q"}
+{"t":0.181,"dir":"rx","data":"0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: q0zzz\r\nSubject: For someone else\r\nMessage-ID: <AE2FBA8040XR>\r\n\r\nPrivate.\r\n\r\n[ end of message 4 ]\r\n\r\n[4] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.182,"dir":"tx","data":"L< Q0USR\r"}
+{"t":0.191,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    2 P$ 07:54  328  Q0OTH  @GB7XYZ Q0USR  A subject longer than the listing \r\n    3 B$ 07:54  288  ALL    @GBR    Q0USR  Driver bulletin\r\n    4 PN 07:54  281  Q0ZZZ          Q0USR  For someone else\r\n\r\n[4"}
+{"t":0.233,"dir":"rx","data":"] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.234,"dir":"tx","data":"B\r"}
+{"t":0.242,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":0.282,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.282,"dir":"tx","data":"B\r"}
+{"t":0.293,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
