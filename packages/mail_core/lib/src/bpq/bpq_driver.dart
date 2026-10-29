@@ -38,8 +38,17 @@ class BpqDriver implements MailDriver {
   /// The BBS prompt line, learned at login, including its CR.
   String? _prompt;
 
+  /// What BPQMail can do: everything.
+  static const supported = {
+    DriverCapability.whitePagesLookup,
+    DriverCapability.kill,
+    DriverCapability.bulletins,
+    DriverCapability.listSent,
+    DriverCapability.refusesDuplicates,
+  };
+
   @override
-  Set<DriverCapability> get capabilities => DriverCapability.values.toSet();
+  Set<DriverCapability> get capabilities => supported;
 
   static final _anyPrompt = RegExp(r'(?:^|\r)([^\r]*>)\r');
   static final _loginRefused = RegExp(r'(?:user|password):\s*$');

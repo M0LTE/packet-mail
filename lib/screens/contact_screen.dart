@@ -94,8 +94,8 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
       ..showSnackBar(SnackBar(content: Text(s)));
     final call = _callsign.text.trim().toUpperCase();
     if (!isCallsign(call)) return say('Enter a callsign first, such as M0ABC.');
-    final connection = ref.read(connectionsProvider).value?.firstOrNull;
-    if (connection == null) return say('Add a connection in Settings first.');
+    final connection = ref.read(connectionsWithProvider(DriverCapability.whitePagesLookup)).firstOrNull;
+    if (connection == null) return say('None of your connections has White Pages to ask.');
     setState(() => _looking = true);
     String message;
     String? home;
@@ -171,24 +171,25 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                       ? null
                       : checkHomeBbs(s, example: homeBbsExample(ref.read(identityProvider).value?.homeBbs)),
                 ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _looking
-                      ? const Padding(
-                          padding: EdgeInsets.all(14),
-                          child: SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 1.5, color: Logbook.stampRed),
+                if (ref.watch(connectionsWithProvider(DriverCapability.whitePagesLookup)).isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _looking
+                        ? const Padding(
+                            padding: EdgeInsets.all(14),
+                            child: SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 1.5, color: Logbook.stampRed),
+                            ),
+                          )
+                        : TextButton.icon(
+                            key: const ValueKey('look-up'),
+                            onPressed: _lookUp,
+                            icon: const Icon(Icons.travel_explore, size: 18),
+                            label: const Text('Look up home BBS'),
                           ),
-                        )
-                      : TextButton.icon(
-                          key: const ValueKey('look-up'),
-                          onPressed: _lookUp,
-                          icon: const Icon(Icons.travel_explore, size: 18),
-                          label: const Text('Look up home BBS'),
-                        ),
-                ),
+                  ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _notes,

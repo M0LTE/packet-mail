@@ -3,10 +3,28 @@ import 'package:mail_core/mail_core.dart';
 
 import 'passwords.dart';
 
-/// The BBS types the app can talk to, by stored id, with their display names.
-const bbsTypes = {'bpq': 'LinBPQ'};
+/// The BBS types the app can talk to, by stored id.
+enum BbsType {
+  bpq('bpq', 'LinBPQ', BpqDriver.supported),
+  xrouter('xrouter', 'XRouter', XRouterDriver.supported);
 
-/// LinBPQ port kinds, by stored id.
+  const BbsType(this.id, this.label, this.capabilities);
+  final String id;
+  final String label;
+
+  /// What its driver can do, known without connecting.
+  final Set<DriverCapability> capabilities;
+
+  /// XRouter has one port kind, its telnet port.
+  bool get hasPortKinds => this == bpq;
+
+  static BbsType byId(String id) => values.firstWhere((t) => t.id == id, orElse: () => bpq);
+}
+
+/// The port to offer for a new XRouter connection: its telnet port.
+const xrouterDefaultPort = 23;
+
+/// LinBPQ port kinds, by stored id. XRouter connections are stored as telnet.
 enum PortKind {
   fbb('fbb', 'FBB port', 8011),
   telnet('telnet', 'Telnet port (experimental)', 8010);
@@ -48,6 +66,8 @@ class ConnectionDraft {
   });
 
   final String name;
+
+  /// A [BbsType] id.
   final String bbsType;
   final String host;
   final int port;
@@ -136,15 +156,33 @@ Future<void> deleteConnection(MailStore store, PasswordStore passwords, int id) 
 /// Tries a connection and says what happened in plain words.
 typedef ConnectionTester = Future<String> Function(ConnectionDraft draft, {required String password, required String name});
 
+/// How a connection is reached, in a few words: `FBB port`, or `XRouter`.
+String connectionKind(String bbsType, String portKind) {
+  final type = BbsType.byId(bbsType);
+  return type.hasPortKinds ? PortKind.byId(portKind).label : type.label;
+}
+
+/// The driver for [bbsType] over [transport]; [portKind] matters for LinBPQ only.
+MailDriver newDriver(String bbsType, PortKind portKind, Transport transport, {required Duration timeout}) =>
+    switch (BbsType.byId(bbsType)) {
+      BbsType.bpq => BpqDriver(
+          transport,
+          port: portKind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
+          timeout: timeout,
+        ),
+      BbsType.xrouter => XRouterDriver(transport, timeout: timeout),
+    };
+
 /// Connects, logs in, lists personal mail and disconnects, keeping the traffic in [log].
 Future<String> testConnection(ConnectionDraft draft,
     {required String password, required String name, TrafficLog? log}) async {
   MailDriver? driver;
   try {
     final tcp = await TcpTransport.connect(draft.host, draft.port, timeout: const Duration(seconds: 10));
-    driver = BpqDriver(
-      log?.record(tcp, '${draft.name}, ${draft.portKind.label}, connection test') ?? tcp,
-      port: draft.portKind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
+    driver = newDriver(
+      draft.bbsType,
+      draft.portKind,
+      log?.record(tcp, '${draft.name}, ${connectionKind(draft.bbsType, draft.portKind.id)}, connection test') ?? tcp,
       timeout: const Duration(seconds: 15),
     );
     await driver.logIn(user: draft.loginName, password: password, name: name);

@@ -972,6 +972,15 @@ void main() {
       expect(bbs.calls, isNot(contains('lookUpHomeBbs G8BPQ')));
     });
 
+    test('a bulletin fails on a BBS without bulletins', () async {
+      bbs.caps = {DriverCapability.kill};
+      await queue(['ALL@GBR'], type: 'bulletin');
+      await engine.sync(conn);
+      final r = (await recipients()).single;
+      expect([r.state, r.note], ['failed', 'This BBS takes no bulletins.']);
+      expect(bbs.sent, isEmpty);
+    });
+
     test('each bulletin recipient gets its own ID unless there is only one', () async {
       await queue(['ALL@GBR', 'ALL@WW'], type: 'bulletin', bid: 'NET42');
       await engine.sync(conn);

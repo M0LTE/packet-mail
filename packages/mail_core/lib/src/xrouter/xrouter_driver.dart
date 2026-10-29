@@ -29,7 +29,7 @@ class XRouterDriver implements MailDriver {
 
   /// What XRouter's mailbox can do. It takes no bulletin or message ID from
   /// a user (sending one ends the session), so it can't refuse a second copy.
-  static const capabilityset = {
+  static const supported = {
     DriverCapability.whitePagesLookup,
     DriverCapability.kill,
     DriverCapability.bulletins,
@@ -37,7 +37,7 @@ class XRouterDriver implements MailDriver {
   };
 
   @override
-  Set<DriverCapability> get capabilities => capabilityset;
+  Set<DriverCapability> get capabilities => supported;
 
   /// The mailbox prompt: `[n] B,H,I,...,? >`, where n is the last message read.
   static final _prompt = RegExp(r'(?:^|\r)\[\d+\] [^\r]*>\r');

@@ -64,7 +64,7 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
 
   Future<void> _send() async {
     if (!_form.currentState!.validate()) return;
-    final connections = ref.read(connectionsProvider).value ?? const [];
+    final connections = ref.read(connectionsWithProvider(DriverCapability.bulletins));
     final connection = connections.where((c) => c.id == _connectionId).firstOrNull ?? connections.firstOrNull;
     final messenger = ScaffoldMessenger.of(context);
     void say(String s) => messenger
@@ -109,7 +109,7 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final connections = ref.watch(connectionsProvider).value ?? const [];
+    final connections = ref.watch(connectionsWithProvider(DriverCapability.bulletins));
     final bulletins = ref.watch(bulletinsProvider).value ?? const [];
     final categories = suggest(bulletins.map(categoryOf), commonCategories);
     final areas = suggest(bulletins.map(areaOf), knownFloodAreas);

@@ -12,10 +12,10 @@ Future<MailDriver> connectDriver(MailStore store, PasswordStore passwords, Conne
   final password = await passwords.read(connection.id) ?? '';
   final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
   final tcp = await TcpTransport.connect(connection.host, connection.port, timeout: const Duration(seconds: 10));
-  final kind = PortKind.byId(connection.portKind);
-  final driver = BpqDriver(
-    log?.record(tcp, '${connection.name}, ${kind.label}') ?? tcp,
-    port: kind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
+  final driver = newDriver(
+    connection.bbsType,
+    PortKind.byId(connection.portKind),
+    log?.record(tcp, '${connection.name}, ${connectionKind(connection.bbsType, connection.portKind)}') ?? tcp,
     timeout: const Duration(seconds: 30),
   );
   try {

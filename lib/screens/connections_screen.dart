@@ -43,7 +43,7 @@ class ConnectionsScreen extends ConsumerWidget {
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${c.host}:${c.port}, ${PortKind.byId(c.portKind).label}', style: text.labelMedium),
+                    Text('${c.host}:${c.port}, ${connectionKind(c.bbsType, c.portKind)}', style: text.labelMedium),
                     Text(lastSyncLine(c), style: text.bodySmall),
                   ],
                 ),

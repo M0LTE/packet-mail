@@ -32,5 +32,17 @@ final connectionsProvider = StreamProvider<List<Connection>>((ref) {
   return (store.select(store.connections)..orderBy([(c) => OrderingTerm(expression: c.name)])).watch();
 });
 
+/// What a connection's driver can do, from its BBS type, without connecting.
+/// Tests swap in other answers.
+final bbsCapabilitiesProvider =
+    Provider<Set<DriverCapability> Function(String bbsType)>((ref) => (t) => BbsType.byId(t).capabilities);
+
+/// The connections whose BBS can do a [DriverCapability], in name order.
+final connectionsWithProvider = Provider.family<List<Connection>, DriverCapability>((ref, capability) {
+  final of = ref.watch(bbsCapabilitiesProvider);
+  final all = ref.watch(connectionsProvider).value ?? const <Connection>[];
+  return [for (final c in all) if (of(c.bbsType).contains(capability)) c];
+});
+
 /// The time now. Tests and screenshots fix it.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);

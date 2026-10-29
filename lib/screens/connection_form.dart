@@ -42,6 +42,7 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
   late final _login = TextEditingController(text: widget.initial?.loginName);
   late final _password = TextEditingController(text: widget.initialPassword);
   late var _portKind = PortKind.byId(widget.initial?.portKind ?? PortKind.fbb.id);
+  late var _type = BbsType.byId(widget.initial?.bbsType ?? BbsType.bpq.id);
   late var _download = PersonalDownload.byId(widget.initial?.personalDownload ?? PersonalDownload.onOpen.id);
   var _validateAsTyped = false;
   var _testing = false;
@@ -66,9 +67,10 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
         name: _name.text.trim(),
         host: _host.text.trim(),
         port: int.parse(_port.text.trim()),
-        portKind: _portKind,
+        portKind: _type.hasPortKinds ? _portKind : PortKind.telnet,
         loginName: _login.text.trim(),
         personalDownload: _download,
+        bbsType: _type.id,
       );
 
   bool _check() {
@@ -76,10 +78,13 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
     return _form.currentState!.validate();
   }
 
-  void _setPortKind(PortKind kind) {
+  int _defaultPort(BbsType type, PortKind kind) => type.hasPortKinds ? kind.defaultPort : xrouterDefaultPort;
+
+  /// Follows the default port unless the user typed their own.
+  void _setKind(BbsType type, PortKind kind) {
     setState(() {
-      // Follow the default port unless the user typed their own.
-      if (_port.text.trim() == '${_portKind.defaultPort}') _port.text = '${kind.defaultPort}';
+      if (_port.text.trim() == '${_defaultPort(_type, _portKind)}') _port.text = '${_defaultPort(type, kind)}';
+      _type = type;
       _portKind = kind;
     });
   }
@@ -134,13 +139,14 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
             validator: (s) => checkRequired(s, 'a name for this connection'),
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: 'bpq',
+          DropdownButtonFormField<BbsType>(
+            key: const ValueKey('bbs-type'),
+            initialValue: _type,
             decoration: const InputDecoration(labelText: 'BBS type'),
             items: [
-              for (final e in bbsTypes.entries) DropdownMenuItem(value: e.key, child: Text(e.value)),
+              for (final t in BbsType.values) DropdownMenuItem(value: t, child: Text(t.label)),
             ],
-            onChanged: (_) {},
+            onChanged: (t) => _setKind(t ?? _type, _portKind),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -155,17 +161,19 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
             autocorrect: false,
             validator: (s) => checkRequired(s, 'the BBS host name or address'),
           ),
-          const SizedBox(height: 20),
-          Text('Port kind', style: text.labelMedium),
-          const SizedBox(height: 8),
-          SegmentedButton<PortKind>(
-            segments: [
-              for (final k in PortKind.values) ButtonSegment(value: k, label: Text(k.label)),
-            ],
-            selected: {_portKind},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) => _setPortKind(s.single),
-          ),
+          if (_type.hasPortKinds) ...[
+            const SizedBox(height: 20),
+            Text('Port kind', style: text.labelMedium),
+            const SizedBox(height: 8),
+            SegmentedButton<PortKind>(
+              segments: [
+                for (final k in PortKind.values) ButtonSegment(value: k, label: Text(k.label)),
+              ],
+              selected: {_portKind},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => _setKind(_type, s.single),
+            ),
+          ],
           const SizedBox(height: 8),
           TextFormField(
             controller: _port,
@@ -176,7 +184,10 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _login,
-            decoration: const InputDecoration(labelText: 'Login name'),
+            decoration: InputDecoration(
+              labelText: 'Login name',
+              helperText: _type == BbsType.xrouter ? 'Your callsign.' : null,
+            ),
             autocorrect: false,
             validator: (s) => checkRequired(s, 'your login name on the BBS'),
           ),

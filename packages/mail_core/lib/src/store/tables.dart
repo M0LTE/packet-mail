@@ -15,12 +15,12 @@ class Connections extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
 
-  /// Which driver: 'bpq' for now.
+  /// Which driver: 'bpq' or 'xrouter'.
   TextColumn get bbsType => text()();
   TextColumn get host => text()();
   IntColumn get port => integer()();
 
-  /// For bpq: 'fbb' or 'telnet'.
+  /// For bpq: 'fbb' or 'telnet'. Always 'telnet' for xrouter.
   TextColumn get portKind => text()();
   TextColumn get loginName => text()();
 

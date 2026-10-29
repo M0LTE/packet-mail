@@ -62,6 +62,10 @@ Capability flags let the app hide what a driver can't do (for example, no White 
 - Parse by recognising the BBS prompt, never by timing.
 - All of the above to be confirmed against recorded real sessions before writing the parser (milestone 0).
 
+### XRouter driver
+
+Added 2026-10-29 (#49). XRouter's built-in mailbox (its PMS) over the node's telnet port: callsign and password prompts, then `PMS`. It has personal mail, bulletins, kill and White Pages like BPQMail, but takes no BID from a user, so the driver says it can't refuse a second copy and the sync engine checks the list of mail from us before resending. See docs/xrouter-protocol.md.
+
 ## Data model
 
 - **Identity:** callsign, name, home BBS full address (for example `GB7RDG.#42.GBR.EURO`).

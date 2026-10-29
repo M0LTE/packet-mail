@@ -23,6 +23,8 @@ class BulletinsTab extends ConsumerWidget {
     final subs = ref.watch(subscriptionsProvider).value ?? const [];
     final groups = groupBulletins(all ?? const []);
     final unread = all?.where((m) => !m.read).length ?? 0;
+    final connections = ref.watch(connectionsProvider).value ?? const [];
+    final none = connections.isNotEmpty && ref.watch(connectionsWithProvider(DriverCapability.bulletins)).isEmpty;
 
     return Scaffold(
       body: SafeArea(
@@ -35,18 +37,20 @@ class BulletinsTab extends ConsumerWidget {
               child: Row(
                 children: [
                   Expanded(child: Text('Bulletins', style: text.displaySmall)),
-                  TextButton(
-                    onPressed: () =>
-                        Navigator.of(context)
-                            .push(MaterialPageRoute<void>(builder: (_) => const SubscriptionsScreen())),
-                    child: Text(subs.isEmpty ? 'Subscriptions' : 'Subscriptions ${subs.length}'),
-                  ),
-                  IconButton(
-                    key: const ValueKey('new-bulletin'),
-                    tooltip: 'New bulletin',
-                    icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
-                    onPressed: () => openBulletinCompose(context),
-                  ),
+                  if (!none) ...[
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.of(context)
+                              .push(MaterialPageRoute<void>(builder: (_) => const SubscriptionsScreen())),
+                      child: Text(subs.isEmpty ? 'Subscriptions' : 'Subscriptions ${subs.length}'),
+                    ),
+                    IconButton(
+                      key: const ValueKey('new-bulletin'),
+                      tooltip: 'New bulletin',
+                      icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+                      onPressed: () => openBulletinCompose(context),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -68,7 +72,17 @@ class BulletinsTab extends ConsumerWidget {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: 16),
                   children: [
-                    if (all != null && all.isEmpty)
+                    if (none)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                        child: Text(
+                          connections.length == 1
+                              ? '${connections.single.name} has no bulletins.'
+                              : 'None of your connections has bulletins.',
+                          style: text.titleMedium?.copyWith(color: Logbook.inkSoft),
+                        ),
+                      )
+                    else if (all != null && all.isEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                         child: Text(

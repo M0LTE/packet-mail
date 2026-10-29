@@ -296,6 +296,7 @@ class SyncEngine {
     var address = r.address;
     String? found;
     if (m.type == 'bulletin') {
+      if (!driver.capabilities.contains(DriverCapability.bulletins)) return _failed('This BBS takes no bulletins.');
       final parsed = BulletinAddress.parse(r.address);
       final problems = parsed.problems.where((p) => p.blocking).toList();
       if (parsed.address == null || problems.isNotEmpty) return _failed(problems.join(' '));
