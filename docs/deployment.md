@@ -99,3 +99,7 @@ rm /tmp/demo-bbs /tmp/feedback-receiver
 ```
 
 Restarting the demo BBS throws away every visitor's sandbox, which is harmless. Check afterwards with `curl https://packet-mail-app.m0lte.compute.oarc.uk/healthz` and `nc packet-mail-app.m0lte.compute.oarc.uk 8011`.
+
+## Public address
+
+Since 2026-10-29 the web side is reached as https://packet-mail.m0lte.uk through an OARC load balancer, which terminates TLS with its own Let's Encrypt certificate and forwards to this box. The site, privacy policy, support page and the app's report endpoint (`/v1/report`) all use that name. The box's own name, packet-mail-app.m0lte.compute.oarc.uk, still serves everything directly, which keeps older app builds working; the demo BBS (port 8011) is only on the box's own name, since the load balancer carries web traffic only.

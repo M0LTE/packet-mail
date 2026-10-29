@@ -12,4 +12,4 @@ Packet Mail does not collect, store or share any personal data. There are no acc
 
 Contact: app-support@tomfanning.name
 
-<!-- This policy is also published at https://packet-mail-app.m0lte.compute.oarc.uk/privacy.html from site/privacy.html. Change both together: the two must say the same. -->
+<!-- This policy is also published at https://packet-mail.m0lte.uk/privacy.html from site/privacy.html. Change both together: the two must say the same. -->

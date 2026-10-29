@@ -4,9 +4,9 @@ Drafts for Tom. They assume problem reports go to the developer's own feedback s
 
 ## Website URLs
 
-- **Marketing URL:** https://packet-mail-app.m0lte.compute.oarc.uk/
-- **Support URL:** https://packet-mail-app.m0lte.compute.oarc.uk/support.html
-- **Privacy Policy URL:** https://packet-mail-app.m0lte.compute.oarc.uk/privacy.html (the same text as `docs/privacy.md`)
+- **Marketing URL:** https://packet-mail.m0lte.uk/
+- **Support URL:** https://packet-mail.m0lte.uk/support.html
+- **Privacy Policy URL:** https://packet-mail.m0lte.uk/privacy.html (the same text as `docs/privacy.md`)
 
 ## Apple: App Privacy ("nutrition label")
 

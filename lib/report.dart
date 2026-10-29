@@ -10,7 +10,7 @@ import 'package:share_plus/share_plus.dart';
 
 /// Where "Report a problem" sends reports: the feedback receiver in
 /// feedback-receiver/, hosted as described in docs/deployment.md.
-const reportEndpoint = 'https://packet-mail-app.m0lte.compute.oarc.uk/v1/report';
+const reportEndpoint = 'https://packet-mail.m0lte.uk/v1/report';
 
 /// Where a report shared by hand should go, if sending fails.
 const reportAddress = 'app-support@tomfanning.name';

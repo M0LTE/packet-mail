@@ -14,4 +14,4 @@ tar -czf - --owner=0 --group=0 . | ssh "$host" '
   sudo mv /var/www/packet-mail.new /var/www/packet-mail
   sudo rm -rf /var/www/packet-mail.old
 '
-echo "Deployed. Check https://packet-mail-app.m0lte.compute.oarc.uk/"
+echo "Deployed. Check https://packet-mail.m0lte.uk/"
