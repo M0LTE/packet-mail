@@ -32,6 +32,7 @@ void defineXRouterScenarios(XRouterConnect connect) {
   test('logs in and sends personal mail, mail for another BBS and a bulletin', () async {
     final d = xrouterDriverFor(await connect('user-send'));
     await d.logIn(user: 'q0usr', password: 'user', name: 'Tom User');
+    expect(d.sentAs, 'Q0USR'); // the node records the login call as sender
 
     final local = await d.sendPersonal(
       to: MailAddress.parse('Q0OTH@Q0XR.#42.GBR.EURO').address!,

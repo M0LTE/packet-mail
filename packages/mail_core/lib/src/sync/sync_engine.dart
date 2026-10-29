@@ -187,7 +187,7 @@ class SyncEngine {
       final driver = await connect(await _connection(message.connectionId));
       try {
         final read = await driver.read(message.bbsNumber);
-        await _storeBody(message, read);
+        await _storeBody(message, read, driver);
         body = read.body;
       } finally {
         await _quietly(driver.disconnect);
@@ -323,7 +323,7 @@ class SyncEngine {
     }
     final retrySafely = driver.capabilities.contains(DriverCapability.refusesDuplicates);
     if (r.state == 'sending' && !retrySafely) {
-      final earlier = await _alreadySent(driver, m, address);
+      final earlier = await _alreadySent(driver, m, address, r.knownTop);
       if (earlier != null) {
         return OutgoingRecipientsCompanion(
           state: const Value('sent'),
@@ -331,32 +331,77 @@ class SyncEngine {
           note: Value([?found, 'The BBS already had it from an earlier try.'].join(' ')),
         );
       }
+      // A copy killed or forwarded off the BBS since then can't be seen.
+      found = [?found, 'May have been sent twice: the first attempt was cut off.'].join(' ');
     }
     await (store.update(store.outgoingRecipients)..where((t) => t.id.equals(r.id))).write(OutgoingRecipientsCompanion(
       state: const Value('sending'),
       address: Value(address),
       bbsBid: Value(bid),
       note: Value(found),
+      knownTop: r.knownTop == null && !retrySafely ? Value(await _knownTop(m.connectionId)) : const Value.absent(),
     ));
     return _attempt(send, note: found, retry: retrySafely);
   }
 
-  /// For a BBS that can't refuse a second copy: the number of a copy of [m]
-  /// to [address] that an earlier, interrupted try left on the BBS, judged
-  /// by addressee and subject (listings may cut subjects short), or null.
-  Future<int?> _alreadySent(MailDriver driver, OutgoingData m, String address) async {
-    if (!driver.capabilities.contains(DriverCapability.listSent)) return null;
-    final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
-    final call = identity == null ? '' : identity.callsign.trim().toUpperCase().split('-').first;
-    if (!isCallsign(call)) return null;
+  /// For a BBS that can't refuse a second copy: the number of the copy of
+  /// [m] to [address] that an earlier, interrupted try left on the BBS, or
+  /// null. Judged by addressee and subject (listings may cut subjects short),
+  /// and only a copy listed on or after the day [m] was written, numbered
+  /// above [knownTop], and not already claimed by another copy counts.
+  Future<int?> _alreadySent(MailDriver driver, OutgoingData m, String address, int? knownTop) async {
+    if (knownTop == null || !driver.capabilities.contains(DriverCapability.listSent)) return null;
+    final call = await _senderCall(driver);
+    if (call == null) return null;
     final to = address.split('@').first.toUpperCase();
     final type = m.type == 'bulletin' ? MessageType.bulletin : MessageType.personal;
+    final created = m.createdAt.toUtc();
+    final day = DateTime.utc(created.year, created.month, created.day);
+    final claimed = {
+      for (final n in await (store.selectOnly(store.outgoingRecipients)
+            ..addColumns([store.outgoingRecipients.bbsNumber])
+            ..where(store.outgoingRecipients.bbsNumber.isNotNull()))
+          .map((row) => row.read(store.outgoingRecipients.bbsNumber))
+          .get())
+        n,
+    };
     for (final h in await driver.listSent(call)) {
-      if (h.type == type && h.to == to && h.subject.isNotEmpty && m.subject.trim().startsWith(h.subject)) {
+      if (h.type == type &&
+          h.to == to &&
+          h.number > knownTop &&
+          !claimed.contains(h.number) &&
+          !h.date.isBefore(day) &&
+          h.subject.isNotEmpty &&
+          m.subject.trim().startsWith(h.subject)) {
         return h.number;
       }
     }
     return null;
+  }
+
+  /// The highest message number this connection's mail, bulletins, sent
+  /// listings and sent copies show: anything the BBS stores next is higher.
+  Future<int> _knownTop(int connectionId) async {
+    final row = await store.customSelect(
+      'SELECT MAX(n) AS n FROM ('
+      'SELECT MAX(bbs_number) AS n FROM messages WHERE connection_id = ?1 '
+      'UNION ALL SELECT MAX(bbs_number) FROM sent_listings WHERE connection_id = ?1 '
+      'UNION ALL SELECT MAX(r.bbs_number) FROM outgoing_recipients r '
+      'JOIN outgoing o ON o.id = r.outgoing_id WHERE o.connection_id = ?1)',
+      variables: [Variable.withInt(connectionId)],
+    ).getSingle();
+    return row.read<int?>('n') ?? 0;
+  }
+
+  /// The callsign the BBS records as our mail's sender: the driver's, else
+  /// the identity's without SSID. Null if neither is a callsign.
+  Future<String?> _senderCall(MailDriver driver) async {
+    var call = driver.sentAs?.trim().toUpperCase();
+    if (call == null) {
+      final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
+      call = identity == null ? '' : identity.callsign.trim().toUpperCase().split('-').first;
+    }
+    return isCallsign(call) ? call : null;
   }
 
   /// The address book first, then White Pages.
@@ -487,7 +532,7 @@ class SyncEngine {
   /// until the user deletes them. Headers never downloaded go.
   Future<void> _listPersonal(MailDriver driver, Connection connection, _Session s) async {
     final headers = await driver.listPersonal();
-    s.newMessages += (await _storeHeaders(connection.id, headers)).length;
+    s.newMessages += (await _storeHeaders(connection.id, headers, driver)).length;
     await _dropUnlisted(connection.id, headers, bulletins: false);
   }
 
@@ -510,9 +555,8 @@ class SyncEngine {
   /// Mail from us as the BBS lists it, with its status. Additive: rows whose
   /// text is here stay after the BBS drops them; headers only go.
   Future<void> _listSent(MailDriver driver, Connection connection) async {
-    final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
-    final call = identity == null ? '' : identity.callsign.trim().toUpperCase().split('-').first;
-    if (!isCallsign(call)) return;
+    final call = await _senderCall(driver);
+    if (call == null) return;
     final headers = await driver.listSent(call);
     final now = _clock();
     await store.transaction(() async {
@@ -562,7 +606,7 @@ class SyncEngine {
         .get();
     for (final m in missing) {
       final read = await _readIfThere(driver, m);
-      if (read != null) await _storeBody(m, read);
+      if (read != null) await _storeBody(m, read, driver);
     }
   }
 
@@ -582,7 +626,7 @@ class SyncEngine {
     for (final h in headers) {
       if (mine.contains(h.number) || !await _listedElsewhere(h, connection.id)) keep.add(h);
     }
-    s.newBulletinIds.addAll(await _storeHeaders(connection.id, keep));
+    s.newBulletinIds.addAll(await _storeHeaders(connection.id, keep, driver));
 
     // Additive, as for personal mail: downloaded bulletins stay.
     await _dropUnlisted(connection.id, headers, bulletins: true);
@@ -638,7 +682,7 @@ class SyncEngine {
         s.newBulletinIds.remove(m.id);
         continue;
       }
-      await _storeBody(m, read);
+      await _storeBody(m, read, driver);
     }
   }
 
@@ -665,7 +709,8 @@ class SyncEngine {
   /// Inserts headers not yet stored and refreshes when the rest were listed.
   /// A number the BBS has reused for a different message replaces the old row.
   /// Returns the ids of the new rows. New personal mail is unread here.
-  Future<List<int>> _storeHeaders(int connectionId, List<MessageHeader> headers) async {
+  Future<List<int>> _storeHeaders(int connectionId, List<MessageHeader> headers, MailDriver driver) async {
+    final cut = !driver.capabilities.contains(DriverCapability.fullListedSubjects);
     final now = _clock();
     final added = <int>[];
     await store.transaction(() async {
@@ -675,7 +720,7 @@ class SyncEngine {
       };
       for (final h in headers) {
         final old = existing[h.number];
-        if (old != null && _same(old, h)) {
+        if (old != null && _same(old, h, cutSubjects: cut)) {
           await (store.update(store.messages)..where((m) => m.id.equals(old.id)))
               .write(MessagesCompanion(lastListedAt: Value(now)));
           continue;
@@ -701,20 +746,21 @@ class SyncEngine {
 
   /// True if a stored row and a listed header are the same message. The
   /// stored date may have gained a time when read, so only the day counts.
-  static bool _same(Message m, MessageHeader h) {
+  static bool _same(Message m, MessageHeader h, {required bool cutSubjects}) {
     final a = m.date.toUtc(), b = h.date.toUtc();
     return m.fromCall == h.from &&
         m.toCall == h.to &&
-        sameSubject(m.subject, h.subject) &&
+        sameSubject(m.subject, h.subject, cut: cutSubjects) &&
         a.year == b.year &&
         a.month == b.month &&
         a.day == b.day;
   }
 
-  /// True if a stored subject and a listed one are the same: some BBSes
-  /// (XRouter) cut subjects short in listings, and reading gives the whole.
-  static bool sameSubject(String stored, String listed) =>
-      stored == listed || (listed.length >= 20 && stored.startsWith(listed));
+  /// True if a stored subject and a listed one are the same. Where listings
+  /// [cut] subjects short (XRouter), reading gives the whole, so a listed
+  /// subject may be the start of the stored one.
+  static bool sameSubject(String stored, String listed, {required bool cut}) =>
+      stored == listed || (cut && listed.length >= 20 && stored.startsWith(listed));
 
   Future<void> _deleteIds(List<int> ids) async {
     if (ids.isNotEmpty) await (store.delete(store.messages)..where((m) => m.id.isIn(ids))).go();
@@ -731,14 +777,15 @@ class SyncEngine {
   }
 
   /// Stores a message's text, and for personal mail its sender's home BBS.
-  Future<void> _storeBody(Message m, ReadMessage read) async {
+  Future<void> _storeBody(Message m, ReadMessage read, MailDriver driver) async {
+    final cut = !driver.capabilities.contains(DriverCapability.fullListedSubjects);
     await (store.update(store.messages)..where((t) => t.id.equals(m.id))).write(MessagesCompanion(
       body: Value(read.body),
       routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
       bid: Value(read.bid.isEmpty ? m.bid : read.bid),
       date: Value(read.date),
       // The whole subject, where the listing cut it short.
-      subject: read.subject.length > m.subject.length && read.subject.startsWith(m.subject)
+      subject: cut && read.subject.length > m.subject.length && read.subject.startsWith(m.subject)
           ? Value(read.subject)
           : const Value.absent(),
     ));

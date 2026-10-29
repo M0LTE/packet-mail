@@ -17,6 +17,7 @@ For Packet Mail's purposes it has everything the LinBPQ driver uses: personal ma
 | Connect | `\r\nXrouter v505p\r\n\r\nCallsign: ` (no CR after the prompt). No telnet negotiation. | [S] |
 | Send callsign | `Q0USR\r`, case-insensitive (`q0usr` worked). | [S] |
 | Not a callsign | `NOTACALL` or `NOCALL`: the node closes the connection without a word. | [S] |
+| Callsign with an SSID | `Q0USR-1`, `Q0USR-5`, `Q0USR-15`: closed the same way, with or without a password required. So the mailbox always records the plain login call as the sender. | [S] |
 | Password wanted | `\r\nPassword: ` (no CR after it). | [S] |
 | No password wanted | No prompt: straight to the welcome. | [S] |
 | Bad password, or a callsign with no password set | `\r\nBad password!\r\n`, then the node closes. | [S] |
@@ -151,7 +152,7 @@ Enter subject (or empty line to abort):\r\n
 
 ## 9. Gotchas
 
-1. **Never send `$` with a send command.** `SP Q0OTH $BID123` gets `NO - Protocol violation (no SID)` and throws the session out of the mailbox to the node **[S]**. Everything typed after that is a node command (`L` lists AX.25 links, `X` tries SLIP or PPP, `B` hangs up) **[S]**. So the mailbox takes no BID or MID from a user, and **cannot refuse a second copy** of a message. The driver ignores the ID the app offers; the sync engine, for a send it isn't sure about, looks for the copy in `L<` before sending again (matching addressee and the start of the subject), and never retries at once.
+1. **Never send `$` with a send command.** `SP Q0OTH $BID123` gets `NO - Protocol violation (no SID)` and throws the session out of the mailbox to the node **[S]**. Everything typed after that is a node command (`L` lists AX.25 links, `X` tries SLIP or PPP, `B` hangs up) **[S]**. So the mailbox takes no BID or MID from a user, and **cannot refuse a second copy** of a message. The driver ignores the ID the app offers. The sync engine never retries at once; at the next sync it looks for the copy in `L<` (under the call the driver logged in with) before sending again. A listed message counts as the copy only if it has the same addressee, its subject starts the same, it is dated on or after the day the message was written, its number is higher than any the app knew of at the first try, and no other sent message has claimed that number. A copy that was killed or forwarded off the node before the next sync no longer shows in `L<`, so it is sent again; there is no way to tell, so that recipient's note says "May have been sent twice: the first attempt was cut off."
 2. **The node has no prompt.** See section 2.
 3. **Listings cut subjects to 34 characters**, so a listed subject may be the start of the stored one.
 4. **Mode 4.** With `PMSTYPE=4` the mailbox is a full BBS reached with `BBS`; through `PMS` it shows only personal mail (`LB` lists nothing) **[S]**. The driver always uses `PMS`, because on other nodes `BBS` is often an alias that connects somewhere else, so on a mode 4 node the app shows no bulletins.

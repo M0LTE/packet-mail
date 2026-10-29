@@ -8,6 +8,10 @@ enum DriverCapability {
   bulletins,
   listSent,
 
+  /// Listings show whole subjects. Without it a listed subject may be only
+  /// the start of the stored one.
+  fullListedSubjects,
+
   /// The BBS takes our ID with a message and refuses a second copy, so a
   /// send that may or may not have got through can safely be sent again.
   refusesDuplicates,
@@ -52,6 +56,10 @@ class BbsError implements Exception {
 /// One BBS type. Every driver offers the same actions over a connected byte stream.
 abstract interface class MailDriver {
   Set<DriverCapability> get capabilities;
+
+  /// The callsign the BBS records as the sender of what we send, once
+  /// logged in, or null to use the identity's callsign.
+  String? get sentAs;
 
   /// Logs in and enters the mail BBS. [name] answers a first-time "enter your name" prompt.
   Future<void> logIn({required String user, required String password, required String name});

@@ -84,6 +84,10 @@ class FakeBbs implements MailDriver {
   @override
   Set<DriverCapability> get capabilities => caps;
 
+  /// What the BBS records as our call, when the driver knows.
+  @override
+  String? sentAs;
+
   @override
   Future<void> logIn({required String user, required String password, required String name}) async {}
 
@@ -1005,6 +1009,68 @@ void main() {
             IdentitiesCompanion.insert(callsign: 'M0LTE', name: 'Tom', homeBbs: 'GB7RDG.#42.GBR.EURO'));
       });
 
+      MessageHeader listedFromUs(int number, {DateTime? date, String subject = 'Test'}) => MessageHeader(
+          number: number,
+          type: MessageType.personal,
+          status: r'$',
+          from: 'M0LTE',
+          to: 'G8BPQ',
+          at: 'GB7BPQ',
+          subject: subject,
+          date: date ?? day);
+
+      /// Queues one message, has its first try cut off after the BBS stored
+      /// it, then lists [copies] as mail from us and syncs again.
+      Future<OutgoingRecipient> cutOffThenList(List<MessageHeader> copies) async {
+        await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+        final inner = bbs;
+        engine = SyncEngine(db, (c) async => _LostAfterSend(inner, SessionTimeout('prompt', '')), clock: () => clock);
+        await engine.sync(conn);
+        bbs
+          ..sent.clear()
+          ..bids.clear() // this BBS keeps no IDs
+          ..fromUs.clear();
+        for (final h in copies) {
+          bbs.fromUs[h.number] = FakeMessage(h);
+        }
+        engine = SyncEngine(db, (c) async => bbs, clock: () => clock);
+        await engine.sync(conn);
+        return (await recipients()).firstWhere((r) => r.address == 'G8BPQ@GB7BPQ.#76.GBR.EU');
+      }
+
+      const twice = 'May have been sent twice: the first attempt was cut off.';
+
+      test('an older message with the same addressee and subject is not taken for the copy', () async {
+        final r = await cutOffThenList([listedFromUs(1001, date: day.subtract(const Duration(days: 30)))]);
+        expect(bbs.sent, ['P G8BPQ@GB7BPQ.#76.GBR.EU Test']);
+        expect([r.state, r.note], ['sent', twice]);
+      });
+
+      test('a copy numbered at or below what the app already knew is not taken', () async {
+        bbs.addFromUs(900);
+        await engine.sync(conn); // so 900 is known before the first try
+        final r = await cutOffThenList([listedFromUs(900, subject: 'Test')]);
+        expect(bbs.sent, hasLength(1));
+        expect(r.note, twice);
+      });
+
+      test('a copy another sent message already claimed is not taken', () async {
+        final other = await queue(['G4APL@GB7XYZ.#42.GBR.EURO']);
+        await (db.update(db.outgoingRecipients)..where((t) => t.outgoingId.equals(other)))
+            .write(const OutgoingRecipientsCompanion(state: Value('sent'), bbsNumber: Value(1001)));
+        final r = await cutOffThenList([listedFromUs(1001)]);
+        expect(bbs.sent, hasLength(1));
+        expect(r.note, twice);
+      });
+
+      test('mail from us is listed under the call the BBS records', () async {
+        bbs.sentAs = 'Q0ABC';
+        final r = await cutOffThenList([listedFromUs(1001)]);
+        expect(bbs.calls, contains('listSent Q0ABC'));
+        expect(bbs.calls, isNot(contains('listSent M0LTE')));
+        expect([r.state, r.bbsNumber], ['sent', 1001]);
+      });
+
       test('an unclear reply is not sent again at once', () async {
         await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
         final inner = bbs;
@@ -1049,13 +1115,26 @@ void main() {
           ..bids.clear(); // this BBS keeps no IDs
         await engine.sync(conn);
         expect(bbs.sent, ['P G8BPQ@GB7BPQ.#76.GBR.EU Test']);
-        expect((await recipients()).single.state, 'sent');
+        final r = (await recipients()).single;
+        expect([r.state, r.note], ['sent', 'May have been sent twice: the first attempt was cut off.']);
       });
+    });
+
+    test('where listings show whole subjects, a shorter listed subject is a different message', () async {
+      conn = await addConnection(download: 'atSync', name: 'Other');
+      bbs.addPersonal(10, subject: 'A subject longer than the listing has room for');
+      await engine.sync(conn);
+      final id = (await message(10)).id;
+      bbs.addPersonal(10, subject: 'A subject longer than the listing');
+      await engine.sync(conn);
+      final m = await message(10);
+      expect([m.id == id, m.subject], [false, 'A subject longer than the listing']);
     });
 
     test('a listing that cuts subjects short keeps the downloaded text and the whole subject', () async {
       const whole = 'A subject longer than the listing has room for';
       const cut = 'A subject longer than the listing';
+      bbs.caps = DriverCapability.values.toSet()..remove(DriverCapability.fullListedSubjects);
       bbs.addPersonal(10, subject: cut);
       await engine.sync(conn);
       final id = (await message(10)).id;
@@ -1235,6 +1314,8 @@ abstract class _Wrapper implements MailDriver {
   final FakeBbs inner;
   @override
   Set<DriverCapability> get capabilities => inner.capabilities;
+  @override
+  String? get sentAs => inner.sentAs;
   @override
   Future<void> logIn({required String user, required String password, required String name}) =>
       inner.logIn(user: user, password: password, name: name);

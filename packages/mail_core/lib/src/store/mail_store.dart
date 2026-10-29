@@ -10,13 +10,14 @@ class MailStore extends _$MailStore {
   MailStore(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(sentListings);
+          if (from < 3) await m.addColumn(outgoingRecipients, outgoingRecipients.knownTop);
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
       );

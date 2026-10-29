@@ -39,16 +39,21 @@ class XRouterDriver implements MailDriver {
   @override
   Set<DriverCapability> get capabilities => supported;
 
+  /// The node takes no SSID on telnet, so this is the callsign we logged in with.
+  @override
+  String? get sentAs => _call;
+  String? _call;
+
   /// The mailbox prompt: `[n] B,H,I,...,? >`, where n is the last message read.
   static final _prompt = RegExp(r'(?:^|\r)\[\d+\] [^\r]*>\r');
-  static final _callsignLogin = RegExp(r'^[A-Z0-9]{1,6}(?:-\d{1,2})?$');
+  static final _callsignLogin = RegExp(r'^[A-Z0-9]{1,6}$');
   static const _refusedMessage = 'The node did not accept the callsign or password.';
 
   @override
   Future<void> logIn({required String user, required String password, required String name}) async {
     final call = user.trim().toUpperCase();
     if (!_callsignLogin.hasMatch(call)) {
-      throw BbsError(BbsErrorKind.loginFailed, 'XRouter needs your callsign as the login name.');
+      throw BbsError(BbsErrorKind.loginFailed, 'XRouter needs your callsign, without an SSID, as the login name.');
     }
     try {
       await _session.readUntil('Callsign: ', timeout: timeout);
@@ -78,6 +83,7 @@ class XRouterDriver implements MailDriver {
       throw BbsError(BbsErrorKind.protocol, "This node's PMS command doesn't lead to its mailbox.");
     }
     _inMailbox = true;
+    _call = call;
     await _command('NP 0');
   }
 

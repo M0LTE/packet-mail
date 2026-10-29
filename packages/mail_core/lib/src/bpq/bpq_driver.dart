@@ -44,8 +44,12 @@ class BpqDriver implements MailDriver {
     DriverCapability.kill,
     DriverCapability.bulletins,
     DriverCapability.listSent,
+    DriverCapability.fullListedSubjects,
     DriverCapability.refusesDuplicates,
   };
+
+  @override
+  String? get sentAs => null;
 
   @override
   Set<DriverCapability> get capabilities => supported;

@@ -22,6 +22,12 @@ void main() {
     await expectLater(d.logIn(user: 'Q0USR PMS', password: 'user', name: 'x'), throwsKind(BbsErrorKind.loginFailed));
   });
 
+  test('a login with an SSID, which the node refuses on telnet, never reaches it', () async {
+    final d = xrouterDriverFor(ReplayTransport(Recording([])));
+    await expectLater(d.logIn(user: 'Q0USR-1', password: 'user', name: 'x'), throwsKind(BbsErrorKind.loginFailed));
+    expect(d.sentAs, isNull);
+  });
+
   test('body lines that would end or abandon a message are escaped', () {
     expect(XRouterDriver.escapeBody('/ex\n/EX\n /ex\n/qq\n/QQ  \n/exit\nx\u001Ay'),
         [' /ex', ' /EX', '  /ex', ' /qq', ' /QQ  ', '/exit', 'x y']);

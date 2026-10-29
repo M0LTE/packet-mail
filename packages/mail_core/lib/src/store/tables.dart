@@ -139,6 +139,11 @@ class OutgoingRecipients extends Table {
   IntColumn get bbsNumber => integer().nullable()();
   TextColumn get bbsBid => text().nullable()();
 
+  /// The highest message number the app knew on this connection when this
+  /// copy was first tried. On a BBS that can't refuse a second copy, only a
+  /// higher number can be that try's copy.
+  IntColumn get knownTop => integer().nullable()();
+
   /// Plain words: why it failed or is held, or what the BBS noted.
   TextColumn get note => text().nullable()();
 }

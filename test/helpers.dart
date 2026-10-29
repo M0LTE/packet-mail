@@ -126,6 +126,9 @@ class FakeDriver extends Fake implements MailDriver {
   };
 
   @override
+  String? get sentAs => null;
+
+  @override
   Future<List<MessageHeader>> listSent(String callsign) async => [...?fromUs?.keys];
 
   @override

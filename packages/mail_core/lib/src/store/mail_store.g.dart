@@ -581,12 +581,12 @@ class Connection extends DataClass implements Insertable<Connection> {
   final int id;
   final String name;
 
-  /// Which driver: 'bpq' for now.
+  /// Which driver: 'bpq' or 'xrouter'.
   final String bbsType;
   final String host;
   final int port;
 
-  /// For bpq: 'fbb' or 'telnet'.
+  /// For bpq: 'fbb' or 'telnet'. Always 'telnet' for xrouter.
   final String portKind;
   final String loginName;
 
@@ -2236,7 +2236,7 @@ class SentListing extends DataClass implements Insertable<SentListing> {
   /// 'personal', 'bulletin' or 'traffic'.
   final String type;
 
-  /// The BBS's status letter: N, Y, F, \$ or D.
+  /// The BBS status letter: N, Y, F, $ or D.
   final String status;
   final String toCall;
   final String? at;
@@ -3245,6 +3245,17 @@ class $OutgoingRecipientsTable extends OutgoingRecipients
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _knownTopMeta = const VerificationMeta(
+    'knownTop',
+  );
+  @override
+  late final GeneratedColumn<int> knownTop = GeneratedColumn<int>(
+    'known_top',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -3262,6 +3273,7 @@ class $OutgoingRecipientsTable extends OutgoingRecipients
     state,
     bbsNumber,
     bbsBid,
+    knownTop,
     note,
   ];
   @override
@@ -3313,6 +3325,12 @@ class $OutgoingRecipientsTable extends OutgoingRecipients
         bbsBid.isAcceptableOrUnknown(data['bbs_bid']!, _bbsBidMeta),
       );
     }
+    if (data.containsKey('known_top')) {
+      context.handle(
+        _knownTopMeta,
+        knownTop.isAcceptableOrUnknown(data['known_top']!, _knownTopMeta),
+      );
+    }
     if (data.containsKey('note')) {
       context.handle(
         _noteMeta,
@@ -3352,6 +3370,10 @@ class $OutgoingRecipientsTable extends OutgoingRecipients
         DriftSqlType.string,
         data['${effectivePrefix}bbs_bid'],
       ),
+      knownTop: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}known_top'],
+      ),
       note: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}note'],
@@ -3380,6 +3402,11 @@ class OutgoingRecipient extends DataClass
   final int? bbsNumber;
   final String? bbsBid;
 
+  /// The highest message number the app knew on this connection when this
+  /// copy was first tried. On a BBS that can't refuse a second copy, only a
+  /// higher number can be that try's copy.
+  final int? knownTop;
+
   /// Plain words: why it failed or is held, or what the BBS noted.
   final String? note;
   const OutgoingRecipient({
@@ -3389,6 +3416,7 @@ class OutgoingRecipient extends DataClass
     required this.state,
     this.bbsNumber,
     this.bbsBid,
+    this.knownTop,
     this.note,
   });
   @override
@@ -3403,6 +3431,9 @@ class OutgoingRecipient extends DataClass
     }
     if (!nullToAbsent || bbsBid != null) {
       map['bbs_bid'] = Variable<String>(bbsBid);
+    }
+    if (!nullToAbsent || knownTop != null) {
+      map['known_top'] = Variable<int>(knownTop);
     }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
@@ -3422,6 +3453,9 @@ class OutgoingRecipient extends DataClass
       bbsBid: bbsBid == null && nullToAbsent
           ? const Value.absent()
           : Value(bbsBid),
+      knownTop: knownTop == null && nullToAbsent
+          ? const Value.absent()
+          : Value(knownTop),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
     );
   }
@@ -3438,6 +3472,7 @@ class OutgoingRecipient extends DataClass
       state: serializer.fromJson<String>(json['state']),
       bbsNumber: serializer.fromJson<int?>(json['bbsNumber']),
       bbsBid: serializer.fromJson<String?>(json['bbsBid']),
+      knownTop: serializer.fromJson<int?>(json['knownTop']),
       note: serializer.fromJson<String?>(json['note']),
     );
   }
@@ -3451,6 +3486,7 @@ class OutgoingRecipient extends DataClass
       'state': serializer.toJson<String>(state),
       'bbsNumber': serializer.toJson<int?>(bbsNumber),
       'bbsBid': serializer.toJson<String?>(bbsBid),
+      'knownTop': serializer.toJson<int?>(knownTop),
       'note': serializer.toJson<String?>(note),
     };
   }
@@ -3462,6 +3498,7 @@ class OutgoingRecipient extends DataClass
     String? state,
     Value<int?> bbsNumber = const Value.absent(),
     Value<String?> bbsBid = const Value.absent(),
+    Value<int?> knownTop = const Value.absent(),
     Value<String?> note = const Value.absent(),
   }) => OutgoingRecipient(
     id: id ?? this.id,
@@ -3470,6 +3507,7 @@ class OutgoingRecipient extends DataClass
     state: state ?? this.state,
     bbsNumber: bbsNumber.present ? bbsNumber.value : this.bbsNumber,
     bbsBid: bbsBid.present ? bbsBid.value : this.bbsBid,
+    knownTop: knownTop.present ? knownTop.value : this.knownTop,
     note: note.present ? note.value : this.note,
   );
   OutgoingRecipient copyWithCompanion(OutgoingRecipientsCompanion data) {
@@ -3482,6 +3520,7 @@ class OutgoingRecipient extends DataClass
       state: data.state.present ? data.state.value : this.state,
       bbsNumber: data.bbsNumber.present ? data.bbsNumber.value : this.bbsNumber,
       bbsBid: data.bbsBid.present ? data.bbsBid.value : this.bbsBid,
+      knownTop: data.knownTop.present ? data.knownTop.value : this.knownTop,
       note: data.note.present ? data.note.value : this.note,
     );
   }
@@ -3495,14 +3534,23 @@ class OutgoingRecipient extends DataClass
           ..write('state: $state, ')
           ..write('bbsNumber: $bbsNumber, ')
           ..write('bbsBid: $bbsBid, ')
+          ..write('knownTop: $knownTop, ')
           ..write('note: $note')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, outgoingId, address, state, bbsNumber, bbsBid, note);
+  int get hashCode => Object.hash(
+    id,
+    outgoingId,
+    address,
+    state,
+    bbsNumber,
+    bbsBid,
+    knownTop,
+    note,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3513,6 +3561,7 @@ class OutgoingRecipient extends DataClass
           other.state == this.state &&
           other.bbsNumber == this.bbsNumber &&
           other.bbsBid == this.bbsBid &&
+          other.knownTop == this.knownTop &&
           other.note == this.note);
 }
 
@@ -3523,6 +3572,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
   final Value<String> state;
   final Value<int?> bbsNumber;
   final Value<String?> bbsBid;
+  final Value<int?> knownTop;
   final Value<String?> note;
   const OutgoingRecipientsCompanion({
     this.id = const Value.absent(),
@@ -3531,6 +3581,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
     this.state = const Value.absent(),
     this.bbsNumber = const Value.absent(),
     this.bbsBid = const Value.absent(),
+    this.knownTop = const Value.absent(),
     this.note = const Value.absent(),
   });
   OutgoingRecipientsCompanion.insert({
@@ -3540,6 +3591,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
     this.state = const Value.absent(),
     this.bbsNumber = const Value.absent(),
     this.bbsBid = const Value.absent(),
+    this.knownTop = const Value.absent(),
     this.note = const Value.absent(),
   }) : outgoingId = Value(outgoingId),
        address = Value(address);
@@ -3550,6 +3602,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
     Expression<String>? state,
     Expression<int>? bbsNumber,
     Expression<String>? bbsBid,
+    Expression<int>? knownTop,
     Expression<String>? note,
   }) {
     return RawValuesInsertable({
@@ -3559,6 +3612,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
       if (state != null) 'state': state,
       if (bbsNumber != null) 'bbs_number': bbsNumber,
       if (bbsBid != null) 'bbs_bid': bbsBid,
+      if (knownTop != null) 'known_top': knownTop,
       if (note != null) 'note': note,
     });
   }
@@ -3570,6 +3624,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
     Value<String>? state,
     Value<int?>? bbsNumber,
     Value<String?>? bbsBid,
+    Value<int?>? knownTop,
     Value<String?>? note,
   }) {
     return OutgoingRecipientsCompanion(
@@ -3579,6 +3634,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
       state: state ?? this.state,
       bbsNumber: bbsNumber ?? this.bbsNumber,
       bbsBid: bbsBid ?? this.bbsBid,
+      knownTop: knownTop ?? this.knownTop,
       note: note ?? this.note,
     );
   }
@@ -3604,6 +3660,9 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
     if (bbsBid.present) {
       map['bbs_bid'] = Variable<String>(bbsBid.value);
     }
+    if (knownTop.present) {
+      map['known_top'] = Variable<int>(knownTop.value);
+    }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
@@ -3619,6 +3678,7 @@ class OutgoingRecipientsCompanion extends UpdateCompanion<OutgoingRecipient> {
           ..write('state: $state, ')
           ..write('bbsNumber: $bbsNumber, ')
           ..write('bbsBid: $bbsBid, ')
+          ..write('knownTop: $knownTop, ')
           ..write('note: $note')
           ..write(')'))
         .toString();
@@ -6610,6 +6670,7 @@ typedef $$OutgoingRecipientsTableCreateCompanionBuilder =
       Value<String> state,
       Value<int?> bbsNumber,
       Value<String?> bbsBid,
+      Value<int?> knownTop,
       Value<String?> note,
     });
 typedef $$OutgoingRecipientsTableUpdateCompanionBuilder =
@@ -6620,6 +6681,7 @@ typedef $$OutgoingRecipientsTableUpdateCompanionBuilder =
       Value<String> state,
       Value<int?> bbsNumber,
       Value<String?> bbsBid,
+      Value<int?> knownTop,
       Value<String?> note,
     });
 
@@ -6688,6 +6750,11 @@ class $$OutgoingRecipientsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get knownTop => $composableBuilder(
+    column: $table.knownTop,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnFilters(column),
@@ -6751,6 +6818,11 @@ class $$OutgoingRecipientsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get knownTop => $composableBuilder(
+    column: $table.knownTop,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
@@ -6803,6 +6875,9 @@ class $$OutgoingRecipientsTableAnnotationComposer
 
   GeneratedColumn<String> get bbsBid =>
       $composableBuilder(column: $table.bbsBid, builder: (column) => column);
+
+  GeneratedColumn<int> get knownTop =>
+      $composableBuilder(column: $table.knownTop, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -6870,6 +6945,7 @@ class $$OutgoingRecipientsTableTableManager
                 Value<String> state = const Value.absent(),
                 Value<int?> bbsNumber = const Value.absent(),
                 Value<String?> bbsBid = const Value.absent(),
+                Value<int?> knownTop = const Value.absent(),
                 Value<String?> note = const Value.absent(),
               }) => OutgoingRecipientsCompanion(
                 id: id,
@@ -6878,6 +6954,7 @@ class $$OutgoingRecipientsTableTableManager
                 state: state,
                 bbsNumber: bbsNumber,
                 bbsBid: bbsBid,
+                knownTop: knownTop,
                 note: note,
               ),
           createCompanionCallback:
@@ -6888,6 +6965,7 @@ class $$OutgoingRecipientsTableTableManager
                 Value<String> state = const Value.absent(),
                 Value<int?> bbsNumber = const Value.absent(),
                 Value<String?> bbsBid = const Value.absent(),
+                Value<int?> knownTop = const Value.absent(),
                 Value<String?> note = const Value.absent(),
               }) => OutgoingRecipientsCompanion.insert(
                 id: id,
@@ -6896,6 +6974,7 @@ class $$OutgoingRecipientsTableTableManager
                 state: state,
                 bbsNumber: bbsNumber,
                 bbsBid: bbsBid,
+                knownTop: knownTop,
                 note: note,
               ),
           withReferenceMapper: (p0) => p0
