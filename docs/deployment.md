@@ -6,8 +6,9 @@ Both servers run on one OARC container, `packet-mail-app.m0lte.compute.oarc.uk` 
 |---|---|---|
 | Demo BBS (`demo-bbs/`) | TCP `packet-mail-app.m0lte.compute.oarc.uk:8011` | systemd unit `demo-bbs` |
 | Feedback receiver (`feedback-receiver/`) | `https://packet-mail-app.m0lte.compute.oarc.uk/v1/report` | systemd unit `feedback-receiver` on `127.0.0.1:8080`, behind nginx |
+| Website (`site/`) | `https://packet-mail-app.m0lte.compute.oarc.uk/` | Static files in `/var/www/packet-mail`, served by nginx |
 
-Port 80 only redirects to https. Anything else on 443 answers 404. `/healthz` (and `/health`) answer `ok`.
+Port 80 only redirects to https. On 443, `/v1/report` goes to the receiver, `/healthz` (and `/health`) answer `ok`, and everything else is the website (404 for a file that isn't there).
 
 There is no Docker on the box. Each service is the static binary from its Dockerfile, run by systemd with the same protections the READMEs ask of Docker: a throwaway unprivileged user (`DynamicUser=yes`), a read-only filesystem (`ProtectSystem=strict`), no capabilities, 128 MB of memory and 64 tasks at most. `Restart=always` brings them back after a crash, and both are enabled, so they start at boot.
 
@@ -20,7 +21,9 @@ There is no Docker on the box. Each service is the static binary from its Docker
 | `/etc/systemd/system/demo-bbs.service`, `feedback-receiver.service` | The units |
 | `/etc/packet-mail/demo-bbs.env` | Demo BBS limits, written out at the README's defaults |
 | `/etc/packet-mail/feedback.env` | The GitHub token. Root only, mode 600 |
-| `/etc/nginx/sites-available/packet-mail-feedback` | TLS proxy and the port 80 redirect (Debian's default site is disabled) |
+| `/etc/nginx/sites-available/packet-mail-feedback` | TLS proxy, the website and the port 80 redirect (Debian's default site is disabled) |
+| `/etc/nginx/snippets/packet-mail-site-headers.conf` | Security headers for the website only |
+| `/var/www/packet-mail` | The website, a copy of `site/` |
 | `/etc/certificates/post-hook.d/50-reload-nginx` | Reloads nginx after a certificate renewal |
 
 ## Logs
@@ -52,6 +55,26 @@ journalctl -u feedback-receiver -n 5       # "listening on 127.0.0.1:8080"
 ```
 
 Keep the file root-owned with mode 600. Never commit the token anywhere.
+
+## The website
+
+`site/` is plain HTML and CSS with no build step. To publish a change, from a checkout of master:
+
+```sh
+./deploy-site.sh
+```
+
+It copies `site/` to the server and swaps it into `/var/www/packet-mail` in one move. Nothing needs restarting.
+
+nginx serves pages with a 5 minute cache and `/assets/` with a 1 day cache, so a changed stylesheet or picture can take a day to reach a returning visitor; give a changed asset a new file name if that matters. The security headers (a strict Content-Security-Policy with no scripts and nothing from other sites, HSTS, nosniff, no referrer) come from the snippet above and apply only to the website, not to the receiver.
+
+The privacy page is `docs/privacy.md` as HTML. Change both together.
+
+The fonts and pictures in `site/assets/` are made from the app's own:
+
+- Fonts: `assets/fonts/*.ttf`, fixed at one optical size (Source Serif 4 at 20, Inter at 14), weights 400 to 700 only, cut to Latin characters and saved as WOFF2 with fontTools (`fonttools varLib.instancer`, then `pyftsubset --flavor=woff2`). The OFL licences go with them.
+- Screenshots: `docs/store/screenshots/1080x1920/*.png` at half size as WebP (`magick in.png -resize 540x960 -strip -quality 82 out.webp`).
+- Icons: `assets/icon/icon.png` resized to 32, 180, 192 and 512 pixels.
 
 ## Updating to a new version
 

@@ -24,8 +24,10 @@ Packet Mail is for licensed radio amateurs. It talks to your own BBS over your l
 
 **Category:** Utilities (secondary: Productivity)
 
-**Support URL:** https://github.com/m0lte/packet-mail
+**Marketing URL:** https://packet-mail-app.m0lte.compute.oarc.uk/
 
-**Privacy policy URL:** https://github.com/m0lte/packet-mail/blob/master/docs/privacy.md
+**Support URL:** https://packet-mail-app.m0lte.compute.oarc.uk/support.html
+
+**Privacy policy URL:** https://packet-mail-app.m0lte.compute.oarc.uk/privacy.html
 
 **App review notes:** see docs/store/review-answers.md (demo BBS at packet-mail-app.m0lte.compute.oarc.uk port 8011, login demo / demo).

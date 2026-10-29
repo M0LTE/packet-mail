@@ -8,4 +8,8 @@ Packet Mail does not collect, store or share any personal data. There are no acc
 
 **Amateur radio.** Packet radio mail is not private: messages travel unencrypted and may be read by anyone along the way.
 
+**This website.** It sets no cookies, runs no analytics and loads nothing from other sites.
+
 Contact: app-support@tomfanning.name
+
+<!-- This policy is also published at https://packet-mail-app.m0lte.compute.oarc.uk/privacy.html from site/privacy.html. Change both together: the two must say the same. -->

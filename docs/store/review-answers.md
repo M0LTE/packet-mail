@@ -2,9 +2,11 @@
 
 Drafts for Tom. They assume problem reports go to the developer's own feedback server (#53) and that the app has no analytics, ads, accounts or tracking. Check them against the final app before submitting.
 
-## Privacy policy URL
+## Website URLs
 
-https://github.com/m0lte/packet-mail/blob/master/docs/privacy.md
+- **Marketing URL:** https://packet-mail-app.m0lte.compute.oarc.uk/
+- **Support URL:** https://packet-mail-app.m0lte.compute.oarc.uk/support.html
+- **Privacy Policy URL:** https://packet-mail-app.m0lte.compute.oarc.uk/privacy.html (the same text as `docs/privacy.md`)
 
 ## Apple: App Privacy ("nutrition label")
 
