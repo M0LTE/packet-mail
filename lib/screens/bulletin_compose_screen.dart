@@ -6,6 +6,7 @@ import '../bulletins.dart';
 import '../compose.dart';
 import '../providers.dart';
 import '../sync.dart';
+import '../theme.dart';
 import 'compose_screen.dart';
 import 'mail_widgets.dart';
 
@@ -117,27 +118,41 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
       canLeave: _leaving || !_edited,
       question: 'Discard this bulletin?',
       child: Scaffold(
+        // Laid out as for a message: Cancel top left, Send top right.
         appBar: AppBar(
-          title: const Text('New bulletin'),
-          leading: IconButton(
-            tooltip: 'Cancel',
-            icon: const Icon(Icons.close),
+          automaticallyImplyLeading: false,
+          centerTitle: false,
+          titleSpacing: 8,
+          toolbarHeight: 40,
+          title: TextButton(
             onPressed: () => Navigator.of(context).maybePop(),
+            style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 8)),
+            child: const Text('Cancel'),
           ),
           actions: [
-            TextButton(
-              key: const ValueKey('send-bulletin'),
-              onPressed: _sending ? null : _send,
-              child: const Text('Send'),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: FilledButton.icon(
+                key: const ValueKey('send-bulletin'),
+                onPressed: _sending ? null : _send,
+                icon: const Icon(Icons.send, size: 16),
+                label: const Text('Send'),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  textStyle: text.labelLarge,
+                  foregroundColor: Logbook.paper,
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
           ],
         ),
         body: Form(
           key: _form,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             children: [
+              Text('New bulletin', style: text.headlineSmall),
+              const SizedBox(height: 8),
               if (connections.length > 1)
                 DropdownButtonFormField<int>(
                   initialValue: _connectionId ?? connections.first.id,

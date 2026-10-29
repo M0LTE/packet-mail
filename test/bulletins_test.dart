@@ -285,7 +285,7 @@ void main() {
     // Nothing written: leaves straight away.
     await tester.tap(find.byKey(const ValueKey('new-bulletin')));
     await settleAll(app, tester);
-    await tester.tap(find.byTooltip('Cancel'));
+    await tester.tap(find.text('Cancel'));
     await settleAll(app, tester);
     expect(find.text('New bulletin'), findsNothing);
 
@@ -293,13 +293,13 @@ void main() {
     await settleAll(app, tester);
     await tester.enterText(find.widgetWithText(TextFormField, 'Subject'), 'Gales tonight');
     await tester.pump();
-    await tester.tap(find.byTooltip('Cancel'));
+    await tester.tap(find.text('Cancel'));
     await settleAll(app, tester);
     expect(find.text('Discard this bulletin?'), findsOneWidget);
     await tester.tap(find.text('Keep writing'));
     await settleAll(app, tester);
     expect(find.text('Gales tonight'), findsOneWidget);
-    await tester.tap(find.byTooltip('Cancel'));
+    await tester.tap(find.text('Cancel'));
     await settleAll(app, tester);
     await tester.tap(find.text('Discard'));
     await settleAll(app, tester);

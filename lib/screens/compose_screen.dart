@@ -153,6 +153,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
+          // Cancel sits top left, on iPhone too, where titles are centred by default.
+          centerTitle: false,
           titleSpacing: 8,
           toolbarHeight: 40,
           title: TextButton(

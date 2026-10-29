@@ -60,4 +60,34 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
+
+  testWidgets(
+    'compose screens have Cancel top left and Send top right',
+    (tester) async {
+      final app = TestApp();
+      await seedStation(app, tester);
+      await app.pump(tester);
+      await settleAll(app, tester);
+
+      await tester.tap(find.byKey(const ValueKey('compose')));
+      await settleAll(app, tester);
+      expect(backLinkLeft(tester, 'Cancel'), lessThan(40));
+      expect(tester.getTopRight(find.byKey(const ValueKey('send'))).dx, greaterThan(700));
+      await tester.tap(find.text('Cancel'));
+      await settleAll(app, tester);
+
+      await tester.tap(find.text('Bulletins').last);
+      await settleAll(app, tester);
+      await tester.tap(find.byKey(const ValueKey('new-bulletin')));
+      await settleAll(app, tester);
+      expect(find.text('New bulletin'), findsOneWidget);
+      expect(backLinkLeft(tester, 'Cancel'), lessThan(40));
+      expect(tester.getTopRight(find.byKey(const ValueKey('send-bulletin'))).dx, greaterThan(700));
+      await tester.tap(find.text('Cancel'));
+      await settleAll(app, tester);
+      expect(find.text('New bulletin'), findsNothing);
+      await app.dispose(tester);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
 }
