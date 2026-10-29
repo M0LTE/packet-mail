@@ -258,16 +258,17 @@ class AsSentBody extends StatelessWidget {
   );
 }
 
-/// Paragraphs, quotes and laid-out blocks, with links and callsigns picked out.
+/// Paragraphs, quotes and laid-out blocks, with links and callsigns picked out,
+/// selectable for copying.
 class ReadableBody extends StatelessWidget {
   const ReadableBody(this.body, {super.key});
   final String body;
 
+  // Long press selects text for copying; links still open on a tap.
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => SelectionArea(
     key: const ValueKey('readable'),
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: _blocks(readableBlocks(body), quoted: false),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _blocks(readableBlocks(body), quoted: false)),
   );
 
   static List<Widget> _blocks(List<BodyBlock> blocks, {required bool quoted}) => [

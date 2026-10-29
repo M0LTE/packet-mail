@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
@@ -193,6 +194,42 @@ void main() {
     await tester.pump();
     expect(find.byKey(const ValueKey('readable')), findsOneWidget);
     expect(app.prefs.getBool('message.readable'), isTrue);
+    await app.dispose(tester);
+  });
+
+  testWidgets('Readable text can be selected and copied, and links still open on a tap', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addMessage(app, tester, c, number: 30, subject: 'Links', body: 'Look at https://example.com today.\n\n73');
+    final opened = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/url_launcher'),
+      (call) async {
+        opened.add((call.arguments as Map)['url']);
+        return true;
+      },
+    );
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String?;
+      return null;
+    });
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Links'));
+    await settleAll(app, tester);
+
+    await tester.tapOnText(find.textRange.ofSubstring('https://example.com'));
+    await tester.pump();
+    expect(opened, ['https://example.com']);
+
+    final para = find.text('Look at https://example.com today.', findRichText: true);
+    await tester.longPressAt(tester.getTopLeft(para) + const Offset(8, 8));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Copy'), findsOneWidget);
+    await tester.tap(find.text('Copy'));
+    await tester.pump();
+    expect(copied, 'Look');
     await app.dispose(tester);
   });
 
