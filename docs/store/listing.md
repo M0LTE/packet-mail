@@ -16,11 +16,11 @@ Add a connection to your BBS the way you'd add an email account, and your person
 - A bulletins browser grouped by category and area, with subscriptions
 - Hierarchical addresses checked as you type, and home BBS lookups through White Pages
 - Read messages exactly as sent, or in a comfortable reflowed view
-- Works with LinBPQ (BPQMail) BBSes over your network
+- Works with LinBPQ (BPQMail) and XRouter over your network
 
 Packet Mail is for licensed radio amateurs. It talks to your own BBS over your local network, or over a VPN such as Tailscale when you're away. It collects no data.
 
-**Keywords:** packet,radio,ham,amateur,bbs,ax25,bpq,linbpq,mail,bulletin
+**Keywords:** packet,radio,ham,amateur,bbs,ax25,bpq,linbpq,xrouter,mail,bulletin
 
 **Category:** Utilities (secondary: Productivity)
 
@@ -28,4 +28,4 @@ Packet Mail is for licensed radio amateurs. It talks to your own BBS over your l
 
 **Privacy policy URL:** https://github.com/m0lte/packet-mail/blob/master/docs/privacy.md
 
-**App review notes:** Packet Mail needs a packet radio BBS to connect to. A demo BBS and login will be provided here (issue #35). Screenshots use made-up callsigns.
+**App review notes:** see docs/store/review-answers.md (demo BBS at packet-mail-app.m0lte.compute.oarc.uk port 8011, login demo / demo).
