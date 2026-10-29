@@ -23,9 +23,9 @@ Two ways to learn about new mail:
 3. The app registers with the hub: push token, platform, install ID, and an App Attest or Play Integrity assertion. The hub returns a credential for that one device.
 4. The app hands the watcher only that credential. The watcher can then notify that phone and nothing else; it is not a trusted party.
 
-5. The app hands the watcher the BBS login for each connection to watch, over the same pinned TLS channel, so the watcher checks the mailbox as the user (Tom, 2026-10-29: fundamental). The user is told plainly before it happens ("The watcher will log in to GB7RDG as M0LTE to check for new mail") and can see and revoke it per connection.
+5. The app hands the watcher the BBS login for each connection to watch, over the same pinned TLS channel, so the watcher checks the mailbox as the user (Tom, 2026-10-29: fundamental). The user is told plainly before it happens ("The watcher will log in to GB7RDG as M0LTE to check for new mail"). Once granted, it is delegated: there is no ongoing per-connection management, just a manual Revoke in the app that makes the watcher delete the logins.
 
-The watcher stores those logins encrypted at rest, never logs them, and deletes them on unpair or revocation. When the user changes a password in the app, the app updates the watcher. The watcher never uses a login for anything but listing.
+The watcher stores those logins encrypted at rest, never logs them, and deletes them on unpair or when the user revokes from the app. When the user changes a password in the app, the app updates the watcher. The watcher never uses a login for anything but listing.
 
 ## Notifying
 
