@@ -94,6 +94,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 40,
         title: TextButton.icon(

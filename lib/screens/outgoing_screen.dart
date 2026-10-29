@@ -36,6 +36,7 @@ class OutgoingScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 40,
         title: TextButton.icon(
@@ -169,6 +170,7 @@ class _SentListingScreenState extends ConsumerState<SentListingScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 40,
         title: TextButton.icon(

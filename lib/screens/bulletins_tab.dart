@@ -251,6 +251,7 @@ class BulletinListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 40,
         title: TextButton.icon(
