@@ -8,6 +8,7 @@ import '../message_format.dart';
 import '../providers.dart';
 import '../report.dart';
 import '../theme.dart';
+import 'side_scroll.dart';
 
 /// One line of a session transcript: what we sent, or what the BBS said.
 typedef TranscriptLine = ({bool sent, String text});
@@ -91,20 +92,24 @@ class LastSessionScreen extends ConsumerWidget {
                 border: Border.all(color: Logbook.rule),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: SingleChildScrollView(
-                key: const ValueKey('transcript'),
-                scrollDirection: Axis.horizontal,
-                child: SelectableText.rich(
-                  TextSpan(
-                    children: [
-                      for (final (i, l) in lines.indexed)
-                        TextSpan(
-                          text: '${l.sent ? '> ${l.text}' : l.text}${i == lines.length - 1 ? '' : '\n'}',
-                          style: l.sent ? const TextStyle(color: Logbook.stampRed, fontWeight: FontWeight.w600) : null,
-                        ),
-                    ],
+              child: SelectionArea(
+                child: SideScroll(
+                  key: const ValueKey('transcript'),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        for (final (i, l) in lines.indexed)
+                          TextSpan(
+                            text: '${l.sent ? '> ${l.text}' : l.text}${i == lines.length - 1 ? '' : '\n'}',
+                            style: l.sent
+                                ? const TextStyle(color: Logbook.stampRed, fontWeight: FontWeight.w600)
+                                : null,
+                          ),
+                      ],
+                    ),
+                    softWrap: false,
+                    style: Logbook.asSent,
                   ),
-                  style: Logbook.asSent,
                 ),
               ),
             ),

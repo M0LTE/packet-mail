@@ -51,7 +51,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Last session'), findsOneWidget);
     expect(find.textContaining('FBB port'), findsOneWidget);
-    final shown = tester.widget<SelectableText>(find.byType(SelectableText)).textSpan!.toPlainText();
+    final shown = tester
+        .widget<Text>(find.descendant(of: find.byKey(const ValueKey('transcript')), matching: find.byType(Text)))
+        .textSpan!
+        .toPlainText();
     expect(shown, contains('> PASSWORD'));
     expect(shown, contains('Packet with Tandy Color Computer'));
     await app.dispose(tester);

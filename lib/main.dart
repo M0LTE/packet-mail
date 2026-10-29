@@ -47,6 +47,11 @@ class PacketMailApp extends StatelessWidget {
     return MaterialApp(
       title: 'Packet Mail',
       theme: Logbook.theme,
+      // Turned on its side, keep everything clear of the notch and rounded corners.
+      builder: (context, child) => ColoredBox(
+        color: Logbook.paper,
+        child: SafeArea(top: false, bottom: false, child: child!),
+      ),
       home: const _Start(),
     );
   }

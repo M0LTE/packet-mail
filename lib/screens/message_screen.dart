@@ -14,6 +14,7 @@ import '../theme.dart';
 import '../view_choice.dart';
 import 'compose_screen.dart';
 import 'mail_widgets.dart';
+import 'side_scroll.dart';
 
 /// Opens a message for reading, downloading it first if the app hasn't got it.
 class MessageScreen extends ConsumerStatefulWidget {
@@ -159,8 +160,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               _detail('Number', '${m.bbsNumber}', hdr, strong),
               if (m.routing != null) ...[
                 const SizedBox(height: 6),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                SideScroll(
                   child: Text(
                     m.routing!,
                     softWrap: false,
@@ -246,16 +246,18 @@ class MessageBody extends ConsumerWidget {
 }
 
 /// Exactly the lines the BBS delivered, in monospace, scrolling sideways
-/// rather than wrapping.
+/// rather than wrapping. Selectable for copying; a SelectableText here would
+/// take the sideways drag for itself.
 class AsSentBody extends StatelessWidget {
   const AsSentBody(this.body, {super.key});
   final String body;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    key: const ValueKey('as-sent'),
-    scrollDirection: Axis.horizontal,
-    child: SelectableText(body, style: Logbook.asSent),
+  Widget build(BuildContext context) => SelectionArea(
+    child: SideScroll(
+      key: const ValueKey('as-sent'),
+      child: Text(body, softWrap: false, style: Logbook.asSent),
+    ),
   );
 }
 
@@ -285,14 +287,12 @@ class ReadableBody extends StatelessWidget {
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _blocks(blocks, quoted: true)),
           ),
-          PreformattedBlock(:final lines) => SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          PreformattedBlock(:final lines) => SideScroll(
             child: Text(lines.join('\n'), softWrap: false, style: Logbook.asSent),
           ),
           GatewayHeadersBlock(:final lines) => _GatewayHeaders(lines),
-          GarbledBlock(:final lines) => SingleChildScrollView(
+          GarbledBlock(:final lines) => SideScroll(
             key: const ValueKey('garbled'),
-            scrollDirection: Axis.horizontal,
             child: Text(
               lines.map(_visible).join('\n'),
               softWrap: false,
@@ -341,8 +341,7 @@ class _GatewayHeadersState extends State<_GatewayHeaders> {
           ),
         ),
         if (_open)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          SideScroll(
             child: Text(
               widget.lines.join('\n'),
               softWrap: false,
