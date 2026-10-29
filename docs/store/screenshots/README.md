@@ -2,7 +2,7 @@
 
 Six screens at the sizes the stores ask for, all with made-up content (Q0 callsigns, fictional people, a fictional BBS called Q0BBS):
 
-- `1320x2868/` App Store, 6.9 inch iPhone
+- `1206x2622 (iPhone 6.1"/6.3", the slot App Store Connect now asks for first), 1320x2868/` App Store, 6.9 inch iPhone
 - `1242x2688/` App Store, 6.5 inch iPhone
 - `1080x1920/` Google Play phone
 
