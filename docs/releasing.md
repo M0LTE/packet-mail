@@ -38,10 +38,14 @@ If the upload job itself fails, its log says why. A failure from Apple's side ca
 
 ## Another build of the same version
 
-Apple ties a submission to one version number, so a fix before review needs a new build with the same version. Add a suffix after a hyphen: `v1.0-2` builds version 1.0 again (the suffix is dropped from the version name; the build number still comes from the CI run, so it always goes up).
+Apple ties a submission to one version number, so a fix before review needs a new build with the same version. Add a suffix after a hyphen: `v1.0.0-2` builds version 1.0.0 again (the suffix is dropped from the version name; the build number still comes from the CI run, so it always goes up).
 
 ## GitHub releases
 
 Each release tag also publishes a GitHub release named after the version and build the stores show, for example "Packet Mail 1.0.0 (81)", with the signed Android APK attached (signed with the upload key, so it installs side by side with nothing and updates itself from later APKs). The text is a short default; edit it on GitHub to add release notes.
 
-To redo a release for an existing tag (for example after adding the APK step), run the CI workflow by hand with `release_tag` set to the tag and `build_number` set to the App Store build number: `gh workflow run CI -R m0lte/packet-mail -f release_tag=v1.0-2 -f build_number=81`. That rebuilds the Android files from the tag and publishes or updates the release; it never uploads to TestFlight.
+To redo a release for an existing tag (for example after adding the APK step), run the CI workflow by hand with `release_tag` set to the tag and `build_number` set to the App Store build number: `gh workflow run CI -R m0lte/packet-mail -f release_tag=v1.0.0 -f build_number=81`. That rebuilds the Android files from the tag and publishes or updates the release; it never uploads to TestFlight.
+
+## Tag names
+
+Always three parts, matching what the stores show: `v1.0.0`, `v1.0.1`, `v1.1.0`. Every new build that goes out gets a new version (a fix after 1.0.0 is 1.0.1). The hyphen suffix is only for rebuilding a version that is already waiting in App Store review. Tags are never moved or reused once pushed.
