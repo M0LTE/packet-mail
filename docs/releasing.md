@@ -35,3 +35,7 @@ If that job just says "skipped", the signing secrets are missing.
 Apple emails the account holder and the build shows a problem in App Store Connect. Fix the cause on `master`, wait for green, and tag the fixed commit with a new version, such as `v0.3.1`. Don't move or reuse a tag; Apple won't take the same version and build twice.
 
 If the upload job itself fails, its log says why. A failure from Apple's side can be retried with "Re-run failed jobs" on the same run.
+
+## Another build of the same version
+
+Apple ties a submission to one version number, so a fix before review needs a new build with the same version. Add a suffix after a hyphen: `v1.0-2` builds version 1.0 again (the suffix is dropped from the version name; the build number still comes from the CI run, so it always goes up).
