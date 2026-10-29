@@ -340,3 +340,64 @@ void _addCalls(String text, StringBuffer plain, List<InlinePiece> pieces, void F
   }
   plain.write(text.substring(at));
 }
+
+/// True for running text that is almost all capitals, as some bulletins
+/// are sent: at least 20 letters, nine in ten of them capitals.
+bool isShouting(String text) {
+  var upper = 0, lower = 0;
+  for (final c in text.codeUnits) {
+    if (c >= 0x41 && c <= 0x5a) upper++;
+    if (c >= 0x61 && c <= 0x7a) lower++;
+  }
+  return upper + lower >= 20 && upper >= (upper + lower) * 0.9;
+}
+
+/// Words kept in capitals when all-capitals text is put in sentence case.
+const shoutingKept = {
+  'AI', 'AM', 'AMSAT', 'APRS', 'ARES', 'ARISS', 'ARRL', 'ATV', 'BBC', 'BBS', 'CQ', 'CW', 'DMR', 'DSTAR', 'DX', //
+  'DXCC', 'EME', 'EU', 'FCC', 'FM', 'GBR', 'GPS', 'HF', 'I', 'IARU', 'ID', 'IOTA', 'ISS', 'LF', 'MF', 'NASA', //
+  'NOAA', 'NTS', 'NVIS', 'OK', 'PC', 'POTA', 'PSK', 'QRP', 'QRT', 'QRZ', 'QSL', 'QSO', 'QSY', 'QTH', 'RACES', //
+  'RAYNET', 'RSGB', 'RTTY', 'SDR', 'SHF', 'SOTA', 'SSB', 'SSTV', 'SWR', 'TV', 'UHF', 'UK', 'US', 'USA', 'USB', //
+  'UTC', 'VHF', 'VOIP', 'WSPR', 'WX', 'YOTA',
+};
+
+/// Units with their usual mixed case.
+const _units = {'HZ': 'Hz', 'KHZ': 'kHz', 'MHZ': 'MHz', 'GHZ': 'GHz'};
+
+final _alnum = RegExp('[A-Za-z0-9]+');
+final _word = RegExp(r'\S+');
+
+/// All-capitals [text] in sentence case: lower case, then a capital to start
+/// each sentence and line. Callsigns, anything with a digit, links,
+/// addresses and [shoutingKept] words stay as sent.
+String sentenceCase(String text) {
+  final lowered = text.replaceAllMapped(_word, (w) {
+    final word = w[0]!;
+    if (word.contains('://') || word.toUpperCase().startsWith('WWW.') || word.contains('@')) return word;
+    return word.replaceAllMapped(_alnum, (r) {
+      final run = r[0]!;
+      if (run.contains(RegExp('[0-9]'))) return run;
+      final upper = run.toUpperCase();
+      if (shoutingKept.contains(upper)) return upper;
+      return _units[upper] ?? run.toLowerCase();
+    });
+  });
+  final out = StringBuffer();
+  var start = true;
+  for (var i = 0; i < lowered.length; i++) {
+    final c = lowered[i];
+    final letter = RegExp('[A-Za-z]').hasMatch(c);
+    if (start && letter) {
+      out.write(c.toUpperCase());
+      start = false;
+      continue;
+    }
+    out.write(c);
+    if (c == '\n') {
+      start = true;
+    } else if ('.!?'.contains(c) && (i + 1 == lowered.length || lowered[i + 1] == ' ' || lowered[i + 1] == '\n')) {
+      start = true;
+    }
+  }
+  return out.toString();
+}

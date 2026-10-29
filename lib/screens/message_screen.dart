@@ -279,7 +279,7 @@ class ReadableBody extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: switch (b) {
-          ParagraphBlock(:final text) => _Paragraph(text, quoted: quoted),
+          ParagraphBlock(:final text) => _Paragraph(isShouting(text) ? sentenceCase(text) : text, quoted: quoted),
           QuoteBlock(:final blocks) => Container(
             padding: const EdgeInsets.only(left: 10),
             decoration: const BoxDecoration(

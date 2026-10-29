@@ -198,6 +198,29 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('an all-capitals bulletin reads in sentence case; As sent and the subject stay as sent', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    const body = 'THE NET MEETS ON 145.500 MHZ AT 1900 UTC. ALL WELCOME, CALL G4XYZ ON FM.';
+    await addMessage(app, tester, c, number: 30, subject: 'NET NEWS THIS WEEK', body: body);
+    await app.pump(tester);
+    await settleAll(app, tester);
+    expect(find.text('NET NEWS THIS WEEK'), findsOneWidget);
+
+    await tester.tap(find.text('NET NEWS THIS WEEK'));
+    await settleAll(app, tester);
+    expect(find.text('NET NEWS THIS WEEK'), findsOneWidget);
+    expect(
+      find.text('The net meets on 145.500 MHz at 1900 UTC. All welcome, call G4XYZ on FM.', findRichText: true),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('As sent'));
+    await tester.pump();
+    expect(find.text(body), findsOneWidget);
+    await app.dispose(tester);
+  });
+
   testWidgets('the Readable and As sent choice is remembered across messages', (tester) async {
     final app = TestApp();
     final c = await seedStation(app, tester);

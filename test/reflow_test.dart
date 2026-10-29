@@ -247,4 +247,40 @@ void main() {
       expect(inlinePieces('https://www.qrz.com/db/M0LTE'), const [LinkText('https://www.qrz.com/db/M0LTE')]);
     });
   });
+
+  group('all-capitals bulletins', () {
+    // In the style of a propagation bulletin sent in capitals.
+    const shouting = 'SOLAR ACTIVITY WAS LOW THIS WEEK. HF CONDITIONS WERE FAIR ON 14 MHZ AND THE ISS '
+        'PASSED OVER THE USA. G4XYZ AND KC2ABC WORKED DX ON CW AND SSB; SEE WWW.ARRL.ORG/NEWS FOR MORE. '
+        "I'M QRT UNTIL 1800 UTC.";
+
+    test('is noticed only when nearly every letter is a capital', () {
+      expect(isShouting(shouting), isTrue);
+      expect(isShouting('Solar activity was low. G4XYZ worked DX on CW.'), isFalse);
+      expect(isShouting('73 DE G4XYZ'), isFalse); // too short to matter
+      expect(isShouting('${'Mostly ordinary text here, ' * 3}AND A LITTLE SHOUTING'), isFalse);
+    });
+
+    test('goes into sentence case, keeping callsigns, figures, links and radio words', () {
+      expect(
+        sentenceCase(shouting),
+        'Solar activity was low this week. HF conditions were fair on 14 MHz and the ISS '
+        'passed over the USA. G4XYZ and KC2ABC worked DX on CW and SSB; see WWW.ARRL.ORG/NEWS for more. '
+        "I'm QRT until 1800 UTC.",
+      );
+    });
+
+    test('starts each line and bracketed item with a capital', () {
+      expect(
+        sentenceCase('[01] HOSPITAL DENIES RANSOM PAYMENT\nLINK: HTTPS://EXAMPLE.COM/A-B\nGB7RDG-1 IS BACK ON AIR'),
+        '[01] Hospital denies ransom payment\nLink: HTTPS://EXAMPLE.COM/A-B\nGB7RDG-1 is back on air',
+      );
+      expect(sentenceCase('NEWS FROM THE RSGB AND AMSAT-UK. ALL WELCOME!'), 'News from the RSGB and AMSAT-UK. All welcome!');
+    });
+
+    test('readable blocks keep the text as sent; only the view changes its case', () {
+      final blocks = readableBlocks('$shouting\n\n  -----  ---  -----\n  |  A  |  B  |');
+      expect(blocks.first, const ParagraphBlock(shouting));
+    });
+  });
 }
