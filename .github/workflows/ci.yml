@@ -6,6 +6,15 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Rebuild the Android release and GitHub release for this existing tag (no TestFlight upload)
+        required: false
+        default: ''
+      build_number:
+        description: Build number to use with release_tag (match the App Store build)
+        required: false
+        default: ''
 
 env:
   FLUTTER_VERSION: 3.47.8
@@ -211,13 +220,15 @@ jobs:
   android-release:
     name: Signed Android app bundle
     needs: [test, bbs, xrouter]
-    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    if: (startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     runs-on: ubuntu-latest
     env:
       KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
       KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+      REL_TAG: ${{ inputs.release_tag || github.ref_name }}
+      BUILD: ${{ inputs.build_number || github.run_number }}
     steps:
       - name: Skip until signing is set up
         id: ready
@@ -229,6 +240,8 @@ jobs:
           fi
       - uses: actions/checkout@v4
         if: steps.ready.outputs.go
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-java@v4
         if: steps.ready.outputs.go
         with:
@@ -240,7 +253,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - name: Build signed app bundle
+      - name: Build signed app bundle and APK
         if: steps.ready.outputs.go
         run: |
           printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
@@ -250,10 +263,49 @@ jobs:
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
           PROPS
-          flutter build appbundle --release --build-name=$(v=${GITHUB_REF_NAME#v}; echo ${v%%-*}) --build-number=${{ github.run_number }}
+          v=${REL_TAG#v}; v=${v%%-*}
+          flutter build appbundle --release --build-name=$v --build-number=$BUILD
+          flutter build apk --release --build-name=$v --build-number=$BUILD
           rm -f android/key.properties "$RUNNER_TEMP/upload.jks"
       - uses: actions/upload-artifact@v4
         if: steps.ready.outputs.go
         with:
           name: packet-mail-android-bundle
           path: build/app/outputs/bundle/release/app-release.aab
+      - uses: actions/upload-artifact@v4
+        if: steps.ready.outputs.go
+        with:
+          name: packet-mail-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  github-release:
+    name: GitHub release
+    needs: [android-release]
+    if: (startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REL_TAG: ${{ inputs.release_tag || github.ref_name }}
+      BUILD: ${{ inputs.build_number || github.run_number }}
+    steps:
+      - uses: actions/download-artifact@v4
+        id: apk
+        continue-on-error: true
+        with:
+          name: packet-mail-android-apk
+      - name: Publish the release with the signed APK
+        if: steps.apk.outcome == 'success'
+        run: |
+          v=${REL_TAG#v}; v=${v%%-*}
+          # Flutter pads the version to three parts (1.0 becomes 1.0.0); show what the stores show.
+          case "$v" in *.*.*) ;; *) v="$v.0" ;; esac
+          apk="packet-mail-$v-$BUILD.apk"
+          mv app-release.apk "$apk"
+          printf 'Packet Mail %s (build %s).\n\n- iPhone: from the App Store, or TestFlight for testers.\n- Android: install `%s` below. Google Play is coming.\n' "$v" "$BUILD" "$apk" > notes.md
+          if gh release view "$REL_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$REL_TAG" "$apk" --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$REL_TAG" "$apk" -R "$GITHUB_REPOSITORY" --title "Packet Mail $v ($BUILD)" --notes-file notes.md
+          fi
