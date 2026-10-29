@@ -9,8 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Where "Report a problem" sends reports: the feedback receiver in
-/// feedback-receiver/. Change this when it has its real address.
-const reportEndpoint = 'https://feedback.example.invalid/v1/report';
+/// feedback-receiver/, hosted as described in docs/deployment.md.
+const reportEndpoint = 'https://packet-mail-app.m0lte.compute.oarc.uk/v1/report';
 
 /// Where a report shared by hand should go, if sending fails.
 const reportAddress = 'app-support@tomfanning.name';
