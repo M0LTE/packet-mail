@@ -1,0 +1,59 @@
+{"t":0.005,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.023,"dir":"tx","data":"Q0USR\r"}
+{"t":2.025,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.044,"dir":"tx","data":"user\r"}
+{"t":4.048,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.064,"dir":"tx","data":"PMS\r"}
+{"t":6.069,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":8.084,"dir":"tx","data":"NP 0\r"}
+{"t":8.092,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":10.104,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":10.113,"dir":"rx","data":"To: Q0OTH @ Q0XR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":12.124,"dir":"tx","data":"Hello from user\r"}
+{"t":12.124,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":14.144,"dir":"tx","data":"First line\r"}
+{"t":16.164,"dir":"tx","data":"\r"}
+{"t":18.184,"dir":"tx","data":"Third line after a blank.\r"}
+{"t":20.204,"dir":"tx","data":"/EX\r"}
+{"t":20.211,"dir":"rx","data":"\r\n*** Message 1 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":22.224,"dir":"tx","data":"SP Q0OTH @ GB7XYZ.#42.GBR.EURO\r"}
+{"t":22.232,"dir":"rx","data":"To: Q0OTH @ GB7XYZ.#42.GBR.EURO\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":24.244,"dir":"tx","data":"For another BBS\r"}
+{"t":24.248,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":26.264,"dir":"tx","data":"Body.\r"}
+{"t":28.284,"dir":"tx","data":"/EX\r"}
+{"t":28.292,"dir":"rx","data":"\r\n*** Message 2 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":30.304,"dir":"tx","data":"SB ALL @ GBR\r"}
+{"t":30.314,"dir":"rx","data":"To: ALL @ GBR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":32.324,"dir":"tx","data":"Test bulletin\r"}
+{"t":32.327,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":34.344,"dir":"tx","data":"Bulletin body.\r"}
+{"t":36.364,"dir":"tx","data":"/EX\r"}
+{"t":36.372,"dir":"rx","data":"\r\n*** Message 3 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":38.384,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":38.384,"dir":"rx","data":"To: Q0OTH @ Q0XR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":40.404,"dir":"tx","data":"\r"}
+{"t":40.405,"dir":"rx","data":"Operation aborted\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":42.424,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":42.427,"dir":"rx","data":"To: Q0OTH @ Q0XR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":44.444,"dir":"tx","data":"Abandoned\r"}
+{"t":44.449,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":46.464,"dir":"tx","data":"Some text\r"}
+{"t":48.484,"dir":"tx","data":"/QQ\r"}
+{"t":48.493,"dir":"rx","data":"Operation aborted\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":50.504,"dir":"tx","data":"L\r"}
+{"t":50.505,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 PN 07:49  311  Q0OTH          Q0USR  Hello from user\r\n    2 P$ 07:50  297  Q0OTH  @GB7XYZ Q0USR  For another BBS\r\n    3 B$ 07:50  286  ALL    @GBR    Q0USR  Test bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":52.524,"dir":"tx","data":"LB\r"}
+{"t":52.527,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 B$ 07:50  286  ALL    @GBR    Q0USR  Test bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":54.544,"dir":"tx","data":"L< Q0USR\r"}
+{"t":54.548,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 PN 07:49  311  Q0OTH          Q0USR  Hello from user\r\n    2 P$ 07:50  297  Q0OTH  @GB7XYZ Q0USR  For another BBS\r\n    3 B$ 07:50  286  ALL    @GBR    Q0USR  Test bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":56.564,"dir":"tx","data":"M\r"}
+{"t":56.57,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 PN 07:49  311  Q0OTH          Q0USR  Hello from user\r\n    2 P$ 07:50  297  Q0OTH  @GB7XYZ Q0USR  For another BBS\r\n    3 B$ 07:50  286  ALL    @GBR    Q0USR  Test bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":58.584,"dir":"tx","data":"LM\r"}
+{"t":58.593,"dir":"rx","data":"No messages found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":60.604,"dir":"tx","data":"B\r"}
+{"t":60.614,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":60.624,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":62.725,"dir":"tx","data":"B\r"}
+{"t":62.729,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":62.739,"dir":"close"}

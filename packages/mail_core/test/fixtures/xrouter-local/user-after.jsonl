@@ -1,0 +1,20 @@
+{"t":0.005,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.022,"dir":"tx","data":"Q0USR\r"}
+{"t":2.032,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.044,"dir":"tx","data":"user\r"}
+{"t":4.054,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.064,"dir":"tx","data":"PMS\r"}
+{"t":6.066,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":8.084,"dir":"tx","data":"NP 0\r"}
+{"t":8.088,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":10.104,"dir":"tx","data":"L< Q0USR\r"}
+{"t":10.11,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 B$ 07:50  286  ALL    @GBR    Q0USR  Test bulletin\r\n    5 PN 07:51  361  Q0OTH          Q0USR  Body lines\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":12.124,"dir":"tx","data":"LB\r"}
+{"t":12.132,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 B$ 07:50  286  ALL    @GBR    Q0USR  Test bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":14.144,"dir":"tx","data":"K 3\r"}
+{"t":14.154,"dir":"rx","data":"Msg 3 deleted\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":16.164,"dir":"tx","data":"LB\r"}
+{"t":16.165,"dir":"rx","data":"No messages found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":18.184,"dir":"tx","data":"SP Q0OTH $BID123\r"}
+{"t":18.187,"dir":"rx","data":"NO - Protocol violation (no SID)\r\n"}
+{"t":18.197,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
