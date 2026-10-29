@@ -8,11 +8,12 @@ import '../message_format.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import '../view_choice.dart';
 import 'bulletin_compose_screen.dart';
 import 'mail_widgets.dart';
 import 'message_screen.dart';
 
-/// Bulletins grouped by category, then by area.
+/// Bulletins grouped by category, then by area, or all of them newest first.
 class BulletinsTab extends ConsumerWidget {
   const BulletinsTab({super.key});
 
@@ -25,6 +26,7 @@ class BulletinsTab extends ConsumerWidget {
     final unread = all?.where((m) => !m.read).length ?? 0;
     final connections = ref.watch(connectionsProvider).value ?? const [];
     final none = connections.isNotEmpty && ref.watch(connectionsWithProvider(DriverCapability.bulletins)).isEmpty;
+    final byDate = ref.watch(bulletinsByDateProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -58,11 +60,20 @@ class BulletinsTab extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
                 all == null || all.isEmpty
-                    ? 'By category, then area'
+                    ? (byDate ? 'Newest first' : 'By category, then area')
                     : '${_count(all.length, 'bulletin')}${unread > 0 ? ', $unread new' : ''}',
                 style: text.bodySmall?.copyWith(letterSpacing: 0.3),
               ),
             ),
+            if (!none)
+              ViewSwitch(
+                key: const ValueKey('bulletin-view'),
+                first: 'By category',
+                second: 'By date',
+                firstOn: !byDate,
+                onChanged: (category) => ref.read(bulletinsByDateProvider.notifier).set(!category),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+              ),
             Expanded(
               child: RefreshIndicator(
                 color: Logbook.stampRed,
@@ -90,7 +101,11 @@ class BulletinsTab extends ConsumerWidget {
                           style: text.titleMedium?.copyWith(color: Logbook.inkSoft),
                         ),
                       ),
-                    for (final g in groups) _CategoryBlock(group: g, subscriptions: subs),
+                    if (byDate)
+                      for (final m in all ?? const <Message>[])
+                        BulletinRow(message: m, from: 'Bulletins', showWhere: true)
+                    else
+                      for (final g in groups) _CategoryBlock(group: g, subscriptions: subs),
                   ],
                 ),
               ),
@@ -293,9 +308,12 @@ class BulletinListScreen extends ConsumerWidget {
 
 /// A bulletin in a list. One with only its headers here offers Fetch.
 class BulletinRow extends ConsumerStatefulWidget {
-  const BulletinRow({super.key, required this.message, required this.from});
+  const BulletinRow({super.key, required this.message, required this.from, this.showWhere = false});
 
   final Message message;
+
+  /// Whether to show its category and area, for a list that mixes them.
+  final bool showWhere;
 
   /// The list's name, for the message view's back link.
   final String from;
@@ -377,6 +395,7 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
                     overflow: TextOverflow.ellipsis,
                     style: text.titleMedium?.copyWith(color: unread ? Logbook.ink : Logbook.inkSoft),
                   ),
+                  if (widget.showWhere) Text(whereOf(m), style: text.bodySmall),
                   if (m.body == null)
                     Row(
                       children: [

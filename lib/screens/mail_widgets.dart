@@ -113,3 +113,57 @@ class SyncStatusBar extends ConsumerWidget {
     return '${t.day} ${months[t.month - 1]} $hm';
   }
 }
+
+/// Two words side by side, the chosen one underlined in red: how the app
+/// switches between two views of the same thing.
+class ViewSwitch extends StatelessWidget {
+  const ViewSwitch({
+    super.key,
+    required this.first,
+    required this.second,
+    required this.firstOn,
+    required this.onChanged,
+    this.padding = const EdgeInsets.fromLTRB(20, 6, 20, 0),
+  });
+
+  final String first;
+  final String second;
+
+  /// Whether [first] is the one chosen.
+  final bool firstOn;
+
+  /// Called with true for [first], false for [second].
+  final ValueChanged<bool> onChanged;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget option(String label, bool value) {
+      final on = firstOn == value;
+      return InkWell(
+        onTap: () => onChanged(value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Container(
+            padding: const EdgeInsets.only(bottom: 1),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: on ? Logbook.stampRed : Colors.transparent, width: 1.5)),
+            ),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: on ? Logbook.stampRed : Logbook.inkFaint,
+                fontWeight: on ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: padding,
+      child: Row(children: [option(first, true), const SizedBox(width: 14), option(second, false)]),
+    );
+  }
+}

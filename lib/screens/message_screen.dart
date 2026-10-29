@@ -13,6 +13,7 @@ import '../sync.dart';
 import '../theme.dart';
 import '../view_choice.dart';
 import 'compose_screen.dart';
+import 'mail_widgets.dart';
 
 /// Opens a message for reading, downloading it first if the app hasn't got it.
 class MessageScreen extends ConsumerStatefulWidget {
@@ -109,7 +110,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
         ),
         AsyncData(value: final m?) => ListView(
           padding: const EdgeInsets.only(bottom: 24),
-          children: [_header(m), _ViewToggle(), _body(m)],
+          children: [_header(m), const ReadableSwitch(), _body(m)],
         ),
         _ => const SizedBox.shrink(),
       },
@@ -224,38 +225,17 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   }
 }
 
-class _ViewToggle extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final readable = ref.watch(readableProvider);
-    Widget option(String label, bool value) {
-      final on = readable == value;
-      return InkWell(
-        onTap: () => ref.read(readableProvider.notifier).set(value),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.only(bottom: 1),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: on ? Logbook.stampRed : Colors.transparent, width: 1.5)),
-            ),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: on ? Logbook.stampRed : Logbook.inkFaint,
-                fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+/// Readable or As sent, remembered across messages.
+class ReadableSwitch extends ConsumerWidget {
+  const ReadableSwitch({super.key});
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
-      child: Row(children: [option('Readable', true), const SizedBox(width: 14), option('As sent', false)]),
-    );
-  }
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ViewSwitch(
+    first: 'Readable',
+    second: 'As sent',
+    firstOn: ref.watch(readableProvider),
+    onChanged: ref.read(readableProvider.notifier).set,
+  );
 }
 
 /// Exactly the lines the BBS delivered, in monospace, scrolling sideways

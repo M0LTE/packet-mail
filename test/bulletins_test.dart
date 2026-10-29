@@ -131,6 +131,43 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('By date lists every bulletin newest first with where it went, and is remembered', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addBulletin(app, tester, c, number: 1, subject: 'Oldest');
+    await addBulletin(app, tester, c, number: 3, category: 'ALL', area: 'WW', subject: 'Newest');
+    await addBulletin(app, tester, c, number: 2, category: 'KEPS', area: null, subject: 'Middle');
+    await app.pump(tester);
+    await tester.tap(find.text('Bulletins').last);
+    await settleAll(app, tester);
+    expect(find.text('Newest'), findsNothing);
+
+    await tester.tap(find.text('By date'));
+    await settleAll(app, tester);
+    expect(app.prefs.getBool('bulletins.byDate'), isTrue);
+    expect(find.byKey(const ValueKey('category-WX')), findsNothing);
+    final ys = [for (final s in ['Newest', 'Middle', 'Oldest']) tester.getTopLeft(find.text(s)).dy];
+    expect(ys, orderedEquals([...ys]..sort()));
+    expect(find.text('ALL at WW'), findsOneWidget);
+    expect(find.text('KEPS'), findsOneWidget);
+    expect(find.text('WX at GBR'), findsOneWidget);
+    await app.dispose(tester);
+
+    // A fresh start opens in the view last used.
+    final again = TestApp();
+    final c2 = await seedStation(again, tester);
+    await addBulletin(again, tester, c2, number: 1, subject: 'Oldest');
+    await again.pump(tester, prefsValues: {'bulletins.byDate': true});
+    await tester.tap(find.text('Bulletins').last);
+    await settleAll(again, tester);
+    expect(find.text('Oldest'), findsOneWidget);
+    await tester.tap(find.text('By category'));
+    await settleAll(again, tester);
+    expect(find.text('Oldest'), findsNothing);
+    expect(again.prefs.getBool('bulletins.byDate'), isFalse);
+    await again.dispose(tester);
+  });
+
   testWidgets('Fetch downloads a bulletin and leaves it unread', (tester) async {
     final app = TestApp();
     final c = await seedStation(app, tester);

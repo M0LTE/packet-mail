@@ -29,6 +29,13 @@ String categoryOf(Message m) => m.toCall.trim().toUpperCase();
 /// The area of a bulletin: its @ part, such as GBR, or '' if it has none.
 String areaOf(Message m) => (m.at ?? '').trim().toUpperCase();
 
+/// Where a bulletin went, such as WX at GBR, or just WX if it has no area.
+String whereOf(Message m) {
+  final c = categoryOf(m), a = areaOf(m);
+  final cat = c.isEmpty ? '(none)' : c;
+  return a.isEmpty ? cat : '$cat at $a';
+}
+
 /// Bulletins at one area within a category.
 class AreaGroup {
   AreaGroup(this.category, this.area, this.bulletins);
