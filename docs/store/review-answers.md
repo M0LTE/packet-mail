@@ -37,7 +37,7 @@ Play Console, App content, Data safety.
 
 - **Does your app collect or share any of the required user data types?** Yes (Google counts any data sent off the device, even optional reports).
 - **Is all of the user data collected by your app encrypted in transit?** Yes (HTTPS).
-- **Do you provide a way for users to request that their data is deleted?** Yes: by emailing tom@m0lte.uk.
+- **Do you provide a way for users to request that their data is deleted?** Yes: by emailing app-support@tomfanning.name.
 - **Data types collected:**
   - **App info and performance, Diagnostics.** Collected, not shared. Optional (user chooses to send a report). Purpose: App functionality. Processed ephemerally: No.
   - **Messages, Other in-app messages** (the description and, only if the user ticks the box, message text in the traffic log). Collected, not shared. Optional. Purpose: App functionality.
