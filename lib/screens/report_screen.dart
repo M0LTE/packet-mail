@@ -6,7 +6,7 @@ import '../report.dart';
 import '../theme.dart';
 
 /// Report a problem: a description and the last 15 minutes of BBS traffic,
-/// shared to the user's own email app.
+/// sent to the developer, with sharing by hand if that fails.
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({super.key});
 
@@ -16,9 +16,11 @@ class ReportScreen extends ConsumerStatefulWidget {
 
 class _ReportScreenState extends ConsumerState<ReportScreen> {
   final _description = TextEditingController();
-  final _sendKey = GlobalKey();
+  final _shareKey = GlobalKey();
   var _includeMessageText = false;
   var _sending = false;
+  var _sent = false;
+  var _failed = false;
 
   @override
   void dispose() {
@@ -40,25 +42,50 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   }
 
   Future<void> _send() async {
-    setState(() => _sending = true);
+    setState(() {
+      _sending = true;
+      _failed = false;
+    });
+    try {
+      await ref.read(reportSenderProvider)(await _report());
+      if (mounted) setState(() => _sent = true);
+    } on Exception {
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _share() async {
     try {
       final report = await _report();
-      final box = _sendKey.currentContext?.findRenderObject() as RenderBox?;
+      final box = _shareKey.currentContext?.findRenderObject() as RenderBox?;
       final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
-      await ref.read(reportSenderProvider)(report, origin);
+      await ref.read(reportSharerProvider)(report, origin);
     } on Exception {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Could not open sharing. Please try again.')));
       }
-    } finally {
-      if (mounted) setState(() => _sending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    if (_sent) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Report a problem')),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          children: [
+            Text('Thanks, your report has been sent.', style: text.titleMedium),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Done')),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Report a problem')),
       body: ListView(
@@ -74,8 +101,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             controller: _description,
             minLines: 3,
             maxLines: 8,
+            maxLength: 4000,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'What happened?'),
+            decoration: const InputDecoration(labelText: 'What happened?', counterText: ''),
           ),
           const SizedBox(height: 16),
           CheckboxListTile(
@@ -94,37 +122,47 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           OutlinedButton(onPressed: _preview, child: const Text('See what will be sent')),
           const SizedBox(height: 12),
           FilledButton(
-            key: _sendKey,
             onPressed: _sending ? null : _send,
-            child: const Text('Send'),
+            child: Text(_sending ? 'Sending...' : 'Send'),
           ),
           const SizedBox(height: 12),
-          Text('Choose your email app, then paste the address.', style: text.bodySmall),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(child: SelectableText(reportAddress, style: text.titleMedium)),
-              TextButton.icon(
-                key: const ValueKey('copy-address'),
-                onPressed: () {
-                  Clipboard.setData(const ClipboardData(text: reportAddress));
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(const SnackBar(content: Text('Address copied.')));
-                },
-                icon: const Icon(Icons.copy, size: 16),
-                label: const Text('Copy'),
-              ),
-            ],
-          ),
-          Text('Nothing is sent until you send it from your email app.', style: text.bodySmall),
+          Text('The report goes to the developer and is kept private.', style: text.bodySmall),
+          if (_failed) ...[
+            const SizedBox(height: 24),
+            Text(
+              'The report could not be sent. Check your internet connection and try again, '
+              'or share it from another app instead.',
+              style: text.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(key: _shareKey, onPressed: _share, child: const Text('Share instead')),
+            const SizedBox(height: 12),
+            Text('Choose your email app, then paste the address.', style: text.bodySmall),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(child: SelectableText(reportAddress, style: text.titleMedium)),
+                TextButton.icon(
+                  key: const ValueKey('copy-address'),
+                  onPressed: () {
+                    Clipboard.setData(const ClipboardData(text: reportAddress));
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(const SnackBar(content: Text('Address copied.')));
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Exactly what a report will send: the email text and the attached traffic.
+/// Exactly what a report will send: the details and the traffic.
 class ReportPreviewScreen extends StatelessWidget {
   const ReportPreviewScreen({super.key, required this.report});
 
@@ -138,11 +176,11 @@ class ReportPreviewScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         children: [
-          Text('EMAIL TEXT, TO $reportAddress', style: Logbook.sectionLabel),
+          Text('REPORT', style: Logbook.sectionLabel),
           const SizedBox(height: 8),
           SelectableText(report.body, style: text.bodyMedium),
           const SizedBox(height: 24),
-          Text('ATTACHED: $reportFileName', style: Logbook.sectionLabel),
+          Text('TRAFFIC', style: Logbook.sectionLabel),
           const SizedBox(height: 8),
           SelectableText(report.attachment, style: Logbook.asSent),
         ],
