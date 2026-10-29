@@ -6,8 +6,8 @@ import '../bulletins.dart';
 import '../compose.dart';
 import '../providers.dart';
 import '../sync.dart';
-import '../theme.dart';
 import 'compose_screen.dart';
+import 'mail_widgets.dart';
 
 /// Opens bulletin compose, with the category and area filled in if given.
 Future<void> openBulletinCompose(BuildContext context, {String? category, String? area}) =>
@@ -152,7 +152,7 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
                 validator: (v) => checkBulletinCategory(v),
                 onChanged: (_) => setState(() {}),
               ),
-              _Choices(options: categories, controller: _category, onPicked: () => setState(() {})),
+              Choices(options: categories, controller: _category, onPicked: () => setState(() {})),
               TextFormField(
                 controller: _area,
                 textCapitalization: TextCapitalization.characters,
@@ -160,7 +160,7 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
                 validator: (v) => checkBulletinArea(v),
                 onChanged: (_) => setState(() {}),
               ),
-              _Choices(options: areas, controller: _area, onPicked: () => setState(() {})),
+              Choices(options: areas, controller: _area, onPicked: () => setState(() {})),
               TextFormField(
                 controller: _subject,
                 maxLength: maxTitleLength,
@@ -185,47 +185,6 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// A row of tappable suggestions under a field.
-class _Choices extends StatelessWidget {
-  const _Choices({required this.options, required this.controller, required this.onPicked});
-
-  final List<String> options;
-  final TextEditingController controller;
-  final VoidCallback onPicked;
-
-  @override
-  Widget build(BuildContext context) {
-    final current = controller.text.trim().toUpperCase();
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.only(top: 6, bottom: 10),
-      child: Row(
-        children: [
-          for (final o in options)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: ChoiceChip(
-                label: Text(o),
-                selected: o == current,
-                showCheckmark: false,
-                selectedColor: Logbook.stampRed.withValues(alpha: 0.12),
-                backgroundColor: Logbook.paper,
-                side: BorderSide(color: o == current ? Logbook.stampRed : Logbook.rule),
-                labelStyle: Theme.of(context).textTheme.labelMedium
-                    ?.copyWith(color: o == current ? Logbook.stampRed : Logbook.inkSoft),
-                visualDensity: VisualDensity.compact,
-                onSelected: (_) {
-                  controller.text = o;
-                  onPicked();
-                },
-              ),
-            ),
-        ],
       ),
     );
   }

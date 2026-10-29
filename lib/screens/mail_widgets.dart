@@ -167,3 +167,47 @@ class ViewSwitch extends StatelessWidget {
     );
   }
 }
+
+/// A row of tappable suggestions under a field.
+class Choices extends StatelessWidget {
+  const Choices({super.key, required this.options, required this.controller, required this.onPicked, this.label});
+
+  final List<String> options;
+  final TextEditingController controller;
+  final VoidCallback onPicked;
+
+  /// What a chip says, if not just the option.
+  final String Function(String option)? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = controller.text.trim().toUpperCase();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(top: 6, bottom: 10),
+      child: Row(
+        children: [
+          for (final o in options)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                label: Text(label?.call(o) ?? o),
+                selected: o == current,
+                showCheckmark: false,
+                selectedColor: Logbook.stampRed.withValues(alpha: 0.12),
+                backgroundColor: Logbook.paper,
+                side: BorderSide(color: o == current ? Logbook.stampRed : Logbook.rule),
+                labelStyle: Theme.of(context).textTheme.labelMedium
+                    ?.copyWith(color: o == current ? Logbook.stampRed : Logbook.inkSoft),
+                visualDensity: VisualDensity.compact,
+                onSelected: (_) {
+                  controller.text = o;
+                  onPicked();
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

@@ -2,7 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
+import 'message_format.dart';
 import 'providers.dart';
+import 'validation.dart';
 
 /// The address book, by callsign.
 final contactsProvider = StreamProvider<List<Contact>>((ref) {
@@ -64,3 +66,43 @@ Future<void> saveContact(
 
 Future<void> deleteContact(MailStore store, String callsign) =>
     (store.delete(store.contacts)..where((c) => c.callsign.equals(callsign))).go();
+
+/// Where received mail started, newest first: (sender's callsign, the full
+/// address of the BBS in its oldest R: line).
+final mailOriginsProvider = StreamProvider.autoDispose<List<(String, String)>>((ref) {
+  final store = ref.watch(storeProvider);
+  return store
+      .customSelect('SELECT from_call, routing FROM messages WHERE routing IS NOT NULL ORDER BY date DESC LIMIT 1000',
+          readsFrom: {store.messages})
+      .watch()
+      .map((rows) => [
+            for (final r in rows)
+              if (routeOrigin(r.read<String>('routing')) case final origin?)
+                (bareCall(r.read<String>('from_call')), origin.toUpperCase()),
+          ]);
+});
+
+/// Home BBSes to offer for [call]. The best guess is where mail from [call]
+/// started, else your own home BBS; the others are ones your contacts and
+/// received mail use, most used first.
+({String? best, List<String> others}) homeBbsSuggestions({
+  required String call,
+  String? own,
+  List<Contact> contacts = const [],
+  List<(String, String)> mailOrigins = const [],
+  int max = 5,
+}) {
+  bool ok(String? s) => s != null && s.isNotEmpty && checkHomeBbs(s) == null;
+  final c = call.trim().toUpperCase();
+  final mine = own?.trim().toUpperCase();
+  final fromThem = c.isEmpty ? null : mailOrigins.where((m) => m.$1 == c && ok(m.$2)).firstOrNull?.$2;
+  final best = fromThem ?? (ok(mine) ? mine : null);
+  final counts = <String, int>{};
+  for (final s in [for (final k in contacts) k.homeBbs?.toUpperCase(), for (final m in mailOrigins) m.$2, mine]) {
+    if (ok(s) && s != best) counts[s!] = (counts[s] ?? 0) + 1;
+  }
+  final seen = counts.keys.toList();
+  final others = [...seen]
+    ..sort((a, b) => counts[b] != counts[a] ? counts[b]!.compareTo(counts[a]!) : seen.indexOf(a) - seen.indexOf(b));
+  return (best: best, others: others.take(max).toList());
+}

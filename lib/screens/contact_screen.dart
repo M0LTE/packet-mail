@@ -7,6 +7,7 @@ import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
 import '../validation.dart';
+import 'mail_widgets.dart';
 
 /// Adds a contact, or edits one. What you save here sync never changes.
 class ContactScreen extends ConsumerStatefulWidget {
@@ -33,6 +34,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
   void initState() {
     super.initState();
     _homeBbs.addListener(_rebuild);
+    _callsign.addListener(_rebuild);
   }
 
   void _rebuild() => setState(() {});
@@ -122,6 +124,12 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final c = widget.contact;
+    final suggestions = homeBbsSuggestions(
+      call: _callsign.text,
+      own: ref.watch(identityProvider).value?.homeBbs,
+      contacts: ref.watch(contactsProvider).value ?? const [],
+      mailOrigins: ref.watch(mailOriginsProvider).value ?? const [],
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text(_isNew ? 'New contact' : c!.callsign),
@@ -162,8 +170,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                   controller: _homeBbs,
                   decoration: InputDecoration(
                     labelText: 'Home BBS',
-                    hintText: homeBbsExample(ref.watch(identityProvider).value?.homeBbs),
-                    helperText: homeBbsWarning(_homeBbs.text) ?? 'Where their mail is kept: the part after @.',
+                    helperText: homeBbsWarning(_homeBbs.text) ?? 'Their home BBS, like $exampleHomeBbs',
                   ),
                   textCapitalization: TextCapitalization.characters,
                   autocorrect: false,
@@ -171,6 +178,14 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                       ? null
                       : checkHomeBbs(s, example: homeBbsExample(ref.read(identityProvider).value?.homeBbs)),
                 ),
+                if (suggestions.best != null || suggestions.others.isNotEmpty)
+                  Choices(
+                    key: const ValueKey('home-bbs-choices'),
+                    options: [?suggestions.best, ...suggestions.others],
+                    controller: _homeBbs,
+                    label: (o) => o == suggestions.best ? 'Use $o' : o,
+                    onPicked: () {},
+                  ),
                 if (ref.watch(connectionsWithProvider(DriverCapability.whitePagesLookup)).isNotEmpty)
                   Align(
                     alignment: Alignment.centerLeft,
