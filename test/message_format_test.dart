@@ -27,6 +27,25 @@ void main() {
     expect(fullTime(DateTime(2025, 1, 2, 3, 4), now), '2 January 2025, 03:04');
   });
 
+  test('a listed day without a time shows the day alone', () {
+    // Listings give only the day, stored as midnight UTC.
+    expect(hasTime(DateTime.utc(2026, 10, 28)), isFalse);
+    expect(hasTime(DateTime.utc(2026, 10, 28, 9, 12)), isTrue);
+    expect(listWhen(DateTime.utc(2026, 10, 28), now), 'Today');
+    expect(listWhen(DateTime.utc(2026, 10, 27), now), 'Yesterday');
+    expect(listWhen(DateTime.utc(2026, 10, 25), now), 'Sun');
+    expect(listWhen(DateTime.utc(2026, 10, 21), now), '21 Oct');
+    expect(listWhen(DateTime.utc(2025, 12, 31), now), '31 Dec 2025');
+    expect(fullWhen(DateTime.utc(2026, 10, 28), now), '28 October');
+    expect(fullWhen(DateTime.utc(2025, 1, 2), now), '2 January 2025');
+  });
+
+  test('a date with a time shows it, in local time', () {
+    final when = DateTime.utc(2026, 10, 28, 9, 12);
+    expect(listWhen(when, now), listTime(when.toLocal(), now));
+    expect(fullWhen(when, now), fullTime(when.toLocal(), now));
+  });
+
   test('bare callsigns', () {
     expect(bareCall('m9twm@GB7LOX.#19.GBR.EURO'), 'M9TWM');
     expect(bareCall('G8BPQ-7'), 'G8BPQ');

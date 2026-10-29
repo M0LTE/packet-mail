@@ -112,6 +112,10 @@ class FakeDriver extends Fake implements MailDriver {
         body: body,
       );
 
+  /// The date and time a message's own header gives, where it differs from
+  /// the listing's day.
+  final readDates = <int, DateTime>{};
+
   /// When set, the BBS has White Pages and knows these home BBSs.
   Map<String, String>? whitePages;
 
@@ -153,7 +157,7 @@ class FakeDriver extends Fake implements MailDriver {
       from: h.from,
       to: h.to,
       subject: h.subject,
-      date: h.date,
+      date: readDates[number] ?? h.date,
       bid: '${number}_GB7RDG',
       routing: ['R:261028/0927Z $number@GB7RDG.#42.GBR.EURO LinBPQ6.0.26'],
       body: m.body,

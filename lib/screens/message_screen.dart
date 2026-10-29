@@ -150,7 +150,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               ),
               style: hdr,
             ),
-            Text(fullTime(m.date.toLocal(), ref.watch(clockProvider)()), style: hdr),
+            Text(fullWhen(m.date, ref.watch(clockProvider)()), style: hdr),
             if (_details) ...[
               const SizedBox(height: 8),
               _detail('From', origin == null ? m.fromCall : '$call@$origin', hdr, strong),

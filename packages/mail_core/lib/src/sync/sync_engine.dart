@@ -212,6 +212,7 @@ class SyncEngine {
           body: Value(read.body),
           routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
           bid: Value(read.bid.isEmpty ? null : read.bid),
+          date: _readDate(read),
         ));
         return read.body;
       } finally {
@@ -783,7 +784,7 @@ class SyncEngine {
       body: Value(read.body),
       routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
       bid: Value(read.bid.isEmpty ? m.bid : read.bid),
-      date: Value(read.date),
+      date: _readDate(read),
       // The whole subject, where the listing cut it short.
       subject: cut && read.subject.length > m.subject.length && read.subject.startsWith(m.subject)
           ? Value(read.subject)
@@ -791,6 +792,11 @@ class SyncEngine {
     ));
     if (m.type != 'bulletin') await _learnFromSender(read);
   }
+
+  /// The date and time from a message's own header, which replaces the
+  /// listing's day. Absent when the header had none (read as 1970).
+  static Value<DateTime> _readDate(ReadMessage read) =>
+      read.date.toUtc().year > 1970 ? Value(read.date) : const Value.absent();
 
   static Future<void> _quietly(Future<void> Function() f) async {
     try {

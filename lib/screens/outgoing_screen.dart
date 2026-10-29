@@ -204,7 +204,7 @@ class _SentListingScreenState extends ConsumerState<SentListingScreen> {
                         ].join('. '),
                         style: hdr,
                       ),
-                      Text(fullTime(l.date.toLocal(), ref.watch(clockProvider)()), style: hdr),
+                      Text(fullWhen(l.date, ref.watch(clockProvider)()), style: hdr),
                     ],
                   ),
                 ),

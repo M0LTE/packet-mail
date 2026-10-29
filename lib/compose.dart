@@ -34,8 +34,10 @@ class ComposeDraft {
 
   /// The original quoted under a line saying who it came from; To left empty.
   factory ComposeDraft.forward(Message m) {
-    final when = m.date.toLocal();
-    final day = '${when.year}-${_two(when.month)}-${_two(when.day)} ${_two(when.hour)}:${_two(when.minute)}';
+    final timed = hasTime(m.date);
+    final when = timed ? m.date.toLocal() : m.date.toUtc();
+    final day = '${when.year}-${_two(when.month)}-${_two(when.day)}'
+        '${timed ? ' ${_two(when.hour)}:${_two(when.minute)}' : ''}';
     return ComposeDraft(
       subject: forwardSubject(m.subject),
       body: '\n\nForwarded message from ${bareCall(m.fromCall)}, $day:\n${quoteForReply(m.body ?? '')}\n',

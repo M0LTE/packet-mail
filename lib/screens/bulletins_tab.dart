@@ -386,7 +386,7 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
                         const Icon(Icons.star, size: 13, color: Logbook.stampRed),
                         const SizedBox(width: 6),
                       ],
-                      Text(listTime(m.date.toLocal(), ref.watch(clockProvider)()), style: text.bodySmall),
+                      Text(listWhen(m.date, ref.watch(clockProvider)()), style: text.bodySmall),
                     ],
                   ),
                   const SizedBox(height: 2),

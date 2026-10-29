@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:packetmail/mailboxes.dart';
+import 'package:packetmail/message_format.dart';
 
+import 'compose_test.dart' show showBox;
 import 'helpers.dart';
 
 /// Puts a message straight into the store, as an earlier sync would have.
@@ -147,6 +149,52 @@ void main() {
       ),
       findsOneWidget,
     );
+    await app.dispose(tester);
+  });
+
+  testWidgets('listed mail shows its day until read, then the time from its header', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    final read = DateTime.utc(2026, 10, 28, 9, 45);
+    app.bbs
+      ..add(11, subject: 'From today', date: DateTime.utc(2026, 10, 28))
+      ..add(12, subject: 'From yesterday', date: DateTime.utc(2026, 10, 27))
+      ..readDates[11] = read
+      ..fromUs = {
+        MessageHeader(
+          number: 4000,
+          type: MessageType.personal,
+          status: 'F',
+          from: 'M0LTE',
+          to: 'G8BPQ',
+          at: 'GB7BPQ',
+          subject: 'Sent one',
+          date: DateTime.utc(2026, 10, 21),
+        ): 'Hi.',
+      }
+      ..readDates[4000] = DateTime.utc(2026, 10, 21, 14, 5);
+    await app.pump(tester);
+    await settleAll(app, tester);
+
+    expect(find.text('00:00'), findsNothing);
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Yesterday'), findsOneWidget);
+
+    await tester.tap(find.text('From today'));
+    await settleAll(app, tester);
+    expect(find.text(fullTime(read.toLocal(), app.now)), findsOneWidget);
+    expect((await messageRow(app, tester, 1)).date.toUtc(), read);
+    await tester.tap(find.widgetWithText(TextButton, 'Inbox').last);
+    await settleAll(app, tester);
+    expect(find.text('Today'), findsNothing);
+    expect(find.text(listTime(read.toLocal(), app.now)), findsOneWidget);
+
+    await showBox(app, tester, 'sent');
+    expect(find.text('21 Oct'), findsOneWidget);
+    expect(find.text('00:00'), findsNothing);
+    await tester.tap(find.text('Sent one'));
+    await settleAll(app, tester);
+    expect(find.text(fullTime(DateTime.utc(2026, 10, 21, 14, 5).toLocal(), app.now)), findsOneWidget);
     await app.dispose(tester);
   });
 

@@ -35,6 +35,9 @@ class FakeBbs implements MailDriver {
   var disconnects = 0;
   var refuseSendTo = <String>{};
 
+  /// Reads give no date, as an XRouter header without Rcvd does.
+  var noDateOnRead = false;
+
   /// IDs the BBS holds; a second copy is refused, as BPQ does.
   final bids = <String>{};
 
@@ -150,7 +153,7 @@ class FakeBbs implements MailDriver {
       from: senders[number] ?? h.from,
       to: h.to,
       subject: h.subject,
-      date: h.date.add(const Duration(hours: 5)),
+      date: noDateOnRead ? DateTime.utc(1970) : h.date.add(const Duration(hours: 5)),
       bid: m.bid ?? '',
       routing: const ['R:261028/0520Z @:GB7RDG.#42.GBR.EURO'],
       body: m.body,
@@ -625,6 +628,26 @@ void main() {
       bbs.calls.clear();
       expect(await engine.openSent(first.id), 'Sent body 30');
       expect(bbs.calls, isEmpty); // already here
+    });
+
+    test('opening sent mail replaces the listed day with the time from its header', () async {
+      bbs.addFromUs(30);
+      await engine.sync(conn);
+      final first = (await sentRows()).first;
+      expect(first.date.toUtc(), day);
+      await engine.openSent(first.id);
+      expect((await sentRows()).first.date.toUtc(), day.add(const Duration(hours: 5)));
+      await engine.sync(conn);
+      expect((await sentRows()).first.date.toUtc(), day.add(const Duration(hours: 5)));
+    });
+
+    test('a header without a date leaves the listed day alone', () async {
+      bbs
+        ..addPersonal(10)
+        ..noDateOnRead = true;
+      await engine.sync(conn);
+      await engine.openMessage((await messages()).single.id);
+      expect((await messages()).single.date.toUtc(), day);
     });
 
     test('a listing failure stops the sync and keeps what was there', () async {
