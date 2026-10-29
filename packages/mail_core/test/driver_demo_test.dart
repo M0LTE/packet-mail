@@ -1,7 +1,7 @@
 // Runs the driver, and the sync engine on top of it, against the demo BBS
-// (demo-bbs/run.sh). Skipped unless PACKET_MAIL_DEMO_BBS is set. Every
-// connection to the demo BBS starts from the same fresh demo mail, so these
-// tests don't depend on each other.
+// (demo-bbs/run.sh). Skipped unless PACKET_MAIL_DEMO_BBS is set. The demo BBS
+// keeps one sandbox per address and user name, so each test logs in under
+// its own user name and starts from fresh demo mail.
 @Tags(['bbs'])
 library;
 
@@ -18,9 +18,14 @@ const _home = 'Q0DEMO.#42.GBR.EURO';
 Future<BpqDriver> _connect() async =>
     BpqDriver(await TcpTransport.connect('127.0.0.1', _port), port: BpqPort.fbb, timeout: const Duration(seconds: 10));
 
-Future<BpqDriver> _logIn({String name = 'Demo Visitor'}) async {
+var _users = 0;
+
+/// A user name no other test has used, so a fresh sandbox.
+String _freshUser() => 't${DateTime.now().millisecondsSinceEpoch % 100000000}x${_users++}';
+
+Future<BpqDriver> _logIn(String user, {String name = 'Demo Visitor'}) async {
   final d = await _connect();
-  await d.logIn(user: 'demo', password: 'demo', name: name);
+  await d.logIn(user: user, password: 'demo', name: name);
   return d;
 }
 
@@ -31,7 +36,7 @@ void main() {
 
   group('demo BBS driver', skip: enabled ? false : 'set PACKET_MAIL_DEMO_BBS to run against demo-bbs', () {
     test('logs in and lists the demo mail', () async {
-      final d = await _logIn();
+      final d = await _logIn(_freshUser());
       final inbox = await d.listPersonal();
       expect(inbox.map((h) => h.from), containsAll(['Q0ADA', 'Q0BEN', 'Q0EVE', 'Q0CAT']));
       expect(inbox.every((h) => h.to == 'Q0YOU' && h.at == 'Q0DEMO'), isTrue);
@@ -45,7 +50,7 @@ void main() {
     });
 
     test('reads mail, including routing lines, and marks it read', () async {
-      final d = await _logIn();
+      final d = await _logIn(_freshUser());
       final north = (await d.listPersonal()).firstWhere((h) => h.from == 'Q0EVE');
       final m = await d.read(north.number);
       expect(m.subject, 'Hello from the north');
@@ -61,7 +66,7 @@ void main() {
     });
 
     test('the robot answers personal mail in the same session', () async {
-      final d = await _logIn(name: 'Tess');
+      final d = await _logIn(_freshUser(), name: 'Tess');
       final r = await d.sendPersonal(
         to: MailAddress.parse('Q0BOT@$_home').address!,
         subject: 'Hello robot',
@@ -81,7 +86,7 @@ void main() {
     });
 
     test('sends a bulletin, refuses a duplicate ID, and kill rules hold', () async {
-      final d = await _logIn();
+      final d = await _logIn(_freshUser());
       final area = BulletinAddress.parse('ALL@GBR').address!;
       final b = await d.sendBulletin(to: area, subject: 'Demo bulletin', body: 'Body.', bid: 'DEMOBID1');
       expect(b.bid, 'DEMOBID1');
@@ -98,23 +103,30 @@ void main() {
     });
 
     test('White Pages answers for the demo users only', () async {
-      final d = await _logIn();
+      final d = await _logIn(_freshUser());
       expect(await d.lookUpHomeBbs('Q0ADA'), _home);
       expect(await d.lookUpHomeBbs('q0eve'), 'Q0NTH.#07.GBR.EURO');
       expect(await d.lookUpHomeBbs('G8BPQ'), isNull);
       await d.disconnect();
     });
 
-    test('nothing one session does is seen by the next', () async {
-      final a = await _logIn();
+    test('the next connection sees the same mailbox; another user name does not', () async {
+      final user = _freshUser();
+      final a = await _logIn(user);
       final first = (await a.listPersonal()).first.number;
       await a.kill(first);
       await a.sendBulletin(to: BulletinAddress.parse('ALL@WW').address!, subject: 'Private', body: 'x');
       await a.disconnect();
-      final b = await _logIn();
-      expect((await b.listPersonal()).map((h) => h.number), contains(first));
-      expect((await b.listBulletins()).map((h) => h.subject), isNot(contains('Private')));
+
+      final b = await _logIn(user);
+      expect((await b.listPersonal()).map((h) => h.number), isNot(contains(first)));
+      expect((await b.listBulletins()).map((h) => h.subject), contains('Private'));
       await b.disconnect();
+
+      final c = await _logIn(_freshUser());
+      expect((await c.listPersonal()).map((h) => h.number), contains(first));
+      expect((await c.listBulletins()).map((h) => h.subject), isNot(contains('Private')));
+      await c.disconnect();
     });
 
     test('a wrong password is refused', () async {
@@ -150,7 +162,8 @@ void main() {
                 personalDownload: Value(download),
               ),
             );
-        engine = SyncEngine(db, (c) => _logIn());
+        final user = _freshUser();
+        engine = SyncEngine(db, (c) => _logIn(user));
       }
 
       tearDown(() => db.close());
@@ -204,12 +217,25 @@ void main() {
         expect((await inbox()).map((m) => m.id), contains(reply.id));
       });
 
-      test('with download when opened, mail opens in a later connection', () async {
+      test('with download when opened: the robot reply opens on a later connection, a delete sticks', () async {
         await setUpApp('onOpen');
         expect((await engine.sync(conn)).ok, isTrue);
         final ben = (await inbox()).firstWhere((m) => m.fromCall == 'Q0BEN');
         expect(ben.body, isNull);
         expect(await engine.openMessage(ben.id), contains('club net'));
+
+        await queueTo('Q0BOT@$_home', 'Opened later');
+        expect((await engine.sync(conn)).sent, 1);
+        final reply = (await inbox()).firstWhere((m) => m.fromCall == 'Q0BOT');
+        expect(reply.body, isNull);
+        expect(await engine.openMessage(reply.id), contains('> Hello from the app.'));
+
+        await (db.update(
+          db.messages,
+        )..where((m) => m.id.equals(ben.id))).write(const MessagesCompanion(pendingKill: Value(true)));
+        expect((await engine.sync(conn)).ok, isTrue);
+        expect((await engine.sync(conn)).ok, isTrue);
+        expect((await inbox()).map((m) => m.fromCall), isNot(contains('Q0BEN')));
       });
     },
   );

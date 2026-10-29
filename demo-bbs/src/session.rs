@@ -5,10 +5,17 @@
 //! the session, so nothing one visitor does can reach another.
 
 use crate::dates::{day_month, day_month_time};
-use crate::mail::{Mailbox, Message, WpEntry, BBS_CALL, BBS_HOME};
-use crate::seed::{seed, ROBOT_CALL, USER_CALL};
+use std::net::IpAddr;
+use std::sync::Arc;
+use std::time::Instant;
 
-pub const LOGIN_USER: &[u8] = b"demo";
+use crate::mail::{Message, WpEntry, BBS_CALL};
+use crate::sandbox::{Lease, Registry, Sandbox};
+use crate::seed::{ROBOT_CALL, USER_CALL};
+
+/// Longest user name accepted. Any user name of printable ASCII works; each
+/// gets its own sandbox.
+const MAX_USER: usize = 16;
 pub const LOGIN_PASSWORD: &[u8] = b"demo";
 
 const NODE_HEADER: &str = "DEMO:Q0DEMO} ";
@@ -33,8 +40,11 @@ const MAX_NUMBERS_PER_COMMAND: usize = 20;
 pub struct SessionLimits {
     /// Largest message body a visitor may send, in bytes as stored.
     pub max_message_bytes: usize,
-    /// Messages a visitor may send in one session.
+    /// Messages a visitor may send per sandbox.
     pub max_messages: usize,
+    /// Bytes received and sent per sandbox.
+    pub max_in_bytes: usize,
+    pub max_out_bytes: usize,
 }
 
 impl Default for SessionLimits {
@@ -42,6 +52,8 @@ impl Default for SessionLimits {
         SessionLimits {
             max_message_bytes: 16 * 1024,
             max_messages: 20,
+            max_in_bytes: 256 * 1024,
+            max_out_bytes: 4 * 1024 * 1024,
         }
     }
 }
@@ -72,9 +84,28 @@ struct Draft {
     too_big: bool,
 }
 
+/// The time, both ways: Unix seconds for dates, a monotonic clock for expiry.
+#[derive(Clone, Copy, Debug)]
+pub struct Now {
+    pub unix: i64,
+    pub mono: Instant,
+}
+
+impl Now {
+    pub fn system() -> Self {
+        let unix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as i64);
+        Now {
+            unix,
+            mono: Instant::now(),
+        }
+    }
+}
+
 enum State {
     User,
-    Password,
+    Password(Vec<u8>),
     Node,
     Name,
     Command,
@@ -87,29 +118,71 @@ pub struct Session {
     state: State,
     login_failures: u32,
     errors: u32,
-    mail: Mailbox,
-    name: Vec<u8>,
-    home: String,
-    last_listed: i64,
-    sent: usize,
     limits: SessionLimits,
+    registry: Arc<Registry>,
+    peer: IpAddr,
+    lease: Option<Lease>,
+    /// The sandbox's state while a line is handled; put back after.
+    sb: Sandbox,
+    /// Bytes before login, when there is no sandbox to count them against.
+    bytes_in: usize,
+    bytes_out: usize,
 }
 
 impl Session {
-    pub fn new(now: i64, limits: SessionLimits) -> Self {
-        let mail = seed(now);
-        // A new BPQ user's "last listed" starts 20 behind the latest message.
-        let last_listed = mail.latest() as i64 - 20;
+    pub fn new(registry: Arc<Registry>, peer: IpAddr, limits: SessionLimits) -> Self {
         Session {
             state: State::User,
             login_failures: 0,
             errors: 0,
-            mail,
-            name: Vec::new(),
-            home: BBS_HOME.into(),
-            last_listed,
-            sent: 0,
             limits,
+            registry,
+            peer,
+            lease: None,
+            sb: Sandbox::default(),
+            bytes_in: 0,
+            bytes_out: 0,
+        }
+    }
+
+    /// Looks at the sandbox this connection uses (or its own state before login).
+    pub fn with_sandbox<R>(&self, f: impl FnOnce(&Sandbox) -> R) -> R {
+        match &self.lease {
+            Some(l) => f(&l.sandbox.lock().unwrap_or_else(|e| e.into_inner())),
+            None => f(&self.sb),
+        }
+    }
+
+    /// Ends the connection's hold on its sandbox, so its idle time starts.
+    pub fn end(&mut self, now: Instant) {
+        if let Some(l) = self.lease.take() {
+            l.release(now);
+        }
+        self.state = State::Closed;
+    }
+
+    /// Counts bytes against the sandbox (or this connection before login).
+    /// Returns the limit hit, if any.
+    pub fn count_bytes(&mut self, bytes_in: usize, bytes_out: usize) -> Option<&'static str> {
+        let (i, o) = match &self.lease {
+            Some(l) => {
+                let mut sb = l.sandbox.lock().unwrap_or_else(|e| e.into_inner());
+                sb.bytes_in += bytes_in;
+                sb.bytes_out += bytes_out;
+                (sb.bytes_in, sb.bytes_out)
+            }
+            None => {
+                self.bytes_in += bytes_in;
+                self.bytes_out += bytes_out;
+                (self.bytes_in, self.bytes_out)
+            }
+        };
+        if i > self.limits.max_in_bytes {
+            Some("bytes in per visitor")
+        } else if o > self.limits.max_out_bytes {
+            Some("bytes out per visitor")
+        } else {
+            None
         }
     }
 
@@ -125,18 +198,30 @@ impl Session {
         matches!(self.state, State::Closed)
     }
 
-    /// Handles one input line (without its line end). `now` is Unix seconds.
-    pub fn handle(&mut self, line: &[u8], now: i64) -> Reply {
+    /// Handles one input line (without its line end).
+    pub fn handle(&mut self, line: &[u8], now: Now) -> Reply {
+        let lease = self.lease.as_ref().map(|l| l.sandbox.clone());
+        let Some(shared) = lease else {
+            return self.handle_inner(line, now);
+        };
+        let mut guard = shared.lock().unwrap_or_else(|e| e.into_inner());
+        std::mem::swap(&mut *guard, &mut self.sb);
+        let r = self.handle_inner(line, now);
+        std::mem::swap(&mut *guard, &mut self.sb);
+        r
+    }
+
+    fn handle_inner(&mut self, line: &[u8], now: Now) -> Reply {
         let mut r = Reply::default();
         let state = std::mem::replace(&mut self.state, State::Closed);
         self.state = match state {
             State::User => self.on_user(line, &mut r),
-            State::Password => self.on_password(line, &mut r),
+            State::Password(user) => self.on_password(line, user, now, &mut r),
             State::Node => self.on_node(line, &mut r),
             State::Name => self.on_name(line, &mut r),
             State::Command => self.on_command(line, &mut r),
             State::Title(d) => self.on_title(line, d, &mut r),
-            State::Body(d) => self.on_body(line, d, now, &mut r),
+            State::Body(d) => self.on_body(line, d, now.unix, &mut r),
             State::Closed => State::Closed,
         };
         r.close |= self.is_closed();
@@ -160,20 +245,31 @@ impl Session {
         if line.is_empty() || line == [0] || line.len() > MAX_LOGIN_LINE {
             return State::User;
         }
-        if line == LOGIN_USER {
-            return State::Password;
+        if line.len() <= MAX_USER && line.iter().all(|b| b.is_ascii_graphic()) {
+            return State::Password(line.to_vec());
         }
         self.login_failed(r, State::User, b"user:")
     }
 
-    fn on_password(&mut self, line: &[u8], r: &mut Reply) -> State {
+    fn on_password(&mut self, line: &[u8], user: Vec<u8>, now: Now, r: &mut Reply) -> State {
         if line.is_empty() || line == [0] || line.len() > MAX_LOGIN_LINE {
-            return State::Password;
+            return State::Password(user);
         }
-        if line == LOGIN_PASSWORD {
-            return State::Node;
+        if line != LOGIN_PASSWORD {
+            return self.login_failed(r, State::Password(user), b"password:");
         }
-        self.login_failed(r, State::Password, b"password:")
+        match self.registry.acquire(self.peer, &user, now.mono, now.unix) {
+            Ok(lease) => {
+                // From the next line on, handle() works on this sandbox.
+                self.lease = Some(lease);
+                State::Node
+            }
+            Err(_) => {
+                r.say("Sorry, the demo BBS is full. Please try again later.\r");
+                r.limit = Some("sandboxes");
+                State::Closed
+            }
+        }
     }
 
     /// Node command level: only `BBS` does anything.
@@ -190,7 +286,7 @@ impl Session {
                 r.say(NODE_HEADER);
                 r.say("Connected to BBS\r");
                 r.say(SID);
-                if self.name.is_empty() {
+                if self.sb.name.is_empty() {
                     r.say("Please enter your Name\r>\r");
                     State::Name
                 } else {
@@ -208,21 +304,21 @@ impl Session {
     }
 
     fn on_name(&mut self, line: &[u8], r: &mut Reply) -> State {
-        self.name = clean(line);
-        self.name.truncate(MAX_NAME);
+        self.sb.name = clean(line);
+        self.sb.name.truncate(MAX_NAME);
         self.welcome(r);
         State::Command
     }
 
     fn welcome(&self, r: &mut Reply) {
         r.out.extend_from_slice(b"Hello ");
-        r.out.extend_from_slice(&self.name);
+        r.out.extend_from_slice(&self.sb.name);
         r.say(&format!(
             ". Latest Message is {}, Last listed is {}\r",
-            self.mail.latest(),
-            self.last_listed
+            self.sb.mail.latest(),
+            self.sb.last_listed
         ));
-        if self.home.is_empty() {
+        if self.sb.home.is_empty() {
             r.say("Please enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\r");
         }
         r.out.extend_from_slice(PROMPT);
@@ -339,7 +435,7 @@ impl Session {
             return Vec::new();
         };
 
-        let latest = self.mail.latest() as u64;
+        let latest = self.sb.mail.latest() as u64;
         let (mut lo, mut hi, mut count) = (1u64, latest, None);
         if last_n {
             count = args.next().map(|a| atoi(a) as usize);
@@ -357,10 +453,11 @@ impl Session {
             }
         }
         if plain {
-            lo = (self.last_listed + 1).max(1) as u64;
+            lo = (self.sb.last_listed + 1).max(1) as u64;
         }
 
         let mut found: Vec<&Message> = self
+            .sb
             .mail
             .messages
             .iter()
@@ -388,7 +485,7 @@ impl Session {
             if found.is_empty() {
                 out.extend_from_slice(b"No New Messages\r");
             }
-            self.last_listed = latest as i64;
+            self.sb.last_listed = latest as i64;
         }
         out
     }
@@ -402,6 +499,7 @@ impl Session {
             }
         } else if word.starts_with("RM") {
             let mut numbers: Vec<u32> = self
+                .sb
                 .mail
                 .messages
                 .iter()
@@ -424,7 +522,7 @@ impl Session {
 
     fn read_one(&mut self, number: u64, r: &mut Reply) {
         let me = self.me().to_string();
-        let Some(m) = u32::try_from(number).ok().and_then(|n| self.mail.get(n)) else {
+        let Some(m) = u32::try_from(number).ok().and_then(|n| self.sb.mail.get(n)) else {
             r.say(&format!("Message {} not found\r", number));
             return;
         };
@@ -449,7 +547,7 @@ impl Session {
             m.number, m.from
         ));
         let n = m.number;
-        if let Some(m) = self.mail.get_mut(n) {
+        if let Some(m) = self.sb.mail.get_mut(n) {
             if m.to == me && !matches!(m.status, b'K' | b'H' | b'F' | b'D') {
                 m.status = b'Y';
             }
@@ -464,7 +562,7 @@ impl Session {
             "K" => {
                 for a in args.iter().take(MAX_NUMBERS_PER_COMMAND) {
                     let n = atoi(a);
-                    let m = u32::try_from(n).ok().and_then(|n| self.mail.get_mut(n));
+                    let m = u32::try_from(n).ok().and_then(|n| self.sb.mail.get_mut(n));
                     match m {
                         None => r.say(&format!("Message {} not found\r", n)),
                         Some(m) if m.status == b'K' => r.say(&format!("Message {} not found\r", n)),
@@ -485,7 +583,7 @@ impl Session {
                 }
             }
             "KM" => {
-                for m in self.mail.messages.iter_mut() {
+                for m in self.sb.mail.messages.iter_mut() {
                     if m.kind == b'P' && m.to == me && m.status == b'Y' {
                         m.status = b'K';
                         r.say(&format!("Message #{} Killed\r", m.number));
@@ -513,13 +611,13 @@ impl Session {
         let pattern = arg.to_ascii_uppercase();
         let mut entries = vec![WpEntry {
             call: self.me().to_string(),
-            home: self.home.clone(),
-            name: String::from_utf8_lossy(&self.name).into_owned(),
+            home: self.sb.home.clone(),
+            name: String::from_utf8_lossy(&self.sb.name).into_owned(),
             zip: String::new(),
             qth: String::new(),
             local: true,
         }];
-        entries.extend(self.mail.wp.iter().cloned());
+        entries.extend(self.sb.mail.wp.iter().cloned());
         let matches: fn(&WpEntry, &str) -> bool = match word {
             "I" => |e, p| wild(&e.call, p),
             "I@" => |e, p| wild(e.home.split('.').next().unwrap_or(""), p),
@@ -540,15 +638,15 @@ impl Session {
 
     fn home_bbs(&mut self, args: &[&str], r: &mut Reply) {
         if let Some(a) = args.first() {
-            self.home = a
+            self.sb.home = a
                 .to_ascii_uppercase()
                 .chars()
                 .filter(|c| c.is_ascii_graphic())
                 .take(MAX_VIA)
                 .collect();
         }
-        r.say(&format!("HomeBBS is {}\r", self.home));
-        if !args.is_empty() && !self.home.contains('.') {
+        r.say(&format!("HomeBBS is {}\r", self.sb.home));
+        if !args.is_empty() && !self.sb.home.contains('.') {
             r.say(
                 "Please enter HA with HomeBBS eg g8bpq.gbr.eu - this will help message routing\r",
             );
@@ -573,12 +671,12 @@ impl Session {
                 )
             }
         };
-        if self.sent >= self.limits.max_messages {
-            r.limit = Some("messages per session");
+        if self.sb.sent >= self.limits.max_messages {
+            r.limit = Some("messages per visitor");
             return refuse(
                 r,
                 &format!(
-                    "*** Error: The demo BBS takes {} messages per session. Log in again to send more.\r",
+                    "*** Error: The demo BBS takes {} messages per visitor. Try again later.\r",
                     self.limits.max_messages
                 ),
             );
@@ -632,9 +730,9 @@ impl Session {
         }
         if kind == b'P' && via.is_empty() && to != "SYSOP" {
             if to == self.me() {
-                via = self.home.clone();
+                via = self.sb.home.clone();
                 r.say(&format!("Address @{} added from HomeBBS\r", via));
-            } else if let Some(e) = self.mail.wp_entry(&to) {
+            } else if let Some(e) = self.sb.mail.wp_entry(&to) {
                 via = e.home.clone();
                 let from = if e.local { "HomeBBS" } else { "WP" };
                 r.say(&format!("Address @{} added from {}\r", via, from));
@@ -653,7 +751,7 @@ impl Session {
     }
 
     fn duplicate_bid(&self, kind: u8, to: &str, bid: &str) -> bool {
-        self.mail.messages.iter().any(|m| {
+        self.sb.mail.messages.iter().any(|m| {
             m.bid == bid
                 && (kind == b'B' && m.kind == b'B'
                     || kind == b'P'
@@ -703,7 +801,7 @@ impl Session {
     }
 
     fn is_local(&self, call: &str) -> bool {
-        call == self.me() || call == "SYSOP" || self.mail.wp_entry(call).is_some_and(|e| e.local)
+        call == self.me() || call == "SYSOP" || self.sb.mail.wp_entry(call).is_some_and(|e| e.local)
     }
 
     fn finish(&mut self, d: Draft, now: i64, r: &mut Reply) -> State {
@@ -732,9 +830,14 @@ impl Session {
             date: now,
             body: d.body,
         };
-        let n = self.mail.add(msg);
-        self.sent += 1;
-        let bid = self.mail.get(n).map(|m| m.bid.clone()).unwrap_or_default();
+        let n = self.sb.mail.add(msg);
+        self.sb.sent += 1;
+        let bid = self
+            .sb
+            .mail
+            .get(n)
+            .map(|m| m.bid.clone())
+            .unwrap_or_default();
         r.say(&format!("Message: {} Bid:  {} Size: {}\r", n, bid, size));
         let elsewhere = !first_via.is_empty() && first_via != BBS_CALL;
         if d.kind == b'B' && !first_via.is_empty() || d.kind == b'P' && elsewhere {
@@ -753,7 +856,7 @@ impl Session {
 
     /// The demo robot answers at once, so the reply is there at the next list.
     fn robot_reply(&mut self, original: u32, now: i64) {
-        let Some(m) = self.mail.get(original) else {
+        let Some(m) = self.sb.mail.get(original) else {
             return;
         };
         let mut title = b"Re: ".to_vec();
@@ -762,10 +865,10 @@ impl Session {
         }
         title.extend_from_slice(&m.title);
         title.truncate(MAX_TITLE);
-        let name = if self.name.is_empty() {
+        let name = if self.sb.name.is_empty() {
             b"there".to_vec()
         } else {
-            self.name.clone()
+            self.sb.name.clone()
         };
 
         let mut body = b"Hello ".to_vec();
@@ -773,8 +876,8 @@ impl Session {
         body.extend_from_slice(
             b",\r\n\r\nThanks for your message. This is an automatic reply from the\r\n\
 demo BBS robot, so no person has read it. Everything you send\r\n\
-here is private to your session and is thrown away when you\r\n\
-log off.\r\n\r\nYou wrote:\r\n\r\n",
+here is private to you and is thrown away half an hour after\r\n\
+you log off.\r\n\r\nYou wrote:\r\n\r\n",
         );
         let lines: Vec<&[u8]> = m
             .body
@@ -797,14 +900,14 @@ log off.\r\n\r\nYou wrote:\r\n\r\n",
             kind: b'P',
             status: b'N',
             to: self.me().to_string(),
-            via: self.home.clone(),
+            via: self.sb.home.clone(),
             from: ROBOT_CALL.to_string(),
             title,
             bid: String::new(),
             date: now,
             body,
         };
-        self.mail.add(reply);
+        self.sb.mail.add(reply);
     }
 }
 
@@ -916,9 +1019,9 @@ K n  delete message n         I CALL  White Pages lookup\r\
 HOMEBBS   show your home BBS  B    log off\r";
 
 const INFO: &str = "Q0DEMO is a demonstration BBS for the Packet Mail app.\r\
-Everything here is made up. Your session has its own private copy of\r\
-the BBS: nothing you send is seen by anyone else, and it is all thrown\r\
-away when you log off. Send personal mail to Q0BOT for a reply.\r";
+Everything here is made up. You have your own private copy of the\r\
+BBS: nothing you send is seen by anyone else, and it is thrown away\r\
+half an hour after you log off. Send personal mail to Q0BOT for a reply.\r";
 
 #[cfg(test)]
 mod tests;

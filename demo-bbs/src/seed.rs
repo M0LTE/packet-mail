@@ -79,8 +79,8 @@ BBS. See you on the Thursday net.
 
 Everything here is made up: the stations, the names, the mail and
 the bulletins. Nothing you send leaves this BBS, and nobody else can
-see it. When you log off, your copy of the BBS is thrown away and
-the next login starts fresh.
+see it. Your copy of the BBS is kept in memory for half an hour
+after you log off, then thrown away, so a later visit starts fresh.
 
 Things to try:
 
@@ -337,7 +337,7 @@ This is a demo BBS, so feel free to try anything. Some ideas:
   - Delete mail you've read.
 
 Nothing you do here is seen by anyone else, and it's all reset
-when you log off.
+half an hour after you log off.
 
 73 Ada
 ",

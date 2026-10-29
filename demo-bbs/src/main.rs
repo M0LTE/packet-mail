@@ -2,11 +2,13 @@
 //! lives only in memory and is dropped when the connection ends.
 
 use std::net::SocketAddr;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use demo_bbs::guard::{Guard, GuardLimits};
 use demo_bbs::lines::{Line, LineReader};
-use demo_bbs::session::{Session, SessionLimits};
+use demo_bbs::sandbox::{Registry, RegistryLimits};
+use demo_bbs::session::{Now, Session, SessionLimits};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;
@@ -16,9 +18,8 @@ struct Config {
     listen: String,
     guard: GuardLimits,
     session: SessionLimits,
+    registry: RegistryLimits,
     max_line: usize,
-    max_in_bytes: usize,
-    max_out_bytes: usize,
     login_secs: u64,
     idle_secs: u64,
     session_secs: u64,
@@ -41,26 +42,27 @@ impl Config {
             guard: GuardLimits {
                 max_connections: env_num("DEMO_BBS_MAX_CONNECTIONS", 50),
                 max_per_ip: env_num("DEMO_BBS_MAX_PER_IP", 3),
-                connects_per_minute: env_num("DEMO_BBS_CONNECTS_PER_MINUTE", 10),
+                connects_per_minute: env_num("DEMO_BBS_CONNECTS_PER_MINUTE", 30),
             },
             session: SessionLimits {
                 max_message_bytes: env_num("DEMO_BBS_MAX_MESSAGE_BYTES", 16 * 1024),
                 max_messages: env_num("DEMO_BBS_MAX_MESSAGES", 20),
+                max_in_bytes: env_num("DEMO_BBS_MAX_IN_BYTES", 256 * 1024),
+                max_out_bytes: env_num("DEMO_BBS_MAX_OUT_BYTES", 4 * 1024 * 1024),
+            },
+            registry: RegistryLimits {
+                max_sandboxes: env_num("DEMO_BBS_MAX_SANDBOXES", 200),
+                keep_idle: Duration::from_secs(
+                    env_num("DEMO_BBS_SANDBOX_IDLE_SECONDS", 1800) as u64
+                ),
+                max_age: Duration::from_secs(env_num("DEMO_BBS_SANDBOX_MAX_SECONDS", 7200) as u64),
             },
             max_line: env_num("DEMO_BBS_MAX_LINE", 1024),
-            max_in_bytes: env_num("DEMO_BBS_MAX_IN_BYTES", 256 * 1024),
-            max_out_bytes: env_num("DEMO_BBS_MAX_OUT_BYTES", 4 * 1024 * 1024),
             login_secs: env_num("DEMO_BBS_LOGIN_SECONDS", 60) as u64,
             idle_secs: env_num("DEMO_BBS_IDLE_SECONDS", 600) as u64,
             session_secs: env_num("DEMO_BBS_SESSION_SECONDS", 1800) as u64,
         }
     }
-}
-
-fn unix_now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs() as i64)
 }
 
 #[tokio::main]
@@ -75,6 +77,7 @@ async fn main() {
     };
     eprintln!("demo BBS listening on {} (login demo / demo)", cfg.listen);
     let guard = Guard::new(cfg.guard.clone());
+    let registry = Registry::new(cfg.registry.clone());
 
     let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
         .expect("signal handler");
@@ -96,11 +99,12 @@ async fn main() {
         match guard.admit(peer.ip(), Instant::now()) {
             Ok(permit) => {
                 let cfg = cfg.clone();
+                let registry = registry.clone();
                 let active = guard.active();
                 tokio::spawn(async move {
                     eprintln!("connect {} active={}", peer.ip(), active);
                     let started = Instant::now();
-                    let reason = serve(stream, peer, &cfg).await;
+                    let reason = serve(stream, peer, &cfg, registry).await;
                     eprintln!(
                         "disconnect {} secs={} reason={}",
                         peer.ip(),
@@ -127,12 +131,28 @@ async fn main() {
 }
 
 /// Runs one session to its end and says why it ended.
-async fn serve(mut stream: TcpStream, peer: SocketAddr, cfg: &Config) -> &'static str {
-    let mut session = Session::new(unix_now(), cfg.session.clone());
+async fn serve(
+    stream: TcpStream,
+    peer: SocketAddr,
+    cfg: &Config,
+    registry: Arc<Registry>,
+) -> &'static str {
+    let mut session = Session::new(registry, peer.ip(), cfg.session.clone());
+    let reason = run(stream, peer, cfg, &mut session).await;
+    // The sandbox's idle time starts now.
+    session.end(Instant::now());
+    reason
+}
+
+async fn run(
+    mut stream: TcpStream,
+    peer: SocketAddr,
+    cfg: &Config,
+    session: &mut Session,
+) -> &'static str {
     let mut reader = LineReader::new(cfg.max_line);
     let mut buf = vec![0u8; 4096];
     let mut lines: Vec<Line> = Vec::new();
-    let (mut bytes_in, mut bytes_out) = (0usize, 0usize);
     let started = Instant::now();
     let end_of_life = started + Duration::from_secs(cfg.session_secs);
     let login_by = started + Duration::from_secs(cfg.login_secs);
@@ -172,14 +192,13 @@ async fn serve(mut stream: TcpStream, peer: SocketAddr, cfg: &Config) -> &'stati
             Ok(Ok(0)) => return "closed by client",
             Ok(Ok(n)) => n,
         };
-        bytes_in += n;
-        if bytes_in > cfg.max_in_bytes {
+        if let Some(what) = session.count_bytes(n, 0) {
             let _ = timeout(
                 Duration::from_secs(2),
                 stream.write_all(b"\rDemo session limit reached\r"),
             )
             .await;
-            return limit("bytes in per session");
+            return limit(what);
         }
         reader.push(&buf[..n], &mut lines);
         for line in lines.drain(..) {
@@ -187,18 +206,17 @@ async fn serve(mut stream: TcpStream, peer: SocketAddr, cfg: &Config) -> &'stati
             if line.truncated {
                 limit("line length");
             }
-            let reply = session.handle(&line.bytes, unix_now());
+            let reply = session.handle(&line.bytes, Now::system());
             if let Some(what) = reply.limit {
                 limit(what);
             }
-            bytes_out += reply.out.len();
-            if bytes_out > cfg.max_out_bytes {
+            if let Some(what) = session.count_bytes(0, reply.out.len()) {
                 let _ = timeout(
                     Duration::from_secs(2),
                     stream.write_all(b"\rDemo session limit reached\r"),
                 )
                 .await;
-                return limit("bytes out per session");
+                return limit(what);
             }
             if !reply.out.is_empty() {
                 // A client that stops reading cannot hold the session open.

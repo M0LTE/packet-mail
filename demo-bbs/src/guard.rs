@@ -69,7 +69,8 @@ impl Drop for Permit {
     }
 }
 
-fn key(ip: IpAddr) -> IpAddr {
+/// The address a visitor is counted by: IPv4 as is, IPv6 per /64.
+pub fn address_key(ip: IpAddr) -> IpAddr {
     match ip {
         IpAddr::V6(v6) => match v6.to_ipv4_mapped() {
             Some(v4) => IpAddr::V4(v4),
@@ -95,7 +96,7 @@ impl Guard {
     }
 
     pub fn admit(&self, ip: IpAddr, now: Instant) -> Result<Permit, Refusal> {
-        let k = key(ip);
+        let k = address_key(ip);
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.per_ip.len() >= MAX_TRACKED && !s.per_ip.contains_key(&k) {
             s.per_ip.retain(|_, e| {

@@ -1,17 +1,44 @@
 use super::*;
+use crate::sandbox::RegistryLimits;
 use proptest::prelude::*;
+use std::time::Duration;
 
 const NOW: i64 = 1_793_196_300; // 2026-10-28 14:05 UTC
 /// The first new message's number at NOW: 2000 plus seconds into the day.
 const N1: u32 = 52_700;
 const N2: u32 = 52_701;
 
+fn t() -> Now {
+    static BASE: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    Now {
+        unix: NOW,
+        mono: *BASE.get_or_init(Instant::now),
+    }
+}
+
+fn at(secs: u64) -> Now {
+    Now {
+        unix: NOW + secs as i64,
+        mono: t().mono + Duration::from_secs(secs),
+    }
+}
+
+fn registry() -> Arc<Registry> {
+    Registry::new(RegistryLimits::default())
+}
+
+const HOME_IP: &str = "192.0.2.1";
+
+fn connect(r: &Arc<Registry>, ip: &str, limits: SessionLimits) -> Session {
+    Session::new(r.clone(), ip.parse().unwrap(), limits)
+}
+
 fn session() -> Session {
-    Session::new(NOW, SessionLimits::default())
+    connect(&registry(), HOME_IP, SessionLimits::default())
 }
 
 fn say(s: &mut Session, line: &str) -> String {
-    String::from_utf8(s.handle(line.as_bytes(), NOW).out).unwrap()
+    String::from_utf8(s.handle(line.as_bytes(), t()).out).unwrap()
 }
 
 fn logged_in() -> Session {
@@ -42,9 +69,9 @@ fn bad_password_then_pipelined_bbs_is_another_attempt() {
 fn five_failures_disconnect() {
     let mut s = session();
     for _ in 0..4 {
-        assert_eq!(say(&mut s, "nobody"), "user:");
+        assert_eq!(say(&mut s, "no body"), "user:");
     }
-    let r = s.handle(b"nobody", NOW);
+    let r = s.handle(b"no body", t());
     assert_eq!(r.out, b"Too many attempts - Disconnected\r\n");
     assert!(r.close);
     assert_eq!(r.limit, Some("login attempts"));
@@ -267,7 +294,7 @@ fn unknown_commands_change_nothing_and_five_close() {
         assert_eq!(say(&mut s, "XYZZY"), "Invalid Command\rde Q0DEMO>\r");
     }
     assert_eq!(say(&mut s, "LL 100"), before);
-    let r = s.handle(b"QTH somewhere", NOW);
+    let r = s.handle(b"QTH somewhere", t());
     assert_eq!(r.out, b"Invalid Command\rToo many errors - closing\r");
     assert!(r.close);
 }
@@ -283,18 +310,20 @@ fn bye_and_node() {
         say(&mut s, "BBS"),
         "DEMO:Q0DEMO} Connected to BBS\r[BPQ-6.0.26.1-B2FWIHJM$]\rHello Tom User. Latest Message is 1016, Last listed is 996\rde Q0DEMO>\r"
     );
-    let r = s.handle(b"B", NOW);
+    let r = s.handle(b"B", t());
     assert_eq!(r.out, b"73 de Q0DEMO\r");
     assert!(r.close);
 }
 
 #[test]
 fn limits_on_size_and_count() {
-    let mut s = Session::new(
-        NOW,
+    let mut s = connect(
+        &registry(),
+        HOME_IP,
         SessionLimits {
             max_message_bytes: 20,
             max_messages: 1,
+            ..SessionLimits::default()
         },
     );
     for l in ["demo", "demo", "BBS", "Me"] {
@@ -303,15 +332,15 @@ fn limits_on_size_and_count() {
     say(&mut s, "SP Q0ADA");
     say(&mut s, "Title");
     say(&mut s, "This line is far too long for the limit");
-    let r = s.handle(b"/ex", NOW);
+    let r = s.handle(b"/ex", t());
     assert_eq!(r.limit, Some("message size"));
     assert!(String::from_utf8(r.out).unwrap().contains("not sent"));
     say(&mut s, "SP Q0ADA");
     say(&mut s, "Title");
     say(&mut s, "Short");
     assert!(say(&mut s, "/ex").starts_with(&format!("Message: {N1} ")));
-    let r = s.handle(b"SP Q0ADA", NOW);
-    assert_eq!(r.limit, Some("messages per session"));
+    let r = s.handle(b"SP Q0ADA", t());
+    assert_eq!(r.limit, Some("messages per visitor"));
 }
 
 #[test]
@@ -319,20 +348,132 @@ fn session_killers_drop_the_session_mid_message() {
     let mut s = logged_in();
     say(&mut s, "SP Q0ADA");
     say(&mut s, "Title");
-    assert!(s.handle(b"invalid command here", NOW).close);
+    assert!(s.handle(b"invalid command here", t()).close);
+}
+
+/// Logs in on a new connection to an existing registry; returns the welcome.
+fn reconnect(r: &Arc<Registry>, ip: &str, now: Now) -> (Session, String) {
+    let mut s = connect(r, ip, SessionLimits::default());
+    s.handle(b"demo", now);
+    s.handle(b"demo", now);
+    let hello = String::from_utf8(s.handle(b"BBS", now).out).unwrap();
+    (s, hello)
+}
+
+fn send(s: &mut Session, cmd: &str, title: &str) -> String {
+    say(s, cmd);
+    say(s, title);
+    say(s, "Body.");
+    say(s, "/ex")
 }
 
 #[test]
-fn sessions_do_not_share_anything() {
-    let mut a = logged_in();
-    let mut b = logged_in();
+fn a_visitor_s_connections_share_one_sandbox() {
+    let r = registry();
+    let (mut a, hello) = reconnect(&r, HOME_IP, t());
+    assert!(hello.ends_with("Please enter your Name\r>\r"));
+    say(&mut a, "Tess");
+    assert!(send(&mut a, "SP Q0BOT", "Hello robot").starts_with(&format!("Message: {N1} ")));
     say(&mut a, "K 1016");
-    say(&mut a, "SB ALL @ GBR");
-    say(&mut a, "Secret");
-    say(&mut a, "x");
-    say(&mut a, "/ex");
-    let lb = say(&mut b, "LL 100");
-    assert!(lb.contains("Welcome to Q0DEMO") && !lb.contains("Secret"));
+    a.end(at(10).mono);
+
+    // The app opens the robot's reply on a new connection.
+    let (mut b, hello) = reconnect(&r, HOME_IP, at(20));
+    assert!(
+        hello.starts_with("DEMO:Q0DEMO} Connected to BBS\r[BPQ-6.0.26.1-B2FWIHJM$]\rHello Tess."),
+        "{hello}"
+    );
+    let reply = say(&mut b, &format!("R {N2}"));
+    assert!(
+        reply.contains("Title: Re: Hello robot\r") && reply.contains("Hello Tess,"),
+        "{reply}"
+    );
+    assert_eq!(
+        say(&mut b, "R 1016"),
+        "Message 1016 not for you\rde Q0DEMO>\r"
+    );
+    assert!(!say(&mut b, "LM").contains("Welcome to Q0DEMO"));
+    assert!(say(&mut b, "L< Q0YOU").contains("Hello robot"));
+    b.end(at(30).mono);
+}
+
+#[test]
+fn the_message_limit_spans_connections() {
+    let r = registry();
+    let limits = SessionLimits {
+        max_messages: 1,
+        ..SessionLimits::default()
+    };
+    let mut a = connect(&r, HOME_IP, limits.clone());
+    for l in ["demo", "demo", "BBS", "Me"] {
+        say(&mut a, l);
+    }
+    assert!(send(&mut a, "SP Q0ADA", "One").starts_with("Message: "));
+    a.end(at(1).mono);
+    let mut b = connect(&r, HOME_IP, limits);
+    for l in ["demo", "demo", "BBS"] {
+        say(&mut b, l);
+    }
+    let reply = b.handle(b"SP Q0ADA", t());
+    assert_eq!(reply.limit, Some("messages per visitor"));
+}
+
+#[test]
+fn another_user_name_gets_its_own_sandbox() {
+    let r = registry();
+    let (mut a, _) = reconnect(&r, HOME_IP, t());
+    say(&mut a, "Ann");
+    say(&mut a, "K 1016");
+    let mut b = connect(&r, HOME_IP, SessionLimits::default());
+    for l in ["reviewer2", "demo", "BBS", "Bob"] {
+        say(&mut b, l);
+    }
+    assert!(say(&mut b, "LM").contains("Welcome to Q0DEMO"));
+}
+
+#[test]
+fn other_addresses_never_see_a_sandbox() {
+    let r = registry();
+    let (mut a, _) = reconnect(&r, HOME_IP, t());
+    say(&mut a, "Ann");
+    say(&mut a, "K 1016");
+    send(&mut a, "SB ALL @ GBR", "Secret");
+    let (mut b, hello) = reconnect(&r, "198.51.100.7", t());
+    assert!(hello.ends_with("Please enter your Name\r>\r"));
+    say(&mut b, "Bob");
+    let all = say(&mut b, "LL 100");
+    assert!(all.contains("Welcome to Q0DEMO") && !all.contains("Secret"));
+}
+
+#[test]
+fn a_sandbox_expires_after_half_an_hour_idle() {
+    let r = registry();
+    let (mut a, _) = reconnect(&r, HOME_IP, t());
+    say(&mut a, "Ann");
+    say(&mut a, "K 1016");
+    a.end(t().mono);
+    let (mut b, hello) = reconnect(&r, HOME_IP, at(30 * 60));
+    assert!(hello.ends_with("Please enter your Name\r>\r"), "{hello}");
+    say(&mut b, "Ann");
+    assert!(say(&mut b, "LM").contains("Welcome to Q0DEMO"));
+}
+
+#[test]
+fn a_full_registry_turns_visitors_away() {
+    let r = Registry::new(RegistryLimits {
+        max_sandboxes: 1,
+        ..RegistryLimits::default()
+    });
+    let (_a, _) = reconnect(&r, HOME_IP, t());
+    let mut b = connect(&r, "198.51.100.7", SessionLimits::default());
+    b.handle(b"demo", t());
+    let reply = b.handle(b"demo", t());
+    assert_eq!(
+        reply.out,
+        b"Sorry, the demo BBS is full. Please try again later.\r"
+    );
+    assert!(reply.close);
+    assert_eq!(reply.limit, Some("sandboxes"));
 }
 
 fn line_strategy() -> impl Strategy<Value = Vec<u8>> {
@@ -395,15 +536,15 @@ proptest! {
     /// Any sequence of lines: no panic, output bounded, and once closed it stays closed.
     #[test]
     fn any_input_is_safe(lines in proptest::collection::vec(line_strategy(), 0..120), login in any::<bool>()) {
-        let mut s = Session::new(NOW, SessionLimits { max_message_bytes: 2048, max_messages: 5 });
+        let mut s = connect(&registry(), HOME_IP, SessionLimits { max_message_bytes: 2048, max_messages: 5, ..SessionLimits::default() });
         if login {
             for l in ["demo", "demo", "BBS", "Visitor"] {
-                s.handle(l.as_bytes(), NOW);
+                s.handle(l.as_bytes(), t());
             }
         }
         let mut closed = false;
         for l in &lines {
-            let r = s.handle(l, NOW);
+            let r = s.handle(l, t());
             if closed {
                 prop_assert!(r.out.is_empty() && r.close);
             }
@@ -411,7 +552,7 @@ proptest! {
             prop_assert!(r.out.len() < 64 * 1024);
             closed |= r.close;
         }
-        prop_assert!(s.mail.messages.len() <= 16 + 2 * 5);
-        prop_assert!(s.mail.messages.iter().all(|m| m.body.len() <= 4096));
+        prop_assert!(s.with_sandbox(|sb| sb.mail.messages.len()) <= 16 + 2 * 5);
+        prop_assert!(s.with_sandbox(|sb| sb.mail.messages.iter().all(|m| m.body.len() <= 4096)));
     }
 }
