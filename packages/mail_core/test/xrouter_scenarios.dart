@@ -161,3 +161,47 @@ void defineXRouterScenarios(XRouterConnect connect) {
     await d.disconnect();
   });
 }
+
+/// Scenarios for a node set up as a full BBS (`PMSTYPE=4`, test-bbs/xrouter
+/// `run.sh bbs`), where `PMS` hides bulletins. Fresh node, in this order.
+void defineXRouterBbsScenarios(XRouterConnect connect) {
+  test('full BBS: with no bulletins at all the driver stays in the PMS', () async {
+    final d = xrouterDriverFor(await connect('bbs-empty'));
+    await d.logIn(user: 'Q0USR', password: 'user', name: 'Tom User');
+    expect(await d.listBulletins(), isEmpty);
+    expect(await d.listPersonal(), isEmpty);
+    await d.disconnect();
+  });
+
+  test('full BBS: bulletins hidden from the PMS are listed through BBS', () async {
+    final d = xrouterDriverFor(await connect('bbs-other-sends'));
+    await d.logIn(user: 'Q0OTH', password: 'other', name: 'Olive Other');
+    final area = await d.sendBulletin(to: BulletinAddress.parse('ALL@GBR').address!, subject: 'Area bulletin', body: 'One.');
+    expect(area.number, 1);
+    final wx = await d.sendBulletin(to: BulletinAddress.parse('WX@GB').address!, subject: 'Local weather', body: 'Two.');
+    expect(wx.number, 2);
+    final mail = await d.sendPersonal(to: MailAddress.parse('Q0USR').address!, subject: 'Hello', body: 'Three.');
+    expect(mail.number, 3);
+    await d.disconnect();
+  });
+
+  test('full BBS: the reader sees mail and bulletins, and can still read, send and kill', () async {
+    final d = xrouterDriverFor(await connect('bbs-user-lists'));
+    await d.logIn(user: 'Q0USR', password: 'user', name: 'Tom User');
+    expect((await d.listPersonal()).map((h) => (h.number, h.subject)), [(3, 'Hello')]);
+    expect((await d.listBulletins()).map((h) => (h.number, h.to, h.at, h.subject)), [
+      (2, 'WX', 'GB', 'Local weather'),
+      (1, 'ALL', 'GBR', 'Area bulletin'),
+    ]);
+    // Now through BBS: everything else works as before.
+    expect((await d.listPersonal()).map((h) => h.number), [3]);
+    expect((await d.read(1)).body, 'One.');
+    expect((await d.listBulletins()).length, 2);
+    final sent = await d.sendPersonal(to: MailAddress.parse('Q0OTH').address!, subject: 'Reply', body: 'Four.');
+    expect(sent.number, 4);
+    expect((await d.listSent('Q0USR')).map((h) => h.number), [4]);
+    await d.kill(3);
+    expect(await d.listPersonal(), isEmpty);
+    await d.disconnect();
+  });
+}

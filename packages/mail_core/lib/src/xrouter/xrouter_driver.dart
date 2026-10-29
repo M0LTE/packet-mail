@@ -116,8 +116,45 @@ class XRouterDriver implements MailDriver {
   Future<List<MessageHeader>> listPersonal() async => _headers(await _command('LM'));
 
   /// `LB` alone lists only the latest 25.
+  ///
+  /// A node set up as a full BBS (`PMSTYPE=4`) hides bulletins from anyone
+  /// who came in with `PMS`, but `LC` still counts them. Then the driver
+  /// moves to the node's `BBS` command, which shows them, and stays there.
   @override
-  Future<List<MessageHeader>> listBulletins() async => _headers(await _command('LB 99999'));
+  Future<List<MessageHeader>> listBulletins() async {
+    final listed = _headers(await _command('LB 99999'));
+    if (listed.isNotEmpty || _inBbs || !categoriesHaveBulletins(await _command('LC'))) return listed;
+    await _enterBbs();
+    return _headers(await _command('LB 99999'));
+  }
+
+  bool _inBbs = false;
+
+  /// True if an `LC` reply (`ALL    1   WX     1`, after a heading) counts
+  /// any bulletins.
+  static bool categoriesHaveBulletins(List<String> lines) => lines.any(
+      (l) => RegExp(r'(?:^|\s)[A-Z0-9]{1,6}\s+(\d+)(?=\s|$)').allMatches(l).any((m) => int.parse(m[1]!) > 0));
+
+  /// Leaves the mailbox for the node and comes back in with `BBS`.
+  Future<void> _enterBbs() async {
+    _inMailbox = false;
+    await _session.sendLine('B');
+    // `  - Logged off`, then the node's `ALIAS:CALL} Welcome back`.
+    await _session.readUntil(RegExp(r'\} [^\r]*\r'), timeout: timeout);
+    await _session.sendLine('BBS');
+    final String text;
+    try {
+      text = await _session.readUntil(_prompt, timeout: timeout);
+    } on Exception catch (e) {
+      if (e is! SessionTimeout && e is! SessionClosed) rethrow;
+      throw BbsError(BbsErrorKind.protocol, "This node's BBS command doesn't lead to its mailbox.");
+    }
+    if (!text.contains('Connected to BBS')) {
+      throw BbsError(BbsErrorKind.protocol, "This node's BBS command doesn't lead to its mailbox.");
+    }
+    _inMailbox = true;
+    _inBbs = true;
+  }
 
   @override
   Future<List<MessageHeader>> listSent(String callsign) async =>

@@ -1,0 +1,21 @@
+# Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
+{"t":0.001,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.002,"dir":"tx","data":"Q0USR\r"}
+{"t":0.012,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.012,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.012,"dir":"tx","data":"PMS\r"}
+{"t":0.022,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":0.063,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.063,"dir":"tx","data":"NP 0\r"}
+{"t":0.073,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.073,"dir":"tx","data":"LB 99999\r"}
+{"t":0.083,"dir":"rx","data":"No messages found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.084,"dir":"tx","data":"LC\r"}
+{"t":0.093,"dir":"rx","data":"Bulletin Categories matching '*':\r\n\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.094,"dir":"tx","data":"LM\r"}
+{"t":0.104,"dir":"rx","data":"No messages found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.105,"dir":"tx","data":"B\r"}
+{"t":0.114,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":0.156,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.157,"dir":"tx","data":"B\r"}
+{"t":0.162,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}

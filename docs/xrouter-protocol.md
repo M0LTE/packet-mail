@@ -6,7 +6,7 @@ Strings are quoted as sent, with `\r\n` for CR LF.
 
 ## 1. What it is
 
-XRouter calls it the PMS (Personal Message System). It is more than the name suggests: a "mini-BBS" with private mail, bulletins, White Pages, hierarchical addresses and MBL forwarding to and from full BBSes **[D]** (`MAN PMS(9)`). In its default mode (`PMSTYPE=1`) it only forwards by being polled (reverse forwarding) **[D]**. Mode 4 makes it a full BBS reached with the `BBS` node command **[D]**, see 9.4.
+XRouter calls it the PMS (Personal Message System). It is more than the name suggests: a "mini-BBS" with private mail, bulletins, White Pages, hierarchical addresses and MBL forwarding to and from full BBSes **[D]** (`MAN PMS(9)`). In its default mode (`PMSTYPE=1`) it only forwards by being polled (reverse forwarding) **[D]**. Mode 4 makes it a full BBS reached with the `BBS` node command **[D][S]**, see 9.4.
 
 For Packet Mail's purposes it has everything the LinBPQ driver uses: personal mail, bulletins, kill, mail from us (`L<`) and a White Pages lookup (`I call`). What it lacks is listed in section 8.
 
@@ -65,7 +65,9 @@ Please use the 'NH' command to set your 'home' BBS.\r\n
 | `M` | Mail you sent | [S] |
 | `L` | Mail since you last used `L` (everything, the first time) | [S][D] |
 
-Other `L` variants (`L>`, `L@`, `LL n`, `LS text`, ...) are in `H L` **[D]**. The driver uses `LM`, `LB 99999` and `L< CALL`.
+Other `L` variants (`L>`, `L@`, `LL n`, `LS text`, ...) are in `H L` **[D]**. The driver uses `LM`, `LB 99999` and `L< CALL`, and `LC` when `LB` finds nothing (see 9.4).
+
+`LC` lists bulletin categories with how many bulletins each holds, `Bulletin Categories matching '*':` and then `\r\n ALL    1   WX     1  \r\n`, or the heading alone when there are none **[S]**.
 
 An empty listing is `No messages found\r\n` **[S]**. Otherwise **[S]**:
 
@@ -155,7 +157,7 @@ Enter subject (or empty line to abort):\r\n
 1. **Never send `$` with a send command.** `SP Q0OTH $BID123` gets `NO - Protocol violation (no SID)` and throws the session out of the mailbox to the node **[S]**. Everything typed after that is a node command (`L` lists AX.25 links, `X` tries SLIP or PPP, `B` hangs up) **[S]**. So the mailbox takes no BID or MID from a user, and **cannot refuse a second copy** of a message. The driver ignores the ID the app offers. The sync engine never retries at once; at the next sync it looks for the copy in `L<` (under the call the driver logged in with) before sending again. A listed message counts as the copy only if it has the same addressee, its subject starts the same, it is dated on or after the day the message was written, its number is higher than any the app knew of at the first try, and no other sent message has claimed that number. A copy that was killed or forwarded off the node before the next sync no longer shows in `L<`, so it is sent again; there is no way to tell, so that recipient's note says "May have been sent twice: the first attempt was cut off."
 2. **The node has no prompt.** See section 2.
 3. **Listings cut subjects to 34 characters**, so a listed subject may be the start of the stored one.
-4. **Mode 4.** With `PMSTYPE=4` the mailbox is a full BBS reached with `BBS`; through `PMS` it shows only personal mail (`LB` lists nothing) **[S]**. The driver always uses `PMS`, because on other nodes `BBS` is often an alias that connects somewhere else, so on a mode 4 node the app shows no bulletins.
+4. **Full BBS mode (`PMSTYPE=4` in `XROUTER.CFG`).** The node gets a `BBS` command next to `PMS`; both lead to the same mailbox and message numbers, with `[XR-...]` and the same prompt **[S]**. Through `PMS` only personal mail is listed: `LB`, `L`, `L> ALL`, `L@`, `LS`, `LA` and `LL` leave bulletins out, while `LC` still counts them and `R n` still reads them **[S]**. Through `BBS` (`Q0XR:XRTEST} Connected to BBS`, `Welcome to Q0XR BBS`) `LB` lists them and everything else is as through `PMS` **[S]**. A node not in this mode answers `BBS` with `(BBS) Invalid command - enter ? for command list` **[S]**. The driver logs in with `PMS`, because on other nodes `BBS` may be an alias that connects somewhere else. When `LB` finds nothing but `LC` counts some bulletins, it leaves with `B`, comes back with `BBS`, checks for `Connected to BBS` and stays there for the rest of the session. This was why an XRouter user saw no bulletins (#56).
 5. **Message numbers may change.** Housekeeping can renumber the whole message base when `AutoRenumber` is set in `PMS.CFG` **[D]**. The sync engine already treats a number with a different sender, addressee or subject as a new message.
 6. **Languages.** XRouter has language files (`LANGS.SYS`, French, Spanish, Dutch) and a per-user `LANG` command **[D]**. The driver expects English replies.
 7. **Sysops** see and can kill everything, and their prompt lists more commands **[D]**. Use an ordinary account.
@@ -163,4 +165,4 @@ Enter subject (or empty line to abort):\r\n
 
 ## 10. The test XRouter
 
-`test-bbs/xrouter/run.sh` starts `ghcr.io/packethacking/xrouter:505p-amd64` with a loopback-only config, node `Q0XR`, mailbox `Q0XR-2` at `.#42.GBR.EURO`, telnet on `127.0.0.1:18023`, passwords required from every address, users `Q0USR` (password `user`) and `Q0OTH` (`other`). XRouter refuses to start without a `LOCATOR` and at least one interface, hence the loopback port. `record-all.sh` records the scenarios in `fixtures/xrouter-local/`.
+`test-bbs/xrouter/run.sh` starts `ghcr.io/packethacking/xrouter:505p-amd64` with a loopback-only config, node `Q0XR`, mailbox `Q0XR-2` at `.#42.GBR.EURO`, telnet on `127.0.0.1:18023`, passwords required from every address, users `Q0USR` (password `user`) and `Q0OTH` (`other`). XRouter refuses to start without a `LOCATOR` and at least one interface, hence the loopback port. `record-all.sh` records the scenarios in `fixtures/xrouter-local/`. `run.sh bbs` starts a second one set up as a full BBS (`PMSTYPE=4`) on `127.0.0.1:18024`, for the driver's full BBS scenarios.

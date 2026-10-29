@@ -97,8 +97,10 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Start the test XRouter
-        run: test-bbs/xrouter/run.sh
+      - name: Start the test XRouters
+        run: |
+          test-bbs/xrouter/run.sh
+          test-bbs/xrouter/run.sh bbs
       - name: Driver scenarios against it
         working-directory: packages/mail_core
         run: dart test test/xrouter_live_test.dart
@@ -106,7 +108,9 @@ jobs:
           PACKET_MAIL_TEST_XROUTER: '1'
       - name: XRouter log on failure
         if: failure()
-        run: docker logs packet-mail-test-xrouter
+        run: |
+          docker logs packet-mail-test-xrouter
+          docker logs packet-mail-test-xrouter-bbs
 
   feedback-receiver:
     name: Feedback receiver

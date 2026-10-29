@@ -9,6 +9,8 @@ void main() {
   group('replayed', () {
     defineXRouterScenarios((scenario) async => ReplayTransport(
         Recording.parse(File('test/fixtures/xrouter-driver/$scenario.jsonl').readAsStringSync())));
+    defineXRouterBbsScenarios((scenario) async => ReplayTransport(
+        Recording.parse(File('test/fixtures/xrouter-driver/$scenario.jsonl').readAsStringSync())));
   });
 
   test('a port with no callsign prompt says so and sends nothing', () async {
@@ -26,6 +28,13 @@ void main() {
     final d = xrouterDriverFor(ReplayTransport(Recording([])));
     await expectLater(d.logIn(user: 'Q0USR-1', password: 'user', name: 'x'), throwsKind(BbsErrorKind.loginFailed));
     expect(d.sentAs, isNull);
+  });
+
+  test('LC counts bulletins only when a category has some', () {
+    expect(XRouterDriver.categoriesHaveBulletins(["Bulletin Categories matching '*':", ' ALL    1   WX     1  ']), isTrue);
+    expect(XRouterDriver.categoriesHaveBulletins(["Bulletin Categories matching '*':"]), isFalse);
+    expect(XRouterDriver.categoriesHaveBulletins(['No messages found']), isFalse);
+    expect(XRouterDriver.categoriesHaveBulletins([' ALL    0   WX     0']), isFalse);
   });
 
   test('body lines that would end or abandon a message are escaped', () {
