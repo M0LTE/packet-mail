@@ -8,8 +8,12 @@ typedef Connect = Future<Transport> Function(String scenario, BpqPort port);
 
 final fixedNow = DateTime.utc(2026, 10, 28, 12);
 
+/// The clock the scenarios run on: the recording day when replaying, the real
+/// time when live, since a live BBS stamps today's date on new mail.
+DateTime Function() scenarioClock = () => fixedNow;
+
 BpqDriver driverFor(Transport t, BpqPort port) =>
-    BpqDriver(t, port: port, timeout: const Duration(seconds: 10), clock: () => fixedNow);
+    BpqDriver(t, port: port, timeout: const Duration(seconds: 10), clock: scenarioClock);
 
 const tricky = 'Line one\n'
     '\n'
@@ -54,7 +58,8 @@ void defineScenarios(Connect connect) {
     expect(inbox.single.isUnread, isTrue);
     expect(inbox.single.from, 'Q0USR');
     expect(inbox.single.at, 'Q0TST');
-    expect(inbox.single.date, DateTime.utc(2026, 10, 28));
+    final today = scenarioClock();
+    expect(inbox.single.date, DateTime.utc(today.year, today.month, today.day));
 
     final m = await d.read(n);
     expect(m.subject, 'Hello from the driver');

@@ -12,6 +12,7 @@ import 'package:test/test.dart';
 import 'driver_scenarios.dart';
 
 void main() {
+  scenarioClock = () => DateTime.now().toUtc();
   final enabled = Platform.environment.containsKey('PACKET_MAIL_TEST_BBS');
   final record = Platform.environment['RECORD_FIXTURES'] == '1';
   final recordings = <String, RecordingTransport>{};
