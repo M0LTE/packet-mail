@@ -11,6 +11,7 @@ It talks to LinBPQ (BPQMail) over your network, through either its telnet port o
 ## Documents
 
 - [Plan](docs/plan.md): what we're building and the decisions behind it.
+- [Releasing](docs/releasing.md): how to tag a release for TestFlight and Android.
 - [Look and feel options](docs/look-and-feel/options.png)
 
 ## Building
@@ -43,4 +44,4 @@ Every push to `master` builds an Android APK and an unsigned iOS app; find them 
 
 ## Test builds
 
-Pushing a version tag such as `v0.2.0` uploads a build to TestFlight and makes a signed Android bundle, with the tag as the version name. Pushes to `master` only build and test.
+Pushing a version tag such as `v0.2.0` uploads a build to TestFlight and makes a signed Android bundle, with the tag as the version name. Pushes to `master` only build and test. See [Releasing](docs/releasing.md) for the steps.
