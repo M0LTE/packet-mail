@@ -40,3 +40,7 @@ Every push to `master` builds an Android APK and an unsigned iOS app; find them 
 ## Test BBS
 
 `test-bbs/` runs a throwaway LinBPQ in Docker for recordings and end-to-end tests; see its README.
+
+## Test builds
+
+Pushing a version tag such as `v0.2.0` uploads a build to TestFlight and makes a signed Android bundle, with the tag as the version name. Pushes to `master` only build and test.
