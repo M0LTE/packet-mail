@@ -98,6 +98,20 @@ jobs:
         if: failure()
         run: docker logs packet-mail-test-xrouter
 
+  feedback-receiver:
+    name: Feedback receiver
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests
+        working-directory: feedback-receiver
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+      - name: Container image builds
+        run: docker build -q -t packet-mail-feedback-receiver feedback-receiver
+
   android:
     needs: test
     runs-on: ubuntu-latest
