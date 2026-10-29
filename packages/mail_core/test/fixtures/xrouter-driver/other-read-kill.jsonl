@@ -1,48 +1,52 @@
 # Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
-{"t":0.007,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
-{"t":0.007,"dir":"tx","data":"Q0OTH\r"}
-{"t":0.017,"dir":"rx","data":"\r\nPassword: "}
-{"t":0.019,"dir":"tx","data":"PASSWORD\r","secret":true}
-{"t":0.019,"dir":"tx","data":"PMS\r"}
-{"t":0.027,"dir":"rx","data":"Q0XR XRouter test node\r\nYou have 1 unread message in PMS\r\n"}
+{"t":0.008,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.008,"dir":"tx","data":"Q0OTH\r"}
+{"t":0.018,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.018,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.018,"dir":"tx","data":"PMS\r"}
+{"t":0.028,"dir":"rx","data":"Q0XR XRouter test node\r\nYou have 1 unread message in PMS\r\n"}
 {"t":0.069,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 1 new message \r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.07,"dir":"tx","data":"NP 0\r"}
-{"t":0.08,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.08,"dir":"tx","data":"LM\r"}
-{"t":0.09,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 PN 14:05  447  Q0OTH          Q0USR  Hello from the driver\r\n    2 P$ 14:05  328  Q0OTH  @GB7XYZ Q0USR  A subject longer than the listing \r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.092,"dir":"tx","data":"RH 2\r"}
-{"t":0.101,"dir":"rx","data":"Msg#: 2  Type: P$  Size: 328\r\nRcvd: 29/10/26 at 14:05   Created: 29/10/26 at 14:05Z\r\nFrom: Q0USR\r\nTo:   Q0OTH @ GB7XYZ.#42.GBR.EURO\r\nMID:  AE352AE020XR\r\nSubj: A subject longer than the listing has room for\r\n\r\nR:261029/1405Z @:Q0XR.#42.GBR.EURO [] #:2 XrLin"}
-{"t":0.142,"dir":"rx","data":"505p\r\nDate: Thu, 29 Oct 2026 14:05:34 +0000\r\nFrom: q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: q0oth@gb7xyz.#42.gbr.euro\r\nSubject: A subject longer than the listing has room for\r\nMessage-ID: <AE352AE020XR>\r\n\r\nBody.\r\n\r\n[ end of message 2 ]\r\n\r\n[2] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.145,"dir":"tx","data":"RH 1\r"}
-{"t":0.152,"dir":"rx","data":"Msg#: 1  Type: PN  Size: 447\r\nRcvd: 29/10/26 at 14:05   Created: 29/10/26 at 14:05Z\r\nFrom: Q0USR\r\nTo:   Q0OTH\r\nMID:  AE352AE010XR\r\nSubj: Hello from the driver\r\n\r\nR:261029/1405Z @:Q0XR.#42.GBR.EURO [] #:1 XrLin505p\r\nDate: Thu, 29 Oct 2026 14:05:34 +0000\r\nFr"}
-{"t":0.194,"dir":"rx","data":"om: q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: q0oth\r\nSubject: Hello from the driver\r\nMessage-ID: <AE352AE010XR>\r\n\r\nLine one\r\n\r\n /ex\r\n /QQ\r\n/EX with more\r\nSP Q0ZZZ\r\n[1] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\nR:261029/0000Z @:GB7AAA\r\n    Tabbed line\r\nCafé and a ? snowman\r\nLast line\r\n\r\n[ end of message 1 ]\r\n\r\n[1] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.196,"dir":"tx","data":"LM\r"}
-{"t":0.205,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 PR 14:05  447  Q0OTH          Q0USR  Hello from the driver\r\n    2 P$ 14:05  328  Q0OTH  @GB7XYZ Q0USR  A subject longer than the listing \r\n\r\n[1] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.206,"dir":"tx","data":"K 1\r"}
-{"t":0.215,"dir":"rx","data":"Msg 1 deleted\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.215,"dir":"tx","data":"K 1\r"}
-{"t":0.225,"dir":"rx","data":"Msg 1 not found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.226,"dir":"tx","data":"RH 1\r"}
-{"t":0.236,"dir":"rx","data":"Msg 1 not found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.238,"dir":"tx","data":"RH 4\r"}
-{"t":0.246,"dir":"rx","data":"Access to message 4 denied\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.247,"dir":"tx","data":"LB 99999\r"}
-{"t":0.257,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 B$ 14:05  288  ALL    @GBR    Q0USR  Driver bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.257,"dir":"tx","data":"RH 3\r"}
-{"t":0.267,"dir":"rx","data":"Msg#: 3  Type: B$  Size: 288\r\nRcvd: 29/10/26 at 14:05   Created: 29/10/26 at 14:05Z\r\nFrom: Q0USR\r\nTo:   ALL @ GBR\r\nBID:  AE352AE030XR\r\nSubj: Driver bulletin\r\n\r\nR:261029/1405Z @:Q0XR.#42.GBR.EURO [] #:3 XrLin505p\r\nDate: Thu, 29 Oct 2026 14:05:34 +0000\r\nFrom"}
-{"t":0.309,"dir":"rx","data":": q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: all@gbr\r\nSubject: Driver bulletin\r\nMessage-ID: <AE352AE030XR>\r\n\r\nBulletin body.\r\n\r\n[ end of message 3 ]\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.31,"dir":"tx","data":"K 3\r"}
-{"t":0.319,"dir":"rx","data":"Permission denied\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.319,"dir":"tx","data":"K 4\r"}
-{"t":0.331,"dir":"rx","data":"Permission denied\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.332,"dir":"tx","data":"I G8PZT\r"}
-{"t":0.339,"dir":"rx","data":"\r\nNo packet address for G8PZT\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.339,"dir":"tx","data":"I Q0USR\r"}
-{"t":0.35,"dir":"rx","data":"\r\nQ0USR last seen on 01/01/70 at ?\r\nName: ?   QTH: ?   Zip: ?   Src: G\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.35,"dir":"tx","data":"I Q0XR\r"}
-{"t":0.36,"dir":"rx","data":"\r\nQ0XR last seen on 29/10/26 at Q0XR.#42.GBR.EURO\r\nName: ?   QTH: ?   Zip: ?   Src: U\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.36,"dir":"tx","data":"B\r"}
-{"t":0.37,"dir":"rx","data":"  - Logged off\r\n"}
-{"t":0.41,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
-{"t":0.41,"dir":"tx","data":"B\r"}
-{"t":0.42,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":0.069,"dir":"tx","data":"NP 0\r"}
+{"t":0.079,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.079,"dir":"tx","data":"LC\r"}
+{"t":0.089,"dir":"rx","data":"Bulletin Categories matching '*':\r\n\r\n ALL    1  \r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.089,"dir":"tx","data":"LB 1\r"}
+{"t":0.099,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 B$ 15:49  288  ALL    @GBR    Q0USR  Driver bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.099,"dir":"tx","data":"LM\r"}
+{"t":0.109,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 PN 15:49  447  Q0OTH          Q0USR  Hello from the driver\r\n    2 P$ 15:49  328  Q0OTH  @GB7XYZ Q0USR  A subject longer than the listing \r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.11,"dir":"tx","data":"RH 2\r"}
+{"t":0.119,"dir":"rx","data":"Msg#: 2  Type: P$  Size: 328\r\nRcvd: 29/10/26 at 15:49   Created: 29/10/26 at 15:49Z\r\nFrom: Q0USR\r\nTo:   Q0OTH @ GB7XYZ.#42.GBR.EURO\r\nMID:  AE36B26020XR\r\nSubj: A subject longer than the listing has room for\r\n\r\nR:261029/1549Z @:Q0XR.#42.GBR.EURO [] #:2 XrLin"}
+{"t":0.16,"dir":"rx","data":"505p\r\nDate: Thu, 29 Oct 2026 15:49:58 +0000\r\nFrom: q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: q0oth@gb7xyz.#42.gbr.euro\r\nSubject: A subject longer than the listing has room for\r\nMessage-ID: <AE36B26020XR>\r\n\r\nBody.\r\n\r\n[ end of message 2 ]\r\n\r\n[2] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.161,"dir":"tx","data":"RH 1\r"}
+{"t":0.17,"dir":"rx","data":"Msg#: 1  Type: PN  Size: 447\r\nRcvd: 29/10/26 at 15:49   Created: 29/10/26 at 15:49Z\r\nFrom: Q0USR\r\nTo:   Q0OTH\r\nMID:  AE36B26010XR\r\nSubj: Hello from the driver\r\n\r\nR:261029/1549Z @:Q0XR.#42.GBR.EURO [] #:1 XrLin505p\r\nDate: Thu, 29 Oct 2026 15:49:58 +0000\r\nFr"}
+{"t":0.21,"dir":"rx","data":"om: q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: q0oth\r\nSubject: Hello from the driver\r\nMessage-ID: <AE36B26010XR>\r\n\r\nLine one\r\n\r\n /ex\r\n /QQ\r\n/EX with more\r\nSP Q0ZZZ\r\n[1] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\nR:261029/0000Z @:GB7AAA\r\n    Tabbed line\r\nCafé and a ? snowman\r\nLast line\r\n\r\n[ end of message 1 ]\r\n\r\n[1] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.211,"dir":"tx","data":"LM\r"}
+{"t":0.221,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 PR 15:49  447  Q0OTH          Q0USR  Hello from the driver\r\n    2 P$ 15:49  328  Q0OTH  @GB7XYZ Q0USR  A subject longer than the listing \r\n\r\n[1] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.221,"dir":"tx","data":"K 1\r"}
+{"t":0.231,"dir":"rx","data":"Msg 1 deleted\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.231,"dir":"tx","data":"K 1\r"}
+{"t":0.241,"dir":"rx","data":"Msg 1 not found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.241,"dir":"tx","data":"RH 1\r"}
+{"t":0.251,"dir":"rx","data":"Msg 1 not found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.253,"dir":"tx","data":"RH 4\r"}
+{"t":0.261,"dir":"rx","data":"Access to message 4 denied\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.262,"dir":"tx","data":"LB 99999\r"}
+{"t":0.271,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 B$ 15:49  288  ALL    @GBR    Q0USR  Driver bulletin\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.272,"dir":"tx","data":"RH 3\r"}
+{"t":0.282,"dir":"rx","data":"Msg#: 3  Type: B$  Size: 288\r\nRcvd: 29/10/26 at 15:49   Created: 29/10/26 at 15:49Z\r\nFrom: Q0USR\r\nTo:   ALL @ GBR\r\nBID:  AE36B26030XR\r\nSubj: Driver bulletin\r\n\r\nR:261029/1549Z @:Q0XR.#42.GBR.EURO [] #:3 XrLin505p\r\nDate: Thu, 29 Oct 2026 15:49:58 +0000\r\nFrom"}
+{"t":0.323,"dir":"rx","data":": q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: all@gbr\r\nSubject: Driver bulletin\r\nMessage-ID: <AE36B26030XR>\r\n\r\nBulletin body.\r\n\r\n[ end of message 3 ]\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.323,"dir":"tx","data":"K 3\r"}
+{"t":0.332,"dir":"rx","data":"Permission denied\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.332,"dir":"tx","data":"K 4\r"}
+{"t":0.342,"dir":"rx","data":"Permission denied\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.343,"dir":"tx","data":"I G8PZT\r"}
+{"t":0.352,"dir":"rx","data":"\r\nNo packet address for G8PZT\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.353,"dir":"tx","data":"I Q0USR\r"}
+{"t":0.363,"dir":"rx","data":"\r\nQ0USR last seen on 01/01/70 at ?\r\nName: ?   QTH: ?   Zip: ?   Src: G\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.363,"dir":"tx","data":"I Q0XR\r"}
+{"t":0.373,"dir":"rx","data":"\r\nQ0XR last seen on 29/10/26 at Q0XR.#42.GBR.EURO\r\nName: ?   QTH: ?   Zip: ?   Src: U\r\n\r\n[3] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.373,"dir":"tx","data":"B\r"}
+{"t":0.383,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":0.423,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.423,"dir":"tx","data":"B\r"}
+{"t":0.434,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}

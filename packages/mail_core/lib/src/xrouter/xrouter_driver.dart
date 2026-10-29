@@ -85,6 +85,22 @@ class XRouterDriver implements MailDriver {
     _inMailbox = true;
     _call = call;
     await _command('NP 0');
+    if (await _pmsHidesBulletins()) await _enterBbs();
+  }
+
+  /// True once the driver has moved from `PMS` to the node's `BBS` command.
+  bool get viaBbs => _inBbs;
+  bool _inBbs = false;
+
+  /// A node set up as a full BBS (`PMSTYPE=4`) hides bulletins from anyone
+  /// who came in with `PMS`, though `LC` still counts them. Nothing else
+  /// tells such a node apart, and `BBS` can't be tried blindly: on other
+  /// nodes it is often a sysop alias that connects somewhere else, with no
+  /// sure way back.
+  Future<bool> _pmsHidesBulletins() async {
+    if (!categoriesHaveBulletins(await _command('LC'))) return false;
+    final newest = await _command('LB 1');
+    return !newest.any((l) => parseXrouterListingLine(l, _clock().toUtc()) != null);
   }
 
   /// Sends a line and returns the lines that came back before the prompt.
@@ -116,41 +132,33 @@ class XRouterDriver implements MailDriver {
   Future<List<MessageHeader>> listPersonal() async => _headers(await _command('LM'));
 
   /// `LB` alone lists only the latest 25.
-  ///
-  /// A node set up as a full BBS (`PMSTYPE=4`) hides bulletins from anyone
-  /// who came in with `PMS`, but `LC` still counts them. Then the driver
-  /// moves to the node's `BBS` command, which shows them, and stays there.
   @override
-  Future<List<MessageHeader>> listBulletins() async {
-    final listed = _headers(await _command('LB 99999'));
-    if (listed.isNotEmpty || _inBbs || !categoriesHaveBulletins(await _command('LC'))) return listed;
-    await _enterBbs();
-    return _headers(await _command('LB 99999'));
-  }
-
-  bool _inBbs = false;
+  Future<List<MessageHeader>> listBulletins() async => _headers(await _command('LB 99999'));
 
   /// True if an `LC` reply (`ALL    1   WX     1`, after a heading) counts
   /// any bulletins.
   static bool categoriesHaveBulletins(List<String> lines) => lines.any(
       (l) => RegExp(r'(?:^|\s)[A-Z0-9]{1,6}\s+(\d+)(?=\s|$)').allMatches(l).any((m) => int.parse(m[1]!) > 0));
 
-  /// Leaves the mailbox for the node and comes back in with `BBS`.
+  /// Leaves the mailbox for the node and comes back in with `BBS`. Only
+  /// called on a full BBS node, where the node's own `BBS` command wins over
+  /// any alias of that name.
   Future<void> _enterBbs() async {
     _inMailbox = false;
     await _session.sendLine('B');
     // `  - Logged off`, then the node's `ALIAS:CALL} Welcome back`.
     await _session.readUntil(RegExp(r'\} [^\r]*\r'), timeout: timeout);
     await _session.sendLine('BBS');
+    const notMailbox = "This node's BBS command doesn't lead to its mailbox.";
     final String text;
     try {
       text = await _session.readUntil(_prompt, timeout: timeout);
     } on Exception catch (e) {
       if (e is! SessionTimeout && e is! SessionClosed) rethrow;
-      throw BbsError(BbsErrorKind.protocol, "This node's BBS command doesn't lead to its mailbox.");
+      throw BbsError(BbsErrorKind.protocol, notMailbox);
     }
-    if (!text.contains('Connected to BBS')) {
-      throw BbsError(BbsErrorKind.protocol, "This node's BBS command doesn't lead to its mailbox.");
+    if (!text.contains('Connected to BBS') || !text.contains('[XR-')) {
+      throw BbsError(BbsErrorKind.protocol, notMailbox);
     }
     _inMailbox = true;
     _inBbs = true;

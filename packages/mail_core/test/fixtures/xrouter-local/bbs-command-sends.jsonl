@@ -1,0 +1,29 @@
+{"t":0.003,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.023,"dir":"tx","data":"Q0OTH\r"}
+{"t":2.03,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.044,"dir":"tx","data":"other\r"}
+{"t":4.05,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.064,"dir":"tx","data":"BBS\r"}
+{"t":6.069,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to BBS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR BBS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":8.084,"dir":"tx","data":"NP 0\r"}
+{"t":8.089,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":10.104,"dir":"tx","data":"SB ALL @ GBR\r"}
+{"t":10.11,"dir":"rx","data":"To: ALL @ GBR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":12.124,"dir":"tx","data":"Bull one\r"}
+{"t":12.13,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":14.144,"dir":"tx","data":"One.\r"}
+{"t":16.164,"dir":"tx","data":"/EX\r"}
+{"t":16.172,"dir":"rx","data":"\r\n*** Message 1 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":18.184,"dir":"tx","data":"SP Q0USR\r"}
+{"t":18.193,"dir":"rx","data":"To: Q0USR @ Q0XR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":20.204,"dir":"tx","data":"Hello\r"}
+{"t":20.213,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":22.224,"dir":"tx","data":"Three.\r"}
+{"t":24.244,"dir":"tx","data":"/EX\r"}
+{"t":24.253,"dir":"rx","data":"\r\n*** Message 2 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":26.264,"dir":"tx","data":"B\r"}
+{"t":26.264,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":26.275,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":28.284,"dir":"tx","data":"B\r"}
+{"t":28.294,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":28.305,"dir":"close"}

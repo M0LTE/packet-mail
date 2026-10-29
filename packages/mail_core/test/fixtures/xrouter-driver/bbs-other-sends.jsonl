@@ -1,36 +1,40 @@
 # Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
-{"t":0.011,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
-{"t":0.011,"dir":"tx","data":"Q0OTH\r"}
-{"t":0.021,"dir":"rx","data":"\r\nPassword: "}
-{"t":0.021,"dir":"tx","data":"PASSWORD\r","secret":true}
-{"t":0.022,"dir":"tx","data":"PMS\r"}
-{"t":0.035,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
-{"t":0.075,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.076,"dir":"tx","data":"NP 0\r"}
-{"t":0.086,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.086,"dir":"tx","data":"SB ALL @ GBR\r"}
-{"t":0.096,"dir":"rx","data":"To: ALL @ GBR\r\nEnter subject (or empty line to abort):\r\n"}
-{"t":0.097,"dir":"tx","data":"Area bulletin\r"}
-{"t":0.108,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
-{"t":0.109,"dir":"tx","data":"One.\r"}
-{"t":0.109,"dir":"tx","data":"/EX\r"}
-{"t":0.127,"dir":"rx","data":"\r\n*** Message 1 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.128,"dir":"tx","data":"SB WX @ GB\r"}
-{"t":0.138,"dir":"rx","data":"To: WX @ GB\r\nEnter subject (or empty line to abort):\r\n"}
-{"t":0.138,"dir":"tx","data":"Local weather\r"}
-{"t":0.148,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
-{"t":0.148,"dir":"tx","data":"Two.\r"}
-{"t":0.148,"dir":"tx","data":"/EX\r"}
-{"t":0.169,"dir":"rx","data":"\r\n*** Message 2 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.169,"dir":"tx","data":"SP Q0USR\r"}
-{"t":0.179,"dir":"rx","data":"To: Q0USR @ ?\r\nEnter subject (or empty line to abort):\r\n"}
-{"t":0.179,"dir":"tx","data":"Hello\r"}
-{"t":0.189,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
-{"t":0.189,"dir":"tx","data":"Three.\r"}
-{"t":0.189,"dir":"tx","data":"/EX\r"}
-{"t":0.21,"dir":"rx","data":"\r\n*** Message 3 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
-{"t":0.21,"dir":"tx","data":"B\r"}
-{"t":0.22,"dir":"rx","data":"  - Logged off\r\n"}
-{"t":0.26,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
-{"t":0.261,"dir":"tx","data":"B\r"}
-{"t":0.271,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":0.009,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.009,"dir":"tx","data":"Q0OTH\r"}
+{"t":0.019,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.019,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.019,"dir":"tx","data":"PMS\r"}
+{"t":0.029,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":0.069,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.07,"dir":"tx","data":"NP 0\r"}
+{"t":0.08,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.08,"dir":"tx","data":"LC\r"}
+{"t":0.09,"dir":"rx","data":"Bulletin Categories matching '*':\r\n\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.091,"dir":"tx","data":"SB ALL @ GBR\r"}
+{"t":0.1,"dir":"rx","data":"To: ALL @ GBR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":0.101,"dir":"tx","data":"Area bulletin\r"}
+{"t":0.11,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":0.111,"dir":"tx","data":"One.\r"}
+{"t":0.111,"dir":"tx","data":"/EX\r"}
+{"t":0.131,"dir":"rx","data":"\r\n*** Message 1 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.132,"dir":"tx","data":"SB WX @ GB\r"}
+{"t":0.141,"dir":"rx","data":"To: WX @ GB\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":0.142,"dir":"tx","data":"Local weather\r"}
+{"t":0.152,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":0.152,"dir":"tx","data":"Two.\r"}
+{"t":0.152,"dir":"tx","data":"/EX\r"}
+{"t":0.172,"dir":"rx","data":"\r\n*** Message 2 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.172,"dir":"tx","data":"SP Q0USR\r"}
+{"t":0.182,"dir":"rx","data":"To: Q0USR @ ?\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":0.183,"dir":"tx","data":"Hello\r"}
+{"t":0.192,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":0.193,"dir":"tx","data":"Three.\r"}
+{"t":0.193,"dir":"tx","data":"/EX\r"}
+{"t":0.213,"dir":"rx","data":"\r\n*** Message 3 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.213,"dir":"tx","data":"LB 99999\r"}
+{"t":0.223,"dir":"rx","data":"No messages found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.223,"dir":"tx","data":"B\r"}
+{"t":0.233,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":0.274,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.275,"dir":"tx","data":"B\r"}
+{"t":0.284,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}

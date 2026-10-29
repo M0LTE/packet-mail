@@ -1,0 +1,16 @@
+{"t":0.003,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.028,"dir":"tx","data":"Q0USR\r"}
+{"t":2.034,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.063,"dir":"tx","data":"user\r"}
+{"t":4.067,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.096,"dir":"tx","data":"BBS\r"}
+{"t":6.103,"dir":"rx","data":"\r\nQ0XR:XRTEST} Trying Q0ZZZ...\r\n"}
+{"t":75.909,"dir":"rx","data":"\r\nQ0XR:XRTEST} Failure with Q0ZZZ\r\n"}
+{"t":475.999,"dir":"tx","data":"PMS\r"}
+{"t":476.002,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":478.019,"dir":"tx","data":"B\r"}
+{"t":478.021,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":478.032,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":480.039,"dir":"tx","data":"B\r"}
+{"t":480.04,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":480.051,"dir":"close"}

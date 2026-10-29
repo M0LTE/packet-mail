@@ -1,0 +1,21 @@
+{"t":0.006,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.023,"dir":"tx","data":"Q0USR\r"}
+{"t":2.033,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.044,"dir":"tx","data":"user\r"}
+{"t":4.053,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.064,"dir":"tx","data":"? *\r"}
+{"t":6.073,"dir":"rx","data":"\r\nQ0XR:XRTEST} Full command list:\r\n\r\n  ?         arp       amsg      ansi      aprs      axroutes  axtest    \r\n  bye       BLOG      connect   chat      cq        cx        date      \r\n  dx        echo      finger    gping     gtracert  go        help      \r\n  host      info      iproutes  j         links     lang      l4links   \r\n  listen    mheard    nodes     nftp      nping     nrr       ntracert  \r\n  ports     ping      PMS       quit      routes    stats     send      \r\n  telnet    time      tracert   ttylink   users     version   WALL      \r\n  watch     wx        yell      \r\n  BBS     \r\n\r\nUse \"? **\" for detailed list\r\n\r\nUse \"? <cmd>\" for specific help on <cmd>\r\n"}
+{"t":8.085,"dir":"tx","data":"BBS\r"}
+{"t":8.095,"dir":"rx","data":"\r\nQ0XR:XRTEST} Trying BBS...\r\n"}
+{"t":8.106,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to BBS\r\n"}
+{"t":8.116,"dir":"rx","data":"user:"}
+{"t":8.126,"dir":"rx","data":"user:"}
+{"t":16.165,"dir":"tx","data":"B\r"}
+{"t":17.221,"dir":"rx","data":"user:"}
+{"t":22.225,"dir":"tx","data":"PMS\r"}
+{"t":23.266,"dir":"rx","data":"user:"}
+{"t":26.366,"dir":"tx","data":"B\r"}
+{"t":27.398,"dir":"rx","data":"user:"}
+{"t":29.497,"dir":"tx","data":"B\r"}
+{"t":30.53,"dir":"rx","data":"Too many attempts - Disconnected\r\n\u0000"}
+{"t":31.531,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}

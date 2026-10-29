@@ -1,0 +1,51 @@
+{"t":0.003,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.023,"dir":"tx","data":"Q0USR\r"}
+{"t":2.028,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.044,"dir":"tx","data":"user\r"}
+{"t":4.047,"dir":"rx","data":"Q0XR XRouter test node\r\nYou have 1 unread message in PMS\r\n"}
+{"t":6.064,"dir":"tx","data":"BBS\r"}
+{"t":6.068,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to BBS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR BBS\r\nYou have 1 new message \r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":8.084,"dir":"tx","data":"NP 0\r"}
+{"t":8.088,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":10.104,"dir":"tx","data":"LM\r"}
+{"t":10.111,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    2 PN 15:27  268  Q0USR          Q0OTH  Hello\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":12.124,"dir":"tx","data":"LB 99999\r"}
+{"t":12.13,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    1 B$ 15:27  271  ALL    @GBR    Q0OTH  Bull one\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":14.144,"dir":"tx","data":"RH 1\r"}
+{"t":14.15,"dir":"rx","data":"Msg#: 1  Type: B$  Size: 271\r\nRcvd: 29/10/26 at 15:27   Created: 29/10/26 at 15:27Z\r\nFrom: Q0OTH\r\nTo:   ALL @ GBR\r\nBID:  AE365C5010XR\r\nSubj: Bull one\r\n\r\nR:261029/1527Z @:Q0XR.#42.GBR.EURO [] #:1 XrLin505p\r\nDate: Thu, 29 Oct 2026 15:27:01 +0000\r\nFrom: q0oth@q0xr.#42.gbr.euro <q0oth@q0xr-2.#42.gbr.euro>\r\nTo: all@gbr\r\nSubject: Bull one\r\nMessage-ID: <AE365C5010XR>\r\n\r\nOne.\r\n\r\n[ end of message 1 ]\r\n\r\n[1] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":16.164,"dir":"tx","data":"RH 2\r"}
+{"t":16.17,"dir":"rx","data":"Msg#: 2  Type: PN  Size: 268\r\nRcvd: 29/10/26 at 15:27   Created: 29/10/26 at 15:27Z\r\nFrom: Q0OTH\r\nTo:   Q0USR\r\nMID:  AE365CD020XR\r\nSubj: Hello\r\n\r\nR:261029/1527Z @:Q0XR.#42.GBR.EURO [] #:2 XrLin505p\r\nDate: Thu, 29 Oct 2026 15:27:09 +0000\r\nFrom: q0oth@q0xr.#42.gbr.euro <q0oth@q0xr-2.#42.gbr.euro>\r\nTo: q0usr\r\nSubject: Hello\r\nMessage-ID: <AE365CD020XR>\r\n\r\nThree.\r\n\r\n[ end of message 2 ]\r\n\r\n[2] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":18.184,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":18.191,"dir":"rx","data":"To: Q0OTH @ ?\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":20.204,"dir":"tx","data":"Reply\r"}
+{"t":20.211,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":22.224,"dir":"tx","data":"Four.\r"}
+{"t":24.244,"dir":"tx","data":"/EX\r"}
+{"t":24.251,"dir":"rx","data":"\r\n*** Message 3 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":26.264,"dir":"tx","data":"SB WX @ GB\r"}
+{"t":26.271,"dir":"rx","data":"To: WX @ GB\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":28.284,"dir":"tx","data":"Weather\r"}
+{"t":28.291,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":30.304,"dir":"tx","data":"Two.\r"}
+{"t":32.324,"dir":"tx","data":"/EX\r"}
+{"t":32.331,"dir":"rx","data":"\r\n*** Message 4 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":34.344,"dir":"tx","data":"L< Q0USR\r"}
+{"t":34.351,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 P$ 15:27  269  Q0OTH  @?      Q0USR  Reply\r\n    4 B$ 15:27  268  WX     @GB     Q0USR  Weather\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":36.364,"dir":"tx","data":"K 2\r"}
+{"t":36.372,"dir":"rx","data":"Msg 2 deleted\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":38.384,"dir":"tx","data":"K 1\r"}
+{"t":38.392,"dir":"rx","data":"Permission denied\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":40.404,"dir":"tx","data":"LM\r"}
+{"t":40.414,"dir":"rx","data":"No messages found\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":42.424,"dir":"tx","data":"LB 99999\r"}
+{"t":42.425,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    4 B$ 15:27  268  WX     @GB     Q0USR  Weather\r\n    1 B$ 15:27  271  ALL    @GBR    Q0OTH  Bull one\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":44.444,"dir":"tx","data":"I Q0XR\r"}
+{"t":44.446,"dir":"rx","data":"\r\nQ0XR last seen on 29/10/26 at Q0XR.#42.GBR.EURO\r\nName: ?   QTH: ?   Zip: ?   Src: U\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":46.464,"dir":"tx","data":"I G8PZT\r"}
+{"t":46.466,"dir":"rx","data":"\r\nNo packet address for G8PZT\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":48.484,"dir":"tx","data":"B\r"}
+{"t":48.486,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":48.496,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":50.504,"dir":"tx","data":"B\r"}
+{"t":50.506,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":50.516,"dir":"close"}

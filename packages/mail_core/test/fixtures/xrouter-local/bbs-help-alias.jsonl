@@ -1,0 +1,14 @@
+{"t":0.005,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.024,"dir":"tx","data":"Q0USR\r"}
+{"t":2.032,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.045,"dir":"tx","data":"user\r"}
+{"t":4.051,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.065,"dir":"tx","data":"? *\r"}
+{"t":6.07,"dir":"rx","data":"\r\nQ0XR:XRTEST} Full command list:\r\n\r\n  ?         arp       amsg      ansi      aprs      axroutes  axtest    \r\n  bye       BLOG      connect   chat      cq        cx        date      \r\n  dx        echo      finger    gping     gtracert  go        help      \r\n  host      info      iproutes  j         links     lang      l4links   \r\n  listen    mheard    nodes     nftp      nping     nrr       ntracert  \r\n  ports     ping      PMS       quit      routes    stats     send      \r\n  telnet    time      tracert   ttylink   users     version   WALL      \r\n  watch     wx        yell      \r\n  BBS     \r\n\r\nUse \"? **\" for detailed list\r\n\r\nUse \"? <cmd>\" for specific help on <cmd>\r\n"}
+{"t":8.085,"dir":"tx","data":"? BBS\r"}
+{"t":8.09,"dir":"rx","data":"\r\nQ0XR:XRTEST} Syntax for [BBS] not found\r\n"}
+{"t":10.105,"dir":"tx","data":"? PMS\r"}
+{"t":10.11,"dir":"rx","data":"\r\nQ0XR:XRTEST} Syntax: PM[s] [nodecall | nodealias]\r\n"}
+{"t":12.125,"dir":"tx","data":"B\r"}
+{"t":12.129,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":12.139,"dir":"close"}

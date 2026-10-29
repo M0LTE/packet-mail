@@ -33,6 +33,7 @@ void defineXRouterScenarios(XRouterConnect connect) {
     final d = xrouterDriverFor(await connect('user-send'));
     await d.logIn(user: 'q0usr', password: 'user', name: 'Tom User');
     expect(d.sentAs, 'Q0USR'); // the node records the login call as sender
+    expect(d.viaBbs, isFalse);
 
     final local = await d.sendPersonal(
       to: MailAddress.parse('Q0OTH@Q0XR.#42.GBR.EURO').address!,
@@ -76,6 +77,7 @@ void defineXRouterScenarios(XRouterConnect connect) {
   test('the recipient lists, reads and kills; others\' mail is out of reach', () async {
     final d = xrouterDriverFor(await connect('other-read-kill'));
     await d.logIn(user: 'Q0OTH', password: 'other', name: 'Olive Other');
+    expect(d.viaBbs, isFalse); // LC counts a bulletin and LB lists it: a normal node
 
     final inbox = await d.listPersonal();
     expect(inbox.map((h) => (h.number, h.status, h.from, h.to, h.at)), [
@@ -168,40 +170,47 @@ void defineXRouterBbsScenarios(XRouterConnect connect) {
   test('full BBS: with no bulletins at all the driver stays in the PMS', () async {
     final d = xrouterDriverFor(await connect('bbs-empty'));
     await d.logIn(user: 'Q0USR', password: 'user', name: 'Tom User');
+    expect(d.viaBbs, isFalse);
     expect(await d.listBulletins(), isEmpty);
     expect(await d.listPersonal(), isEmpty);
     await d.disconnect();
   });
 
-  test('full BBS: bulletins hidden from the PMS are listed through BBS', () async {
+  test('full BBS: bulletins sent through the PMS are hidden from it until the next login', () async {
     final d = xrouterDriverFor(await connect('bbs-other-sends'));
     await d.logIn(user: 'Q0OTH', password: 'other', name: 'Olive Other');
+    expect(d.viaBbs, isFalse);
     final area = await d.sendBulletin(to: BulletinAddress.parse('ALL@GBR').address!, subject: 'Area bulletin', body: 'One.');
     expect(area.number, 1);
     final wx = await d.sendBulletin(to: BulletinAddress.parse('WX@GB').address!, subject: 'Local weather', body: 'Two.');
     expect(wx.number, 2);
     final mail = await d.sendPersonal(to: MailAddress.parse('Q0USR').address!, subject: 'Hello', body: 'Three.');
     expect(mail.number, 3);
+    expect(await d.listBulletins(), isEmpty);
     await d.disconnect();
   });
 
-  test('full BBS: the reader sees mail and bulletins, and can still read, send and kill', () async {
+  test('full BBS: with bulletins hidden from the PMS the driver logs in through BBS and does everything there', () async {
     final d = xrouterDriverFor(await connect('bbs-user-lists'));
     await d.logIn(user: 'Q0USR', password: 'user', name: 'Tom User');
+    expect(d.viaBbs, isTrue);
     expect((await d.listPersonal()).map((h) => (h.number, h.subject)), [(3, 'Hello')]);
     expect((await d.listBulletins()).map((h) => (h.number, h.to, h.at, h.subject)), [
       (2, 'WX', 'GB', 'Local weather'),
       (1, 'ALL', 'GBR', 'Area bulletin'),
     ]);
-    // Now through BBS: everything else works as before.
-    expect((await d.listPersonal()).map((h) => h.number), [3]);
     expect((await d.read(1)).body, 'One.');
-    expect((await d.listBulletins()).length, 2);
-    final sent = await d.sendPersonal(to: MailAddress.parse('Q0OTH').address!, subject: 'Reply', body: 'Four.');
+    expect((await d.read(3)).body, 'Three.');
+    final sent = await d.sendPersonal(to: MailAddress.parse('Q0OTH@Q0XR').address!, subject: 'Reply', body: 'Four.');
     expect(sent.number, 4);
-    expect((await d.listSent('Q0USR')).map((h) => h.number), [4]);
+    final bull = await d.sendBulletin(to: BulletinAddress.parse('ALL@GBR').address!, subject: 'Answer', body: 'Five.');
+    expect(bull.number, 5);
+    expect((await d.listBulletins()).map((h) => h.number), [5, 2, 1]);
+    expect((await d.listSent('Q0USR')).map((h) => h.number), [4, 5]);
     await d.kill(3);
     expect(await d.listPersonal(), isEmpty);
+    await expectLater(d.kill(1), throwsKind(BbsErrorKind.notAllowed));
+    expect(await d.lookUpHomeBbs('Q0XR'), 'Q0XR.#42.GBR.EURO');
     await d.disconnect();
   });
 }

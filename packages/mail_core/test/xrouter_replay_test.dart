@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mail_core/mail_core.dart';
@@ -28,6 +29,36 @@ void main() {
     final d = xrouterDriverFor(ReplayTransport(Recording([])));
     await expectLater(d.logIn(user: 'Q0USR-1', password: 'user', name: 'x'), throwsKind(BbsErrorKind.loginFailed));
     expect(d.sentAs, isNull);
+  });
+
+  test('a BBS command that leads somewhere else stops the login', () async {
+    // Never seen live: on a node whose PMS hides bulletins, XRouter's own BBS
+    // wins over any alias. Built from #57's recordings of a full BBS node and
+    // of an application named BBS that leads to a LinBPQ.
+    const prompt = '[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n';
+    Map<String, Object> rx(String data) => {'dir': 'rx', 'data': data};
+    Map<String, Object> tx(String data) => {'dir': 'tx', 'data': '$data\r'};
+    final t = ReplayTransport(Recording.parse([
+      rx('\r\nXrouter v505p\r\n\r\nCallsign: '),
+      tx('Q0USR'),
+      rx('\r\nPassword: '),
+      {...tx('PASSWORD'), 'secret': true},
+      tx('PMS'),
+      rx('\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM\$]\r\n$prompt'),
+      tx('NP 0'),
+      rx('Pagination is OFF\r\n$prompt'),
+      tx('LC'),
+      rx("Bulletin Categories matching '*':\r\n ALL    1  \r\n$prompt"),
+      tx('LB 1'),
+      rx('No messages found\r\n$prompt'),
+      tx('B'),
+      rx('  - Logged off\r\n\r\nQ0XR:XRTEST} Welcome back\r\n'),
+      tx('BBS'),
+      rx('\r\nQ0XR:XRTEST} Trying BBS...\r\n\r\nQ0XR:XRTEST} Connected to BBS\r\nuser:'),
+    ].map(jsonEncode).join('\n')));
+    final d = xrouterDriverFor(t, timeout: const Duration(milliseconds: 300));
+    await expectLater(d.logIn(user: 'Q0USR', password: 'user', name: 'x'), throwsKind(BbsErrorKind.protocol));
+    expect(t.finished, isTrue);
   });
 
   test('LC counts bulletins only when a category has some', () {

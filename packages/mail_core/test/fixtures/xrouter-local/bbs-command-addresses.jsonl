@@ -1,0 +1,43 @@
+{"t":0.003,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.022,"dir":"tx","data":"Q0USR\r"}
+{"t":2.027,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.043,"dir":"tx","data":"user\r"}
+{"t":4.047,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.063,"dir":"tx","data":"PMS\r"}
+{"t":6.067,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":8.083,"dir":"tx","data":"NP 0\r"}
+{"t":8.087,"dir":"rx","data":"Pagination is OFF\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":10.103,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":10.109,"dir":"rx","data":"To: Q0OTH @ ?\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":12.123,"dir":"tx","data":"Via PMS\r"}
+{"t":12.129,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":14.143,"dir":"tx","data":"Five.\r"}
+{"t":16.163,"dir":"tx","data":"/EX\r"}
+{"t":16.171,"dir":"rx","data":"\r\n*** Message 5 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":18.183,"dir":"tx","data":"B\r"}
+{"t":18.191,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":18.201,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":20.203,"dir":"tx","data":"BBS\r"}
+{"t":20.212,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to BBS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR BBS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":22.223,"dir":"tx","data":"SP Q0OTH @ Q0XR\r"}
+{"t":22.224,"dir":"rx","data":"To: Q0OTH @ Q0XR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":24.243,"dir":"tx","data":"Via BBS at\r"}
+{"t":24.244,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":26.263,"dir":"tx","data":"Six.\r"}
+{"t":28.283,"dir":"tx","data":"/EX\r"}
+{"t":28.293,"dir":"rx","data":"\r\n*** Message 6 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":30.303,"dir":"tx","data":"SP Q0OTH @ Q0XR.#42.GBR.EURO\r"}
+{"t":30.313,"dir":"rx","data":"To: Q0OTH @ Q0XR\r\nEnter subject (or empty line to abort):\r\n"}
+{"t":32.323,"dir":"tx","data":"Via BBS full\r"}
+{"t":32.333,"dir":"rx","data":"\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n"}
+{"t":34.343,"dir":"tx","data":"Seven.\r"}
+{"t":36.363,"dir":"tx","data":"/EX\r"}
+{"t":36.373,"dir":"rx","data":"\r\n*** Message 7 saved\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":38.383,"dir":"tx","data":"L< Q0USR\r"}
+{"t":38.393,"dir":"rx","data":" Msg# TS Rcvd  Size  To      At     From   Subject\r\n    3 P$ 15:27  269  Q0OTH  @?      Q0USR  Reply\r\n    4 B$ 15:27  268  WX     @GB     Q0USR  Weather\r\n    5 P$ 15:28  271  Q0OTH  @?      Q0USR  Via PMS\r\n    6 PN 15:28  271  Q0OTH          Q0USR  Via BBS at\r\n    7 PN 15:28  275  Q0OTH          Q0USR  Via BBS full\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":40.403,"dir":"tx","data":"B\r"}
+{"t":40.407,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":40.417,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":42.423,"dir":"tx","data":"B\r"}
+{"t":42.427,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":42.438,"dir":"close"}

@@ -1,0 +1,13 @@
+{"t":0.003,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":2.022,"dir":"tx","data":"Q0USR\r"}
+{"t":2.03,"dir":"rx","data":"\r\nPassword: "}
+{"t":4.044,"dir":"tx","data":"user\r"}
+{"t":4.05,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":6.065,"dir":"tx","data":"BBS\r"}
+{"t":6.07,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to BBS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR BBS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":11.115,"dir":"tx","data":"B\r"}
+{"t":11.12,"dir":"rx","data":"  - Logged off\r\n"}
+{"t":11.131,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":15.155,"dir":"tx","data":"B\r"}
+{"t":15.163,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}
+{"t":15.173,"dir":"close"}
