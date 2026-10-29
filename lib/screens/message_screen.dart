@@ -217,11 +217,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
         ),
       );
     }
-    final readable = ref.watch(readableProvider);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: readable ? ReadableBody(body) : AsSentBody(body),
-    );
+    return Padding(padding: const EdgeInsets.fromLTRB(20, 14, 20, 0), child: MessageBody(body));
   }
 }
 
@@ -236,6 +232,16 @@ class ReadableSwitch extends ConsumerWidget {
     firstOn: ref.watch(readableProvider),
     onChanged: ref.read(readableProvider.notifier).set,
   );
+}
+
+/// The text of a message, Readable or As sent as last chosen.
+class MessageBody extends ConsumerWidget {
+  const MessageBody(this.body, {super.key});
+  final String body;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) =>
+      ref.watch(readableProvider) ? ReadableBody(body) : AsSentBody(body);
 }
 
 /// Exactly the lines the BBS delivered, in monospace, scrolling sideways

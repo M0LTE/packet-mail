@@ -102,7 +102,8 @@ class OutgoingScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Padding(padding: const EdgeInsets.fromLTRB(20, 14, 20, 0), child: AsSentBody(item.message.body)),
+                const ReadableSwitch(),
+                Padding(padding: const EdgeInsets.fromLTRB(20, 14, 20, 0), child: MessageBody(item.message.body)),
               ],
             ),
     );
@@ -205,10 +206,11 @@ class _SentListingScreenState extends ConsumerState<SentListingScreen> {
                     ],
                   ),
                 ),
+                const ReadableSwitch(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                   child: switch (l.body) {
-                    final body? => AsSentBody(body),
+                    final body? => MessageBody(body),
                     null when _opening => Text('Downloading...', style: text.bodyMedium?.copyWith(color: Logbook.inkSoft)),
                     null => Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

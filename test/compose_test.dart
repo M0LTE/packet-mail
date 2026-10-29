@@ -251,6 +251,54 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('Sent items have Readable and As sent, and Readable wraps long lines', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    final long = List.filled(40, 'word').join(' ');
+    app.bbs.fromUs = {
+      MessageHeader(
+        number: 4000,
+        type: MessageType.bulletin,
+        status: r'$',
+        from: 'M0LTE',
+        to: 'ALL',
+        at: 'GBR',
+        subject: 'Club news',
+        date: DateTime.utc(2026, 10, 27),
+      ): long,
+    };
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await openCompose(app, tester);
+    await type(tester, 'to', 'G8BPQ@GB7BPQ.#23.GBR.EURO');
+    await type(tester, 'subject', 'Long one');
+    await type(tester, 'body', 'On at eight.');
+    await send(app, tester);
+
+    await showBox(app, tester, 'sent');
+    await tester.tap(find.text('Long one'));
+    await settleAll(app, tester);
+    expect(find.byKey(const ValueKey('readable')), findsOneWidget);
+    expect(find.text('On at eight.', findRichText: true), findsOneWidget);
+    await tester.tap(find.text('As sent'));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('as-sent')), findsOneWidget);
+    expect(app.prefs.getBool('message.readable'), isFalse);
+
+    // The same choice on mail only the BBS lists.
+    await tester.tap(find.text('Sent').first);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Club news'));
+    await settleAll(app, tester);
+    expect(find.byKey(const ValueKey('as-sent')), findsOneWidget);
+    await tester.tap(find.text('Readable'));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('readable')), findsOneWidget);
+    final screen = tester.getSize(find.byType(Scaffold).last).width;
+    expect(tester.getSize(find.text(long, findRichText: true)).width, lessThanOrEqualTo(screen));
+    await app.dispose(tester);
+  });
+
   testWidgets('the outbox shows held and queued mail, and a queued one can be cancelled', (tester) async {
     final app = TestApp();
     await seedStation(app, tester);
