@@ -61,10 +61,10 @@ class XRouterDriver implements MailDriver {
     if (!_callsignLogin.hasMatch(call)) {
       throw BbsError(BbsErrorKind.loginFailed, 'XRouter needs your callsign, without an SSID, as the login name.');
     }
-    // A LinBPQ telnet port asks `user:` instead; its FBB port says nothing.
+    // A LinBPQ telnet port opens with `user:` instead; its FBB port says nothing.
     final String greeting;
     try {
-      greeting = await _session.readUntil(RegExp('Callsign: |user:'),
+      greeting = await _session.readUntil(RegExp('Callsign: |^user:'),
           timeout: timeout < _greetingWait ? timeout : _greetingWait);
     } on SessionTimeout {
       throw BbsError(BbsErrorKind.wrongPort, _noCallsignPrompt);

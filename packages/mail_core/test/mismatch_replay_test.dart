@@ -27,4 +27,15 @@ void main() {
             .having((e) => e.kind, 'kind', BbsErrorKind.wrongPort)
             .having((e) => e.message, 'message', choseWronglyXRouter)));
   });
+
+  test('an XRouter banner that mentions user: is still XRouter', () async {
+    final t = ReplayTransport(Recording.parse([
+      r'{"dir":"rx","data":"\r\nWelcome, new user: read INFO\r\nCallsign: "}',
+      r'{"dir":"tx","data":"Q0USR\r"}',
+      '{"dir":"close"}',
+    ].join('\n')));
+    final d = XRouterDriver(t, timeout: const Duration(seconds: 2));
+    await expectLater(d.logIn(user: 'Q0USR', password: 'user', name: 'x'),
+        throwsA(isA<BbsError>().having((e) => e.kind, 'kind', BbsErrorKind.loginFailed)));
+  });
 }
