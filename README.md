@@ -11,6 +11,7 @@ It talks to LinBPQ (BPQMail) over your network, through either its telnet port o
 ## Documents
 
 - [Plan](docs/plan.md): what we're building and the decisions behind it.
+- [AGENTS.md](AGENTS.md): how the project is worked on (for people and coding agents).
 - [Releasing](docs/releasing.md): how to tag a release for TestFlight and Android.
 - [Look and feel options](docs/look-and-feel/options.png)
 
