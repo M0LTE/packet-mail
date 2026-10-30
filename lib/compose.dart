@@ -27,7 +27,7 @@ class ComposeDraft {
     return ComposeDraft(
       to: to,
       subject: replySubject(m.subject),
-      body: '$call wrote:\n${quoteForReply(m.body ?? '')}\n\n',
+      body: '$call wrote:\n${quoteForReply(stripAnsi(m.body ?? ''))}\n\n',
       connectionId: m.connectionId,
     );
   }
@@ -40,7 +40,7 @@ class ComposeDraft {
         '${timed ? ' ${_two(when.hour)}:${_two(when.minute)}' : ''}';
     return ComposeDraft(
       subject: forwardSubject(m.subject),
-      body: '\n\nForwarded message from ${bareCall(m.fromCall)}, $day:\n${quoteForReply(m.body ?? '')}\n',
+      body: '\n\nForwarded message from ${bareCall(m.fromCall)}, $day:\n${quoteForReply(stripAnsi(m.body ?? ''))}\n',
       connectionId: m.connectionId,
     );
   }

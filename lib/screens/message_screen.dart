@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../ansi_text.dart';
 import '../compose.dart';
 import '../contacts.dart';
 import '../mailboxes.dart';
@@ -249,8 +250,9 @@ class MessageBody extends ConsumerWidget {
 }
 
 /// Exactly the lines the BBS delivered, in monospace, scrolling sideways
-/// rather than wrapping. Selectable for copying; a SelectableText here would
-/// take the sideways drag for itself.
+/// rather than wrapping, with any ANSI colour the message carries. Selectable
+/// for copying (as plain text); a SelectableText here would take the sideways
+/// drag for itself.
 class AsSentBody extends StatelessWidget {
   const AsSentBody(this.body, {super.key});
   final String body;
@@ -259,13 +261,13 @@ class AsSentBody extends StatelessWidget {
   Widget build(BuildContext context) => SelectionArea(
     child: SideScroll(
       key: const ValueKey('as-sent'),
-      child: Text(body, softWrap: false, style: Logbook.asSent),
+      child: Text.rich(ansiSpan(body, Logbook.asSent), softWrap: false),
     ),
   );
 }
 
 /// Paragraphs, quotes and laid-out blocks, with links and callsigns picked out,
-/// selectable for copying.
+/// selectable for copying. Colour codes are ignored.
 class ReadableBody extends StatelessWidget {
   const ReadableBody(this.body, {super.key});
   final String body;
@@ -274,7 +276,10 @@ class ReadableBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SelectionArea(
     key: const ValueKey('readable'),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _blocks(readableBlocks(body), quoted: false)),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _blocks(readableBlocks(stripAnsi(body)), quoted: false),
+    ),
   );
 
   static List<Widget> _blocks(List<BodyBlock> blocks, {required bool quoted}) => [
