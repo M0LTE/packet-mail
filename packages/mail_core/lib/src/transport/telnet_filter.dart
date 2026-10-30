@@ -3,7 +3,8 @@ import 'dart:async';
 import 'transport.dart';
 
 /// Makes a telnet port look like an FBB port: strips telnet negotiation
-/// (IAC sequences) and turns CRLF into CR, so drivers see one dialect.
+/// (IAC sequences) and turns CRLF and CR NUL into CR, so drivers see one
+/// dialect.
 ///
 /// We never agree to any telnet option; BPQ's server works without.
 class TelnetFilter implements Transport {
@@ -26,7 +27,9 @@ class TelnetFilter implements Transport {
           case 0:
             if (b == _iac) {
               state = 1;
-            } else if (b == 10 && lastCr) {
+            } else if ((b == 10 || b == 0) && lastCr) {
+              // CR LF is a new line and CR NUL a bare CR (RFC 854, "The NVT
+              // printer and keyboard", page 11); either way only the CR is kept.
               lastCr = false;
             } else {
               out.add(b);
