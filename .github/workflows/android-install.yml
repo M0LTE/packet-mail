@@ -34,15 +34,31 @@ jobs:
             target: google_apis
     steps:
       - uses: actions/checkout@v4
-      - name: Download the release APK
+      - name: Download this release's APKs and the previous release's
         env:
           GH_TOKEN: ${{ github.token }}
           REL_TAG: ${{ inputs.release_tag }}
         run: |
-          mkdir apk
-          gh release download $REL_TAG -R "$GITHUB_REPOSITORY" -p '*.apk' -D apk
-          ls -l apk
-          echo "APK=$(ls apk/*.apk)" >> "$GITHUB_ENV"
+          tags=$(gh release list -R "$GITHUB_REPOSITORY" -L 50 --exclude-drafts --json tagName,publishedAt -q 'sort_by(.publishedAt) | reverse | .[].tagName' | grep -E '^v[1-9]')
+          tag=${REL_TAG:-$(echo "$tags" | head -1)}
+          prev=$(echo "$tags" | grep -A1 -x "$tag" | sed -n 2p)
+          echo "Testing $tag, updating from $prev"
+          mkdir -p apk prev
+          gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.apk' -D apk
+          gh release download "$prev" -R "$GITHUB_REPOSITORY" -p 'packet-mail-*[0-9].apk' -D prev
+          ls -l apk prev
+          echo "APK=$(ls apk/*.apk | grep -E -- '-[0-9]+\.apk$')" >> "$GITHUB_ENV"
+          echo "SPLIT_APK=$(ls apk/*-x86_64.apk 2>/dev/null)" >> "$GITHUB_ENV"
+          echo "PREV_APK=$(ls prev/*.apk)" >> "$GITHUB_ENV"
+      - name: Check the ARM APKs hold only their own processor's libraries
+        if: matrix.api == 28
+        run: |
+          for pair in arm64:arm64-v8a arm32:armeabi-v7a x86_64:x86_64; do
+            f=$(ls apk/*-${pair%%:*}.apk 2>/dev/null) || { echo "No ${pair%%:*} APK in this release"; continue; }
+            abis=$(unzip -Z1 "$f" 'lib/*' | cut -d/ -f2 | sort -u | tr '\n' ' ')
+            echo "$f: $abis"
+            [ "$abis" = "${pair##*:} " ] || { echo "FAIL: expected only ${pair##*:}"; exit 1; }
+          done
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -55,7 +71,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: bash .github/scripts/android-install-test.sh "$APK" out
+          script: bash .github/scripts/android-install-test.sh out "$APK" "$SPLIT_APK" "$PREV_APK"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -141,10 +141,11 @@ jobs:
           channel: stable
           cache: true
       - run: flutter build apk --release
+      - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
         with:
           name: packet-mail-android
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/*.apk
 
   ios:
     needs: test
@@ -270,6 +271,12 @@ jobs:
           v=${REL_TAG#v}; v=${v%%-*}
           flutter build appbundle --release --build-name=$v --build-number=$BUILD
           flutter build apk --release --build-name=$v --build-number=$BUILD
+          mkdir apks
+          cp build/app/outputs/flutter-apk/app-release.apk apks/
+          # One APK per processor too, much smaller. They keep the same version code as the universal
+          # one (android/gradle.properties), so people can move between them.
+          flutter build apk --release --split-per-abi --build-name=$v --build-number=$BUILD
+          cp build/app/outputs/flutter-apk/app-{arm64-v8a,armeabi-v7a,x86_64}-release.apk apks/
           rm -f android/key.properties "$RUNNER_TEMP/upload.jks"
       - uses: actions/upload-artifact@v4
         if: steps.ready.outputs.go
@@ -280,7 +287,7 @@ jobs:
         if: steps.ready.outputs.go
         with:
           name: packet-mail-android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: apks
 
   github-release:
     name: GitHub release
@@ -305,13 +312,34 @@ jobs:
           v=${REL_TAG#v}; v=${v%%-*}
           # Flutter pads the version to three parts (1.0 becomes 1.0.0); show what the stores show.
           case "$v" in *.*.*) ;; *) v="$v.0" ;; esac
-          apk="packet-mail-$v-$BUILD.apk"
-          mv app-release.apk "$apk"
-          printf 'Packet Mail %s (build %s).\n\n- iPhone: from the App Store, or TestFlight for testers.\n- Android: install `%s` below. Google Play is coming.\n' "$v" "$BUILD" "$apk" > notes.md
+          base="packet-mail-$v-$BUILD"
+          mv app-release.apk "$base.apk"
+          files="$base.apk"
+          # Older tags built only the universal APK; publish the per-processor ones when present.
+          for pair in arm64-v8a:arm64 armeabi-v7a:arm32 x86_64:x86_64; do
+            abi=${pair%%:*}; name=${pair##*:}
+            if [ -f "app-$abi-release.apk" ]; then
+              mv "app-$abi-release.apk" "$base-$name.apk"
+              files="$files $base-$name.apk"
+            fi
+          done
+          {
+            printf 'Packet Mail %s (build %s).\n\n' "$v" "$BUILD"
+            printf -- '- iPhone: from the App Store, or TestFlight for testers.\n'
+            printf -- '- Android: Google Play is coming. Until then, install one of the APKs below:\n'
+            if [ -f "$base-arm64.apk" ]; then
+              printf '  - `%s`: most phones.\n' "$base-arm64.apk"
+              printf '  - `%s`: older or cheaper phones, if the arm64 one says it is not compatible.\n' "$base-arm32.apk"
+              printf '  - `%s`: works on every phone, but is about three times larger.\n' "$base.apk"
+            else
+              printf '  - `%s`\n' "$base.apk"
+            fi
+            printf '\nIf Android says "App not installed": free some storage, or uninstall a copy installed from somewhere else first.\n'
+          } > notes.md
           if gh release view "$REL_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$REL_TAG" "$apk" --clobber -R "$GITHUB_REPOSITORY"
+            gh release upload "$REL_TAG" $files --clobber -R "$GITHUB_REPOSITORY"
           else
-            gh release create "$REL_TAG" "$apk" -R "$GITHUB_REPOSITORY" --title "Packet Mail $v ($BUILD)" --notes-file notes.md
+            gh release create "$REL_TAG" $files -R "$GITHUB_REPOSITORY" --title "Packet Mail $v ($BUILD)" --notes-file notes.md
           fi
 
   android-install:
