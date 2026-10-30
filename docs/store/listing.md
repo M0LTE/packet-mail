@@ -49,3 +49,5 @@ Packet Mail is for licensed radio amateurs. It talks to your own BBS over your l
 **Category:** Communication. **Tags:** Email, Productivity.
 
 **Contact email:** app-support@tomfanning.name. **Website:** https://packet-mail.m0lte.uk/
+
+**Delete data URL (Data safety):** https://packet-mail.m0lte.uk/delete-data.html
