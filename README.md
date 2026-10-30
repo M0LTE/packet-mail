@@ -6,7 +6,7 @@ Packet Mail gives BBS mail the feel of an ordinary email client: an inbox, outbo
 
 It talks to LinBPQ (BPQMail) over your network, through either its telnet port or its FBB port, and to the mailbox built into an XRouter node through its telnet port. Later connection types may run over the packet network itself, or talk to other BBS software.
 
-**Status:** early development. Nothing to install yet.
+**Status:** in testing. On Android, install the APK from the [latest release](https://github.com/m0lte/packet-mail/releases/latest); iPhone builds go to TestFlight testers.
 
 ## Documents
 
