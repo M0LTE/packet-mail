@@ -45,11 +45,12 @@ jobs:
           echo "Testing $tag, updating from $prev"
           mkdir -p apk prev
           gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.apk' -D apk
-          gh release download "$prev" -R "$GITHUB_REPOSITORY" -p 'packet-mail-*[0-9].apk' -D prev
+          # The universal APK only: '*[0-9].apk' would also match -arm64 and -arm32.
+          gh release download "$prev" -R "$GITHUB_REPOSITORY" -p 'packet-mail-*.apk' -D prev
           ls -l apk prev
           echo "APK=$(ls apk/*.apk | grep -E -- '-[0-9]+\.apk$')" >> "$GITHUB_ENV"
           echo "SPLIT_APK=$(ls apk/*-x86_64.apk 2>/dev/null)" >> "$GITHUB_ENV"
-          echo "PREV_APK=$(ls prev/*.apk)" >> "$GITHUB_ENV"
+          echo "PREV_APK=$(ls prev/*.apk | grep -E -- '-[0-9]+\.apk$')" >> "$GITHUB_ENV"
       - name: Check the ARM APKs hold only their own processor's libraries
         if: matrix.api == 28
         run: |
