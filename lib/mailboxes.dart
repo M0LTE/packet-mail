@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
+import 'message_order.dart';
 import 'providers.dart';
 
 enum Mailbox {
@@ -19,17 +20,17 @@ enum Mailbox {
 final inboxProvider = StreamProvider<List<Message>>((ref) {
   final store = ref.watch(storeProvider);
   return (store.select(store.messages)
-        ..where((m) => m.type.equals('bulletin').not() & m.pendingKill.equals(false))
-        ..orderBy([(m) => OrderingTerm.desc(m.date), (m) => OrderingTerm.desc(m.id)]))
-      .watch();
+        ..where((m) => m.type.equals('bulletin').not() & m.pendingKill.equals(false)))
+      .watch()
+      .map(newestMessagesFirst);
 });
 
 final starredProvider = StreamProvider<List<Message>>((ref) {
   final store = ref.watch(storeProvider);
   return (store.select(store.messages)
-        ..where((m) => m.starred.equals(true) & m.pendingKill.equals(false))
-        ..orderBy([(m) => OrderingTerm.desc(m.date), (m) => OrderingTerm.desc(m.id)]))
-      .watch();
+        ..where((m) => m.starred.equals(true) & m.pendingKill.equals(false)))
+      .watch()
+      .map(newestMessagesFirst);
 });
 
 /// One message we wrote, with its recipients.
@@ -70,9 +71,9 @@ final sentProvider = StreamProvider<List<OutgoingItem>>((ref) => _outgoing(ref.w
 /// Mail from us as the BBS lists it, newest first.
 final sentListingsProvider = StreamProvider<List<SentListing>>((ref) {
   final store = ref.watch(storeProvider);
-  return (store.select(store.sentListings)
-        ..orderBy([(t) => OrderingTerm.desc(t.date), (t) => OrderingTerm.desc(t.id)]))
-      .watch();
+  return store.select(store.sentListings).watch().map(
+    (l) => newestFirst(l, date: (t) => t.date, id: (t) => t.id, connection: (t) => t.connectionId, number: (t) => t.bbsNumber),
+  );
 });
 
 final sentListingProvider = StreamProvider.autoDispose.family<SentListing?, int>((ref, id) {
@@ -127,7 +128,22 @@ List<SentEntry> mergeSent(List<OutgoingItem> items, List<SentListing> listings) 
     for (final l in listings)
       if (!used.contains(l.id)) BbsSent(l),
   ]);
-  return entries..sort((a, b) => b.when.compareTo(a.when));
+  return newestFirst(
+    entries,
+    date: (e) => e.when,
+    id: (e) => switch (e) {
+      PhoneSent(:final item) => item.message.id,
+      BbsSent(:final listing) => listing.id,
+    },
+    connection: (e) => switch (e) {
+      PhoneSent(:final item) => item.message.connectionId,
+      BbsSent(:final listing) => listing.connectionId,
+    },
+    number: (e) => switch (e) {
+      PhoneSent() => null,
+      BbsSent(:final listing) => listing.bbsNumber,
+    },
+  );
 }
 
 /// Names from the address book, by callsign.

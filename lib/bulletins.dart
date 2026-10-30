@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
+import 'message_order.dart';
 import 'providers.dart';
 
 /// Categories offered when writing a bulletin, before any are seen.
@@ -11,9 +12,9 @@ const commonCategories = ['ALL', 'WX', 'NEWS', 'KEPS', 'DX', 'SALE'];
 final bulletinsProvider = StreamProvider<List<Message>>((ref) {
   final store = ref.watch(storeProvider);
   return (store.select(store.messages)
-        ..where((m) => m.type.equals('bulletin') & m.pendingKill.equals(false))
-        ..orderBy([(m) => OrderingTerm.desc(m.date), (m) => OrderingTerm.desc(m.id)]))
-      .watch();
+        ..where((m) => m.type.equals('bulletin') & m.pendingKill.equals(false)))
+      .watch()
+      .map(newestMessagesFirst);
 });
 
 final subscriptionsProvider = StreamProvider<List<Subscription>>((ref) {
@@ -45,33 +46,32 @@ class AreaGroup {
   int get unread => bulletins.where((m) => !m.read).length;
 }
 
-/// Bulletins in one category, split by area.
+/// Bulletins in one category, split by area; [bulletins] has them all,
+/// newest first.
 class CategoryGroup {
-  CategoryGroup(this.category, this.areas);
+  CategoryGroup(this.category, this.areas, this.bulletins);
   final String category;
   final List<AreaGroup> areas;
-  int get count => areas.fold(0, (n, a) => n + a.bulletins.length);
+  final List<Message> bulletins;
+  int get count => bulletins.length;
   int get unread => areas.fold(0, (n, a) => n + a.unread);
-  List<Message> get bulletins => [for (final a in areas) ...a.bulletins]..sort(newestFirst);
 }
 
-int newestFirst(Message a, Message b) {
-  final d = b.date.compareTo(a.date);
-  return d != 0 ? d : b.id.compareTo(a.id);
-}
-
-/// Groups bulletins by category, then area, both in alphabetical order.
+/// Groups bulletins by category, then area, both in alphabetical order, with
+/// the bulletins in each newest first.
 List<CategoryGroup> groupBulletins(Iterable<Message> bulletins) {
   final byCategory = <String, Map<String, List<Message>>>{};
-  for (final m in bulletins) {
+  final inCategory = <String, List<Message>>{};
+  for (final m in newestMessagesFirst(bulletins)) {
     byCategory.putIfAbsent(categoryOf(m), () => {}).putIfAbsent(areaOf(m), () => []).add(m);
+    inCategory.putIfAbsent(categoryOf(m), () => []).add(m);
   }
   final categories = byCategory.keys.toList()..sort();
   return [
     for (final c in categories)
       CategoryGroup(c, [
-        for (final a in byCategory[c]!.keys.toList()..sort()) AreaGroup(c, a, byCategory[c]![a]!..sort(newestFirst)),
-      ]),
+        for (final a in byCategory[c]!.keys.toList()..sort()) AreaGroup(c, a, byCategory[c]![a]!),
+      ], inCategory[c]!),
   ];
 }
 

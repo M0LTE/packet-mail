@@ -10,9 +10,16 @@ const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
-/// For a message list: "09:12" today, "Yesterday", "Sun" this week,
+/// For a message list: "09:12" today, "Yesterday 18:55", "Sun" this week,
 /// "12 Oct" this year, "12 Oct 2025" before that. Both times are local.
-String listTime(DateTime when, DateTime now) => _listDay(when, now) ?? '${_two(when.hour)}:${_two(when.minute)}';
+String listTime(DateTime when, DateTime now) {
+  final time = '${_two(when.hour)}:${_two(when.minute)}';
+  final day = _listDay(when, now);
+  if (day == null) return time;
+  return day == _yesterday ? '$day $time' : day;
+}
+
+const _yesterday = 'Yesterday';
 
 /// The day part of [listTime], or null for today.
 String? _listDay(DateTime when, DateTime now) {
@@ -21,7 +28,7 @@ String? _listDay(DateTime when, DateTime now) {
   final today = DateTime.utc(now.year, now.month, now.day);
   final daysAgo = today.difference(day).inDays;
   if (daysAgo <= 0) return null;
-  if (daysAgo == 1) return 'Yesterday';
+  if (daysAgo == 1) return _yesterday;
   if (daysAgo < 7) return _days[when.weekday - 1];
   final short = '${when.day} ${_months[when.month - 1]}';
   return when.year == now.year ? short : '$short ${when.year}';

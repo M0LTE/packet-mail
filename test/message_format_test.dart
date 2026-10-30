@@ -8,7 +8,7 @@ void main() {
 
   test('list times', () {
     expect(listTime(DateTime(2026, 10, 28, 9, 12), now), '09:12');
-    expect(listTime(DateTime(2026, 10, 27, 23, 59), now), 'Yesterday');
+    expect(listTime(DateTime(2026, 10, 27, 23, 59), now), 'Yesterday 23:59');
     expect(listTime(DateTime(2026, 10, 25, 8), now), 'Sun');
     expect(listTime(DateTime(2026, 10, 22, 8), now), 'Thu');
     expect(listTime(DateTime(2026, 10, 21, 8), now), '21 Oct');
@@ -19,7 +19,7 @@ void main() {
     // The time zone is fixed when a process starts, so this runs in its own.
     final r = await Process.run('dart', ['run', 'test/support/dst_probe.dart'], environment: {'TZ': 'Europe/London'});
     expect(r.exitCode, 0, reason: '${r.stderr}');
-    expect((r.stdout as String).trim(), 'Yesterday,Sat');
+    expect((r.stdout as String).trim(), 'Yesterday 09:00,Sat');
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('full times', () {
