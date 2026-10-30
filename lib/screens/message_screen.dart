@@ -6,6 +6,7 @@ import 'package:mail_core/mail_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../ansi_text.dart';
+import '../blocking.dart';
 import '../compose.dart';
 import '../contacts.dart';
 import '../mailboxes.dart';
@@ -15,6 +16,7 @@ import '../reflow.dart';
 import '../sync.dart';
 import '../theme.dart';
 import '../view_choice.dart';
+import 'blocked_screen.dart';
 import 'compose_screen.dart';
 import 'contact_screen.dart';
 import 'mail_widgets.dart';
@@ -91,6 +93,39 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
       );
   }
 
+  /// Hides everything from the sender on this phone, after asking unless
+  /// [asked], and leaves the message.
+  Future<void> _block(Message m, {bool asked = false}) async {
+    final call = bareCall(m.fromCall);
+    if (!asked && !await confirmBlock(context, call)) return;
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    // Undo runs after this screen has gone, so it can't use ref.
+    final store = ref.read(storeProvider);
+    await blockStation(store, call, now: ref.read(clockProvider)());
+    if (mounted) Navigator.of(context).pop();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Blocked $call. Their mail and bulletins are hidden.'),
+          action: SnackBarAction(label: 'Undo', onPressed: () => unblockStation(store, call)),
+        ),
+      );
+  }
+
+  /// Opens a report to the sysop of the BBS that holds [m]; once it is
+  /// sent, offers to block the sender too.
+  Future<void> _report(Message m) async {
+    final sent = await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: ComposeDraft.report(m, bbs: _bbsName()))),
+    );
+    if (sent != true || !mounted) return;
+    final call = bareCall(m.fromCall);
+    if (ref.read(blockedCallsProvider).value?.contains(call) ?? false) return;
+    if (await confirmBlock(context, call, also: true) && mounted) await _block(m, asked: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -108,6 +143,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
           label: Text(widget.from),
           style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
         ),
+        actions: [if (m != null) _more(m)],
       ),
       body: switch (message) {
         AsyncData(value: null) => Padding(
@@ -121,6 +157,32 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
         _ => const SizedBox.shrink(),
       },
       bottomNavigationBar: m == null ? null : _Actions(message: m, onDelete: () => _delete(m)),
+    );
+  }
+
+  /// Report and Block, out of the way of everyday reading.
+  Widget _more(Message m) {
+    final call = bareCall(m.fromCall);
+    final mine = ref.watch(identityProvider).value?.callsign.toUpperCase() == call;
+    return PopupMenuButton<VoidCallback>(
+      key: const ValueKey('message-more'),
+      tooltip: 'More',
+      icon: const Icon(Icons.more_vert, color: Logbook.stampRed),
+      color: Logbook.paper,
+      onSelected: (action) => action(),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          key: const ValueKey('report'),
+          value: () => _report(m),
+          child: const ListTile(leading: Icon(Icons.flag_outlined), title: Text('Report to sysop')),
+        ),
+        if (!mine)
+          PopupMenuItem(
+            key: const ValueKey('block'),
+            value: () => _block(m),
+            child: ListTile(leading: const Icon(Icons.block), title: Text('Block $call')),
+          ),
+      ],
     );
   }
 

@@ -2,19 +2,22 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
+import 'blocking.dart';
 import 'message_order.dart';
 import 'providers.dart';
 
 /// Categories offered when writing a bulletin, before any are seen.
 const commonCategories = ['ALL', 'WX', 'NEWS', 'KEPS', 'DX', 'SALE'];
 
-/// Every bulletin here, newest first, without ones deleted here.
-final bulletinsProvider = StreamProvider<List<Message>>((ref) {
+/// Every bulletin here, newest first, without ones deleted here or from
+/// blocked stations.
+final bulletinsProvider = StreamProvider<List<Message>>((ref) async* {
   final store = ref.watch(storeProvider);
-  return (store.select(store.messages)
+  final blocked = await ref.watch(blockedCallsProvider.future);
+  yield* (store.select(store.messages)
         ..where((m) => m.type.equals('bulletin') & m.pendingKill.equals(false)))
       .watch()
-      .map(newestMessagesFirst);
+      .map((list) => newestMessagesFirst(withoutBlocked(list, blocked)));
 });
 
 final subscriptionsProvider = StreamProvider<List<Subscription>>((ref) {

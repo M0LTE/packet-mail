@@ -4,7 +4,7 @@ import 'message_format.dart';
 
 /// What the compose screen starts with: empty, a reply or a forward.
 class ComposeDraft {
-  const ComposeDraft({this.to = '', this.subject = '', this.body = '', this.connectionId});
+  const ComposeDraft({this.to = '', this.subject = '', this.body = '', this.connectionId, this.startAtTop = false});
 
   final String to;
   final String subject;
@@ -12,6 +12,9 @@ class ComposeDraft {
 
   /// The connection to send through, such as the one a reply came in on.
   final int? connectionId;
+
+  /// Puts the cursor at the start of the body rather than the end.
+  final bool startAtTop;
 
   /// To the sender, with their route if the message says where they are.
   /// The original is quoted below a line saying who wrote it.
@@ -33,19 +36,51 @@ class ComposeDraft {
   }
 
   /// The original quoted under a line saying who it came from; To left empty.
-  factory ComposeDraft.forward(Message m) {
-    final timed = hasTime(m.date);
-    final when = timed ? m.date.toLocal() : m.date.toUtc();
-    final day = '${when.year}-${_two(when.month)}-${_two(when.day)}'
-        '${timed ? ' ${_two(when.hour)}:${_two(when.minute)}' : ''}';
+  factory ComposeDraft.forward(Message m) => ComposeDraft(
+    subject: forwardSubject(m.subject),
+    body: '\n\nForwarded message from ${bareCall(m.fromCall)}, ${_day(m)}:\n${quoteForReply(stripAnsi(m.body ?? ''))}\n',
+    connectionId: m.connectionId,
+  );
+
+  /// A report of [m] to the sysop of [bbs], the BBS that holds it, sent
+  /// through the same connection. It names the message and quotes it, with
+  /// an empty line at the top for the user's reason.
+  factory ComposeDraft.report(Message m, {required String bbs}) {
+    final at = m.at?.trim() ?? '';
+    final details = [
+      'Reporting message ${m.bbsNumber} on $bbs:',
+      'From: ${m.fromCall.trim().toUpperCase()}',
+      'To: ${at.isEmpty ? m.toCall : '${m.toCall}@$at'}',
+      'Date: ${_day(m)}',
+      if (m.bid case final bid? when bid.trim().isNotEmpty) 'BID: ${bid.trim()}',
+      'Subject: ${m.subject}',
+    ];
+    final quoted = m.body == null ? '' : '\n${quoteForReply(stripAnsi(m.body!))}\n';
     return ComposeDraft(
-      subject: forwardSubject(m.subject),
-      body: '\n\nForwarded message from ${bareCall(m.fromCall)}, $day:\n${quoteForReply(stripAnsi(m.body ?? ''))}\n',
+      to: sysopCall,
+      subject: reportSubject(m.subject),
+      body: '\n\n${details.join('\n')}\n$quoted',
       connectionId: m.connectionId,
+      startAtTop: true,
     );
   }
 
+  /// The day a message was written, with its time when known.
+  static String _day(Message m) {
+    final timed = hasTime(m.date);
+    final when = timed ? m.date.toLocal() : m.date.toUtc();
+    return '${when.year}-${_two(when.month)}-${_two(when.day)}'
+        '${timed ? ' ${_two(when.hour)}:${_two(when.minute)}' : ''}';
+  }
+
   static String _two(int n) => n.toString().padLeft(2, '0');
+}
+
+/// `Report: ` before [subject], cut to the BBS's limit.
+String reportSubject(String subject) {
+  final s = subject.trim();
+  final out = 'Report: ${s.isEmpty ? '(no subject)' : s}';
+  return out.length > maxTitleLength ? out.substring(0, maxTitleLength).trimRight() : out;
 }
 
 /// `Fwd: ` before [subject], once, cut to the BBS's limit.

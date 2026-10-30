@@ -42,14 +42,15 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     _to.addListener(_changed);
     _subject.addListener(_changed);
     _body.addListener(_changed);
-    // A reply starts in the body; anything else starts in To.
+    // A reply starts in the body (a report at its top, for the reason);
+    // anything else starts in To.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (widget.draft.to.isEmpty) {
         _toFocus.requestFocus();
       } else {
         _bodyFocus.requestFocus();
-        _body.selection = TextSelection.collapsed(offset: _body.text.length);
+        _body.selection = TextSelection.collapsed(offset: widget.draft.startAtTop ? 0 : _body.text.length);
       }
     });
   }
@@ -204,6 +205,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               switch (widget.draft.subject) {
                 final s when s.startsWith('Re:') => 'Reply',
                 final s when s.startsWith('Fwd:') => 'Forward',
+                final s when widget.draft.startAtTop && s.startsWith('Report:') => 'Report to the sysop',
                 _ => 'New message',
               },
               style: text.headlineSmall,

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../blocking.dart';
 import '../providers.dart';
 import '../report.dart';
 import '../sync.dart';
 import '../theme.dart';
+import 'blocked_screen.dart';
 import 'bulletins_tab.dart';
 import 'connections_screen.dart';
 import 'contacts_tab.dart';
@@ -126,6 +128,7 @@ class SettingsTab extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final identity = ref.watch(identityProvider).value;
     final connections = ref.watch(connectionsProvider).value ?? [];
+    final blocked = ref.watch(blockedStationsProvider).value ?? const [];
     return SafeArea(
       child: ListView(
         children: [
@@ -162,6 +165,19 @@ class SettingsTab extends ConsumerWidget {
             }, style: text.labelMedium),
             trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen())),
+          ),
+          ListTile(
+            key: const ValueKey('blocked-stations'),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            title: Text('Blocked stations', style: text.titleMedium),
+            subtitle: Text(switch (blocked.length) {
+              0 => 'None',
+              1 => blocked.single.callsign,
+              final n => '$n stations',
+            }, style: text.labelMedium),
+            trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
+            onTap: () =>
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BlockedStationsScreen())),
           ),
           const Divider(indent: 24),
           Padding(

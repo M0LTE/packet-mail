@@ -6,7 +6,9 @@ Paste the reply below into App Store Connect, attach the screen recording, and p
 
 **1. Screen recording**
 
-Attached: a recording on an iPhone running the latest iOS. It starts at launch and shows first-run setup, connecting to our demo BBS, reading mail and bulletins, sending a message and receiving the automatic reply, the address book, and Report a problem.
+Attached: a recording on an iPhone running the latest iOS. It starts at launch and shows first-run setup, connecting to our demo BBS, reading mail and bulletins, sending a message and receiving the automatic reply, reporting and blocking, the address book, and Report a problem.
+
+Bulletins are public posts by other users, so the app lets users deal with unwanted content. On any message or bulletin, the menu at the top right offers Report to sysop, which opens a prefilled message to the sysop (operator) of the BBS it came from, naming and quoting it, for the user to add a reason and send. It also offers Block, which hides everything from that station on the phone; blocked stations are listed in Settings, where they can be unblocked. Reports go to the BBS operator, who moderates that BBS; blocking is local to the phone.
 
 The app has no account registration or deletion. Users sign in to an existing packet radio BBS that they already have an account on, run by its own operator; the app never creates accounts. It has no paid content and no in-app purchases.
 
@@ -55,8 +57,9 @@ On an iPhone with the latest iOS: Settings, Control Centre, add Screen Recording
 4. Inbox fills in. Open a message; toggle Readable / As sent; go back.
 5. Compose to Q0BOT, short subject and text, Send. Pull to refresh until the reply arrives; open it.
 6. Bulletins: show the list, open one, subscribe to a category.
+   - In that bulletin, tap the menu at the top right, then Report to sysop. Show the prefilled message to SYSOP, then Cancel.
+   - Tap the menu again, then Block, and confirm. Show the bulletin gone from the list.
+   - Settings, Blocked stations: tap Unblock, and show the bulletin back in Bulletins.
 7. Contacts: open one, show the home BBS.
 8. Settings: show the connection, then Report a problem (show the screen; no need to send).
 9. Stop recording. Trim the start if needed.
-
-Apple asks for any content reporting and blocking to be shown too; see the note in the chat about whether to add block and report before resubmitting.

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
+import 'blocking.dart';
 import 'message_order.dart';
 import 'providers.dart';
 
@@ -16,21 +17,23 @@ enum Mailbox {
 }
 
 /// Personal mail (traffic shows as personal), newest first, without
-/// messages deleted here and waiting to be killed.
-final inboxProvider = StreamProvider<List<Message>>((ref) {
+/// messages deleted here and waiting to be killed, or from blocked stations.
+final inboxProvider = StreamProvider<List<Message>>((ref) async* {
   final store = ref.watch(storeProvider);
-  return (store.select(store.messages)
+  final blocked = await ref.watch(blockedCallsProvider.future);
+  yield* (store.select(store.messages)
         ..where((m) => m.type.equals('bulletin').not() & m.pendingKill.equals(false)))
       .watch()
-      .map(newestMessagesFirst);
+      .map((list) => newestMessagesFirst(withoutBlocked(list, blocked)));
 });
 
-final starredProvider = StreamProvider<List<Message>>((ref) {
+final starredProvider = StreamProvider<List<Message>>((ref) async* {
   final store = ref.watch(storeProvider);
-  return (store.select(store.messages)
+  final blocked = await ref.watch(blockedCallsProvider.future);
+  yield* (store.select(store.messages)
         ..where((m) => m.starred.equals(true) & m.pendingKill.equals(false)))
       .watch()
-      .map(newestMessagesFirst);
+      .map((list) => newestMessagesFirst(withoutBlocked(list, blocked)));
 });
 
 /// One message we wrote, with its recipients.
