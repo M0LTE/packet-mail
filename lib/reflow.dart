@@ -4,6 +4,8 @@
 /// garbled lines. Pure Dart, no Flutter.
 library;
 
+import 'package:mail_core/mail_core.dart';
+
 /// One piece of a readable body.
 sealed class BodyBlock {
   const BodyBlock();
@@ -285,8 +287,18 @@ final class LinkText extends InlinePiece {
   String toString() => 'Link($text)';
 }
 
+/// A callsign, or a full address such as `G8BPQ@GB7BPQ.#23.GBR.EURO`.
 final class CallsignText extends InlinePiece {
   const CallsignText(super.text);
+
+  /// The callsign alone, without SSID or route.
+  String get call => text.split('@').first.split('-').first;
+
+  /// The home BBS and route after `@`, or null for a bare callsign.
+  String? get at => text.contains('@') ? text.substring(text.indexOf('@') + 1) : null;
+
+  /// What to write to: the full address when given, else the callsign.
+  String get address => at == null ? call : '$call@$at';
   @override
   bool operator ==(Object other) => other is CallsignText && other.text == text;
   @override
@@ -299,9 +311,11 @@ final _link = RegExp(r'(?:https?://|www\.)[^\s<>"]+', caseSensitive: false);
 
 /// Amateur callsigns: a prefix of one or two letters, a digit and a letter,
 /// or a letter and a digit; then a digit and one to four letters; then an
-/// optional SSID. Upper case only, so ordinary words never match.
+/// optional SSID or `@` and a route. Upper case only, so ordinary words
+/// never match. A route the address parser rejects is left as plain text.
 final _call = RegExp(
-  r'(?<![A-Za-z0-9_./#-])(?:[A-Z]{1,2}|[0-9][A-Z]|[A-Z][0-9])[0-9][A-Z]{1,4}(?:-\d{1,2})?(?![A-Za-z0-9_])',
+  r'(?<![A-Za-z0-9_./#@-])(?:[A-Z]{1,2}|[0-9][A-Z]|[A-Z][0-9])[0-9][A-Z]{1,4}'
+  r'(?:-\d{1,2}|@[A-Z0-9]+(?:\.#?[A-Z0-9]+)*)?(?![A-Za-z0-9_@])',
 );
 
 /// Splits [text] into plain text, links and callsigns.
@@ -333,10 +347,14 @@ List<InlinePiece> inlinePieces(String text) {
 void _addCalls(String text, StringBuffer plain, List<InlinePiece> pieces, void Function() flush) {
   var at = 0;
   for (final m in _call.allMatches(text)) {
+    var call = m[0]!;
+    if (call.contains('@') && MailAddress.parse(call).problems.any((p) => p.blocking)) {
+      call = call.substring(0, call.indexOf('@'));
+    }
     plain.write(text.substring(at, m.start));
     flush();
-    pieces.add(CallsignText(m[0]!));
-    at = m.end;
+    pieces.add(CallsignText(call));
+    at = m.start + call.length;
   }
   plain.write(text.substring(at));
 }

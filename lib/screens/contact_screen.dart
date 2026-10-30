@@ -11,10 +11,14 @@ import 'mail_widgets.dart';
 
 /// Adds a contact, or edits one. What you save here sync never changes.
 class ContactScreen extends ConsumerStatefulWidget {
-  const ContactScreen({super.key, this.contact});
+  const ContactScreen({super.key, this.contact, this.callsign, this.homeBbs});
 
   /// Null to add a new one.
   final Contact? contact;
+
+  /// A new contact's callsign and home BBS, filled in for the user.
+  final String? callsign;
+  final String? homeBbs;
 
   @override
   ConsumerState<ContactScreen> createState() => _ContactScreenState();
@@ -22,9 +26,9 @@ class ContactScreen extends ConsumerStatefulWidget {
 
 class _ContactScreenState extends ConsumerState<ContactScreen> {
   final _form = GlobalKey<FormState>();
-  late final _callsign = TextEditingController(text: widget.contact?.callsign ?? '');
+  late final _callsign = TextEditingController(text: widget.contact?.callsign ?? widget.callsign ?? '');
   late final _name = TextEditingController(text: widget.contact?.name ?? '');
-  late final _homeBbs = TextEditingController(text: widget.contact?.homeBbs ?? '');
+  late final _homeBbs = TextEditingController(text: widget.contact?.homeBbs ?? widget.homeBbs ?? '');
   late final _notes = TextEditingController(text: widget.contact?.notes ?? '');
   var _looking = false;
 

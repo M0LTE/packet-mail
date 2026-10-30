@@ -1,10 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../compose.dart';
+import '../contacts.dart';
 import '../mailboxes.dart';
 import '../message_format.dart';
 import '../providers.dart';
@@ -13,6 +15,7 @@ import '../sync.dart';
 import '../theme.dart';
 import '../view_choice.dart';
 import 'compose_screen.dart';
+import 'contact_screen.dart';
 import 'mail_widgets.dart';
 import 'side_scroll.dart';
 
@@ -373,8 +376,8 @@ class _ParagraphState extends State<_Paragraph> {
     super.dispose();
   }
 
-  TapGestureRecognizer _tap(Uri uri) {
-    final t = TapGestureRecognizer()..onTap = () => launchUrl(uri, mode: LaunchMode.externalApplication);
+  TapGestureRecognizer _tap(VoidCallback onTap) {
+    final t = TapGestureRecognizer()..onTap = onTap;
     _taps.add(t);
     return t;
   }
@@ -396,11 +399,12 @@ class _ParagraphState extends State<_Paragraph> {
               LinkText() => TextSpan(
                 text: p.text,
                 style: const TextStyle(color: Logbook.stampRed, decoration: TextDecoration.underline),
-                recognizer: _tap(p.uri),
+                recognizer: _tap(() => launchUrl(p.uri, mode: LaunchMode.externalApplication)),
               ),
               CallsignText() => TextSpan(
                 text: p.text,
                 style: const TextStyle(color: Logbook.stampRed, fontWeight: FontWeight.w600),
+                recognizer: _tap(() => showAddressSheet(context, p)),
               ),
               PlainText() => TextSpan(text: p.text),
             },
@@ -471,6 +475,80 @@ class _Actions extends ConsumerWidget {
             action(Icons.delete_outline, 'Delete', onDelete),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// What can be done with a callsign or address tapped in a message: write
+/// to it, add it to contacts, or copy it.
+Future<void> showAddressSheet(BuildContext context, CallsignText address) => showModalBottomSheet<void>(
+  context: context,
+  useRootNavigator: true,
+  backgroundColor: Logbook.paper,
+  showDragHandle: true,
+  builder: (_) => _AddressSheet(address),
+);
+
+class _AddressSheet extends ConsumerWidget {
+  const _AddressSheet(this.address);
+
+  final CallsignText address;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = Theme.of(context).textTheme;
+    final call = address.call;
+    final contact = (ref.watch(contactsProvider).value ?? const []).where((c) => c.callsign == call).firstOrNull;
+    final nav = Navigator.of(context, rootNavigator: true);
+    void then(Route<void> route) {
+      Navigator.of(context).pop();
+      nav.push(route);
+    }
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text(address.address, style: text.titleMedium),
+          ),
+          ListTile(
+            key: const ValueKey('address-write'),
+            leading: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+            title: Text('Write to $call'),
+            onTap: () => then(
+              MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: ComposeDraft(to: address.address))),
+            ),
+          ),
+          ListTile(
+            key: const ValueKey('address-contact'),
+            leading: Icon(contact == null ? Icons.person_add_alt : Icons.person_outline, color: Logbook.stampRed),
+            title: Text(contact == null ? 'Add to contacts' : 'Open contact'),
+            onTap: () => then(
+              MaterialPageRoute<void>(
+                builder: (_) => contact != null
+                    ? ContactScreen(contact: contact)
+                    : ContactScreen(callsign: call, homeBbs: address.at),
+              ),
+            ),
+          ),
+          ListTile(
+            key: const ValueKey('address-copy'),
+            leading: const Icon(Icons.copy, color: Logbook.stampRed),
+            title: const Text('Copy'),
+            onTap: () {
+              final messenger = ScaffoldMessenger.maybeOf(context);
+              Clipboard.setData(ClipboardData(text: address.address));
+              Navigator.of(context).pop();
+              messenger
+                ?..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(content: Text('Copied ${address.address}.')));
+            },
+          ),
+        ],
       ),
     );
   }

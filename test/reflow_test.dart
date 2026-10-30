@@ -228,13 +228,23 @@ void main() {
       ]);
     });
 
-    test('a callsign in an address is highlighted, the route is not', () {
-      expect(inlinePieces('M9TWM@GB7LOX.#19.GBR.EURO'), const [
-        CallsignText('M9TWM'),
-        PlainText('@'),
-        CallsignText('GB7LOX'),
-        PlainText('.#19.GBR.EURO'),
+    test('a full address is one piece, without the full stop after it', () {
+      final pieces = inlinePieces('Write to M9TWM@GB7LOX.#19.GBR.EURO. Thanks');
+      expect(pieces, const [
+        PlainText('Write to '),
+        CallsignText('M9TWM@GB7LOX.#19.GBR.EURO'),
+        PlainText('. Thanks'),
       ]);
+      final a = pieces[1] as CallsignText;
+      expect(a.call, 'M9TWM');
+      expect(a.at, 'GB7LOX.#19.GBR.EURO');
+      expect(a.address, 'M9TWM@GB7LOX.#19.GBR.EURO');
+      expect((inlinePieces('G8BPQ-7').single as CallsignText).address, 'G8BPQ');
+    });
+
+    test('a callsign at something that is not a BBS keeps only the callsign', () {
+      expect(inlinePieces('M0LTE@HOME'), const [CallsignText('M0LTE'), PlainText('@HOME')]);
+      expect(inlinePieces('ALL@GB7RDG'), const [PlainText('ALL@GB7RDG')]);
     });
 
     test('leaves things that only look a bit like callsigns', () {

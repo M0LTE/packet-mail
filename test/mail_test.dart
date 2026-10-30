@@ -379,4 +379,60 @@ void main() {
     expect(container.exists(messageProvider(id)), isFalse);
     await app.dispose(tester);
   });
+
+  testWidgets('a callsign or address in a message can be written to, added to contacts or copied', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
+      return null;
+    });
+    await addMessage(
+      app,
+      tester,
+      c,
+      number: 30,
+      subject: 'Club net',
+      body: 'Ask M9TWM@GB7LOX.#19.GBR.EURO or G4XYZ. Good for all.\n\n73 John',
+    );
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Club net'));
+    await settleAll(app, tester);
+
+    Future<void> tapOn(String s) async {
+      await tester.tapOnText(find.textRange.ofSubstring(s));
+      await settleAll(app, tester);
+    }
+
+    // Write to: compose with the full address in To.
+    await tapOn('M9TWM@GB7LOX.#19.GBR.EURO');
+    expect(find.text('Write to M9TWM'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('address-write')));
+    await settleAll(app, tester);
+    expect(find.text('New message'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'M9TWM@GB7LOX.#19.GBR.EURO'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await settleAll(app, tester);
+
+    // Add to contacts: callsign and home BBS filled in.
+    await tapOn('M9TWM@GB7LOX.#19.GBR.EURO');
+    expect(find.text('Add to contacts'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('address-contact')));
+    await settleAll(app, tester);
+    expect(find.text('New contact'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'M9TWM'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'GB7LOX.#19.GBR.EURO'), findsOneWidget);
+    await tester.pageBack();
+    await settleAll(app, tester);
+
+    // Copy: a bare callsign copies as it is.
+    await tapOn('G4XYZ');
+    await tester.tap(find.byKey(const ValueKey('address-copy')));
+    await settleAll(app, tester);
+    expect(copied, 'G4XYZ');
+    expect(find.text('Copied G4XYZ.'), findsOneWidget);
+    await app.dispose(tester);
+  });
 }
