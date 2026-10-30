@@ -267,49 +267,74 @@ class AsSentBody extends StatelessWidget {
 }
 
 /// Paragraphs, quotes and laid-out blocks, with links and callsigns picked out,
-/// selectable for copying. Colour codes are ignored.
+/// selectable for copying. The message's own colour is kept through the
+/// reflow; copying gives plain text.
 class ReadableBody extends StatelessWidget {
   const ReadableBody(this.body, {super.key});
   final String body;
 
   // Long press selects text for copying; links still open on a tap.
   @override
-  Widget build(BuildContext context) => SelectionArea(
-    key: const ValueKey('readable'),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: _blocks(readableBlocks(stripAnsi(body)), quoted: false),
-    ),
-  );
+  Widget build(BuildContext context) {
+    // Blocks are built in body order, so each takes its colour in turn.
+    final track = ColourTrack.of(body);
+    return SelectionArea(
+      key: const ValueKey('readable'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _blocks(readableBlocks(stripAnsi(body)), quoted: false, track: track),
+      ),
+    );
+  }
 
-  static List<Widget> _blocks(List<BodyBlock> blocks, {required bool quoted}) => [
+  static List<Widget> _blocks(List<BodyBlock> blocks, {required bool quoted, required ColourTrack? track}) => [
     for (final b in blocks)
       Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: switch (b) {
-          ParagraphBlock(:final text) => _Paragraph(isShouting(text) ? sentenceCase(text) : text, quoted: quoted),
+          ParagraphBlock(:final text) => _paragraph(isShouting(text) ? sentenceCase(text) : text, quoted, track),
           QuoteBlock(:final blocks) => Container(
             padding: const EdgeInsets.only(left: 10),
             decoration: const BoxDecoration(
               border: Border(left: BorderSide(color: Logbook.stampRed, width: 2)),
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _blocks(blocks, quoted: true)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _blocks(blocks, quoted: true, track: track),
+            ),
           ),
           PreformattedBlock(:final lines) => SideScroll(
-            child: Text(lines.join('\n'), softWrap: false, style: Logbook.asSent),
-          ),
-          GatewayHeadersBlock(:final lines) => _GatewayHeaders(lines),
-          GarbledBlock(:final lines) => SideScroll(
-            key: const ValueKey('garbled'),
-            child: Text(
-              lines.map(_visible).join('\n'),
+            child: Text.rich(
+              TextSpan(children: styledSpans(lines.join('\n'), track?.take(lines.join('\n')))),
               softWrap: false,
-              style: Logbook.asSent.copyWith(color: Logbook.inkFaint),
+              style: Logbook.asSent,
             ),
+          ),
+          GatewayHeadersBlock(:final lines) => _skip(_GatewayHeaders(lines), lines, track),
+          GarbledBlock(:final lines) => _skip(
+            SideScroll(
+              key: const ValueKey('garbled'),
+              child: Text(
+                lines.map(_visible).join('\n'),
+                softWrap: false,
+                style: Logbook.asSent.copyWith(color: Logbook.inkFaint),
+              ),
+            ),
+            lines,
+            track,
           ),
         },
       ),
   ];
+
+  /// [child], shown without colour, after moving [track] past [lines].
+  static Widget _skip(Widget child, List<String> lines, ColourTrack? track) {
+    track?.take(lines.join('\n'));
+    return child;
+  }
+
+  static Widget _paragraph(String text, bool quoted, ColourTrack? track) =>
+      _Paragraph(text, quoted: quoted, colours: track?.take(text));
 
   /// Control characters as dots, so a garbled line still lines up.
   static String _visible(String line) =>
@@ -362,9 +387,12 @@ class _GatewayHeadersState extends State<_GatewayHeaders> {
 }
 
 class _Paragraph extends StatefulWidget {
-  const _Paragraph(this.text, {required this.quoted});
+  const _Paragraph(this.text, {required this.quoted, this.colours});
   final String text;
   final bool quoted;
+
+  /// The message's colour for each character of [text], if it has any.
+  final List<AnsiStyle>? colours;
 
   @override
   State<_Paragraph> createState() => _ParagraphState();
@@ -396,22 +424,35 @@ class _ParagraphState extends State<_Paragraph> {
     final base = widget.quoted
         ? Logbook.body.copyWith(fontStyle: FontStyle.italic, color: Logbook.inkSoft)
         : Logbook.body;
+    final colours = widget.colours;
+    final ink = base.color ?? Logbook.ink;
+    var at = 0;
+    List<AnsiStyle>? next(String piece) {
+      final slice = colours?.sublist(at, at + piece.length);
+      at += piece.length;
+      return slice;
+    }
+
     return Text.rich(
       TextSpan(
         children: [
           for (final p in inlinePieces(widget.text))
-            switch (p) {
-              LinkText() => TextSpan(
-                text: p.text,
-                style: const TextStyle(color: Logbook.stampRed, decoration: TextDecoration.underline),
+            ...switch (p) {
+              LinkText() => styledSpans(
+                p.text,
+                next(p.text),
+                defaultText: ink,
+                extra: const TextStyle(color: Logbook.stampRed, decoration: TextDecoration.underline),
                 recognizer: _tap(() => launchUrl(p.uri, mode: LaunchMode.externalApplication)),
               ),
-              CallsignText() => TextSpan(
-                text: p.text,
-                style: const TextStyle(color: Logbook.stampRed, fontWeight: FontWeight.w600),
+              CallsignText() => styledSpans(
+                p.text,
+                next(p.text),
+                defaultText: ink,
+                extra: const TextStyle(color: Logbook.stampRed, fontWeight: FontWeight.w600),
                 recognizer: _tap(() => showAddressSheet(context, p)),
               ),
-              PlainText() => TextSpan(text: p.text),
+              PlainText() => styledSpans(p.text, next(p.text), defaultText: ink),
             },
         ],
       ),

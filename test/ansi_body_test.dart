@@ -47,9 +47,9 @@ void main() {
       }
     });
 
-    test('the terminal default of white on black is plain ink on paper', () {
+    test('white on black is shown as sent: it reads', () {
       final s = pieces(ansiSpan('$e[37;40mx', Logbook.asSent)).single.style!;
-      expect((s.color, s.backgroundColor), (Logbook.ink, null));
+      expect((s.color, s.backgroundColor), (const Color(0xFFE5E5E5), const Color(0xFF000000)));
     });
 
     test('reverse and underline', () {
@@ -67,7 +67,112 @@ void main() {
     });
   });
 
-  testWidgets('a coloured body: As sent shows the colour, Readable the clean text', (tester) async {
+  group('contrast', () {
+    double hue(Color c) => HSLColor.fromColor(c).hue;
+
+    for (final (name, colour) in [
+      ('beige', const Color(0xFFE8DCC0)),
+      ('white', const Color(0xFFFFFFFF)),
+      ('yellow', const Color(0xFFFFFF00)),
+      ('pale blue', const Color(0xFFADD8E6)),
+    ]) {
+      test('$name on paper is darkened to AA, keeping its hue', () {
+        expect(contrastRatio(colour, Logbook.paper), lessThan(minContrast));
+        final c = readableOn(colour, Logbook.paper);
+        expect(contrastRatio(c, Logbook.paper), greaterThanOrEqualTo(minContrast));
+        expect(c.computeLuminance(), lessThan(colour.computeLuminance()));
+        if (name != 'white') expect(hue(c), closeTo(hue(colour), 2));
+        // Only as far as it needs to go.
+        expect(contrastRatio(c, Logbook.paper), lessThan(minContrast + 0.5));
+      });
+    }
+
+    test('a colour that already reads is left alone', () {
+      expect(readableOn(Logbook.ink, Logbook.paper), Logbook.ink);
+      expect(readableOn(const Color(0xFF1F4E9C), Logbook.paper), const Color(0xFF1F4E9C));
+    });
+
+    test('dark text on a dark background is lightened and the background kept', () {
+      final s = ansiColours(const AnsiStyle(foreground: AnsiColor.rgb(0x202060), background: AnsiColor.rgb(0x000020)));
+      expect(s.background, const Color(0xFF000020));
+      expect(contrastRatio(s.text, s.background!), greaterThanOrEqualTo(minContrast));
+      expect(s.text.computeLuminance(), greaterThan(const Color(0xFF202060).computeLuminance()));
+      expect(hue(s.text), closeTo(hue(const Color(0xFF202060)), 2));
+    });
+
+    test('default ink on a dark background is lightened to read', () {
+      final s = ansiColours(const AnsiStyle(background: AnsiColor.indexed(4)));
+      expect(s.background, const Color(0xFF0000EE));
+      expect(contrastRatio(s.text, s.background!), greaterThanOrEqualTo(minContrast));
+    });
+
+    test('a light background behind light text keeps both, with the text darkened', () {
+      final s = ansiColours(const AnsiStyle(foreground: AnsiColor.indexed(11), background: AnsiColor.indexed(15)));
+      expect(s.background, const Color(0xFFFFFFFF));
+      expect(contrastRatio(s.text, s.background!), greaterThanOrEqualTo(minContrast));
+    });
+
+    test('reverse swaps, then adjusts', () {
+      final s = ansiColours(const AnsiStyle(foreground: AnsiColor.indexed(11), reverse: true));
+      // Yellow becomes the background; paper-coloured text on it is darkened.
+      expect(s.background, const Color(0xFFFFFF00));
+      expect(contrastRatio(s.text, s.background!), greaterThanOrEqualTo(minContrast));
+    });
+  });
+
+  test('ColourTrack follows the colour through joined lines, dropped quote marks and case changes', () {
+    final track = ColourTrack.of('> $e[31mQuoted RED$e[0m words\nnext $e[32mline$e[0m')!;
+    final quoted = track.take('Quoted red words');
+    expect(quoted.sublist(0, 10).every((s) => s.foreground == const AnsiColor.indexed(1)), isTrue);
+    expect(quoted.sublist(10).every((s) => s.isPlain), isTrue);
+    final next = track.take('next line');
+    expect(next.sublist(5).every((s) => s.foreground == const AnsiColor.indexed(2)), isTrue);
+    expect(next.sublist(0, 5).every((s) => s.isPlain), isTrue);
+    expect(ColourTrack.of('no colour'), isNull);
+  });
+
+  testWidgets('Readable keeps the colour through the reflow; links and callsigns still tap', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    const art = 'A $e[31mred start of a long line that the sender wrapped at about sixty-five characters\n'
+        'and carried$e[0m on here. See $e[34mhttps://example.com$e[0m or call $e[1mG4XYZ$e[0m.\n'
+        '\n'
+        '> $e[33mQuoted in yellow$e[0m';
+    await addMessage(app, tester, c, number: 31, subject: 'Readable colour', body: art);
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Readable colour'));
+    await settleAll(app, tester);
+
+    final spans = <TextSpan>[];
+    for (final t in tester.widgetList<RichText>(
+      find.descendant(of: find.byKey(const ValueKey('readable')), matching: find.byType(RichText)),
+    )) {
+      expect(t.text.toPlainText(), isNot(contains(e)));
+      t.text.visitChildren((s) {
+        if (s is TextSpan && s.text != null) spans.add(s);
+        return true;
+      });
+    }
+    // The red run carries over the joined line end.
+    final red = spans.where((s) => s.text!.contains('carried')).single;
+    expect(red.style?.color, isNot(anyOf(isNull, Logbook.ink)));
+    expect(contrastRatio(red.style!.color!, Logbook.paper), greaterThanOrEqualTo(minContrast));
+    expect(spans.where((s) => s.text!.contains('long line')).single.style?.color, red.style!.color);
+    // Link and callsign keep their taps and their own colour.
+    final link = spans.where((s) => s.text == 'https://example.com').single;
+    expect(link.recognizer, isNotNull);
+    expect(link.style?.color, Logbook.stampRed);
+    final call = spans.where((s) => s.text == 'G4XYZ').single;
+    expect(call.recognizer, isNotNull);
+    // Yellow in a quote, made readable.
+    final quoted = spans.where((s) => s.text == 'Quoted in yellow').single;
+    expect(contrastRatio(quoted.style!.color!, Logbook.paper), greaterThanOrEqualTo(minContrast));
+    expect(HSLColor.fromColor(quoted.style!.color!).hue, closeTo(60, 2));
+    await app.dispose(tester);
+  });
+
+  testWidgets('a coloured body: As sent shows the colour, and no view shows an escape byte', (tester) async {
     final app = TestApp();
     final c = await seedStation(app, tester);
     await addMessage(app, tester, c, number: 30, subject: 'Colour art', body: body);
