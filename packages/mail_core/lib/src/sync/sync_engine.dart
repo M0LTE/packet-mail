@@ -348,7 +348,8 @@ class SyncEngine {
   /// For a BBS that can't refuse a second copy: the number of the copy of
   /// [m] to [address] that an earlier, interrupted try left on the BBS, or
   /// null. Judged by addressee and subject (listings may cut subjects short),
-  /// and only a copy listed on or after the day [m] was written, numbered
+  /// and only a copy listed no earlier than the day before [m] was written
+  /// (a listed day is the BBS's, which may be behind UTC), numbered
   /// above [knownTop], and not already claimed by another copy counts.
   Future<int?> _alreadySent(MailDriver driver, OutgoingData m, String address, int? knownTop) async {
     if (knownTop == null || !driver.capabilities.contains(DriverCapability.listSent)) return null;
@@ -357,7 +358,7 @@ class SyncEngine {
     final to = address.split('@').first.toUpperCase();
     final type = m.type == 'bulletin' ? MessageType.bulletin : MessageType.personal;
     final created = m.createdAt.toUtc();
-    final day = DateTime.utc(created.year, created.month, created.day);
+    final day = DateTime.utc(created.year, created.month, created.day - 1);
     final claimed = {
       for (final n in await (store.selectOnly(store.outgoingRecipients)
             ..addColumns([store.outgoingRecipients.bbsNumber])
@@ -569,8 +570,11 @@ class SyncEngine {
       for (final h in headers) {
         final old = existing[h.number];
         if (old != null && old.subject == h.subject && old.toCall == h.to) {
-          await (store.update(store.sentListings)..where((m) => m.id.equals(old.id)))
-              .write(SentListingsCompanion(status: Value(h.status), lastListedAt: Value(now)));
+          await (store.update(store.sentListings)..where((m) => m.id.equals(old.id))).write(SentListingsCompanion(
+                status: Value(h.status),
+                lastListedAt: Value(now),
+                date: old.body == null && _betterListedDate(old.date, h.date, now) ? Value(h.date) : const Value.absent(),
+              ));
           continue;
         }
         if (old != null) await (store.delete(store.sentListings)..where((m) => m.id.equals(old.id))).go();
@@ -722,8 +726,10 @@ class SyncEngine {
       for (final h in headers) {
         final old = existing[h.number];
         if (old != null && _same(old, h, cutSubjects: cut)) {
-          await (store.update(store.messages)..where((m) => m.id.equals(old.id)))
-              .write(MessagesCompanion(lastListedAt: Value(now)));
+          await (store.update(store.messages)..where((m) => m.id.equals(old.id))).write(MessagesCompanion(
+                lastListedAt: Value(now),
+                date: old.body == null && _betterListedDate(old.date, h.date, now) ? Value(h.date) : const Value.absent(),
+              ));
           continue;
         }
         if (old != null) await (store.delete(store.messages)..where((m) => m.id.equals(old.id))).go();
@@ -747,14 +753,27 @@ class SyncEngine {
 
   /// True if a stored row and a listed header are the same message. The
   /// stored date may have gained a time when read, so only the day counts.
-  static bool _same(Message m, MessageHeader h, {required bool cutSubjects}) {
-    final a = m.date.toUtc(), b = h.date.toUtc();
-    return m.fromCall == h.from &&
-        m.toCall == h.to &&
-        sameSubject(m.subject, h.subject, cut: cutSubjects) &&
-        a.year == b.year &&
-        a.month == b.month &&
-        a.day == b.day;
+  static bool _same(Message m, MessageHeader h, {required bool cutSubjects}) =>
+      m.fromCall == h.from &&
+      m.toCall == h.to &&
+      sameSubject(m.subject, h.subject, cut: cutSubjects) &&
+      _sameDay(m.date, h.date);
+
+  /// True if two dates are on the same day, give or take one: a listed day
+  /// is the BBS's own (XRouter's is its local day), while a time is UTC, so
+  /// near midnight they can fall on neighbouring days.
+  static bool _sameDay(DateTime a, DateTime b) {
+    final x = a.toUtc(), y = b.toUtc();
+    return DateTime.utc(x.year, x.month, x.day).difference(DateTime.utc(y.year, y.month, y.day)).inDays.abs() <= 1;
+  }
+
+  /// True if a header's stored date should take the listed one: the listing
+  /// gives a time (never less exact than what a header holds), or the stored
+  /// date is in the future, where older versions could put XRouter mail.
+  static bool _betterListedDate(DateTime stored, DateTime listed, DateTime now) {
+    final l = listed.toUtc();
+    final timed = l.hour != 0 || l.minute != 0;
+    return (timed && !stored.isAtSameMomentAs(listed)) || stored.isAfter(now.add(const Duration(hours: 1)));
   }
 
   /// True if a stored subject and a listed one are the same. Where listings

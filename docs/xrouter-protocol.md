@@ -81,7 +81,7 @@ An empty listing is `No messages found\r\n` **[S]**. Otherwise **[S]**:
 ```
 
 - **TS**: type (P private, B bulletin, T traffic) and status. Statuses seen: `N` unread, `R` read, `$` waiting to be forwarded. Documented also: `F` forwarded, `H` held, and a space for unread local mail **[D]** (a space was never seen; unread local mail showed `N`).
-- **Rcvd**: `hh:mm` for today, `dd/mm` for earlier days, no year **[S]**. It is the node's local time. The driver puts a time on the day that brings it closest to the phone's clock, and gives a day the most recent year that doesn't put it in the future.
+- **Rcvd**: `hh:mm` for mail received in the last 24 hours (not "today": at 08:01, mail from 18:55 the evening before shows `18:55`), `dd/mm` for older mail, no year **[S]** (#66). It is the node's local time **[S]**. The driver takes the phone's time zone as the node's, puts a time on the latest day that doesn't make it later than now (with ten minutes' grace for clocks that differ), and gives a day the most recent year that doesn't put it in the future.
 - **At**: blank for local mail, else `@` and only the first part of the address **[S]**.
 - **Subject is cut to 34 characters** **[S]**. Reading the message gives the whole subject (up to 60).
 
@@ -112,7 +112,7 @@ Body.\r\n
 ```
 
 - Bulletins have `BID:` where private mail has `MID:` **[S]**.
-- Dates carry a two-digit year. `Created` is UTC (`Z`); `Rcvd` is the node's local time **[S]**. The driver uses `Rcvd`, as listings do.
+- Dates carry a two-digit year. `Rcvd` is the node's local time **[S]**. `Created` is marked `Z` but is local time too: on a node run with `TZ=Asia/Kolkata`, mail written at 08:03 UTC showed `Rcvd: 30/10/26 at 13:33   Created: 30/10/26 at 13:33Z`, and its RFC 822 `Date:` said `-0005` **[S]**. The node's own `R:` line at the top (`R:261030/0803Z`) is true UTC **[S]**. The driver uses that line's time when it differs from `Rcvd` by a whole time zone (quarter hours, give or take two minutes), and otherwise reads `Rcvd` in the phone's time zone, as listings do.
 - Mail written on an XRouter carries an RFC 822 style block (Date, From, To, Subject, Message-ID) and a blank line after its R: line **[S]**. `R` hides it, leaving a blank line; the driver drops it from `RH` output. A body line such as `Date: next Tuesday` is kept unless it starts a whole block ending in `Message-ID`.
 - Reading your own mail to someone else leaves it unread for them **[S]**. Reading mail addressed to you marks it `R` **[S]**; `U n` marks it unread again **[S]**.
 - Not there: `Msg 99 not found` **[S]**. Someone else's private mail: `Access to message 80 denied` **[S]**.

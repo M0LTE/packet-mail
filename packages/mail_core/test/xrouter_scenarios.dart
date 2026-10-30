@@ -85,8 +85,9 @@ void defineXRouterScenarios(XRouterConnect connect) {
       (2, r'$', 'Q0USR', 'Q0OTH', 'GB7XYZ'),
     ]);
     expect(inbox.first.isUnread, isTrue);
-    expect(inbox.first.date, DateTime.utc(fixedNow.year, fixedNow.month, fixedNow.day, inbox.first.date.hour,
-        inbox.first.date.minute));
+    // A listed time is from the 24 hours before now, never after it.
+    final listed = inbox.first.date;
+    expect(fixedNow.difference(listed).inMinutes, inInclusiveRange(-10, 24 * 60));
     // Listings cut subjects short; reading gives the whole thing.
     expect(inbox.last.subject, longSubject.substring(0, 34).trim());
     expect((await d.read(2)).subject, longSubject);

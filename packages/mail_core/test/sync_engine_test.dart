@@ -57,7 +57,7 @@ class FakeBbs implements MailDriver {
     }
   }
 
-  void addPersonal(int n, {String status = 'N', String subject = 'Hello'}) => personal[n] = FakeMessage(
+  void addPersonal(int n, {String status = 'N', String subject = 'Hello', DateTime? date}) => personal[n] = FakeMessage(
       MessageHeader(
           number: n,
           type: MessageType.personal,
@@ -66,7 +66,7 @@ class FakeBbs implements MailDriver {
           to: 'M0LTE',
           at: 'GB7RDG',
           subject: subject,
-          date: day),
+          date: date ?? day),
       bid: '${n}_GB7RDG');
 
   void addBulletin(int n,
@@ -485,6 +485,31 @@ void main() {
       final m = (await messages()).single;
       expect([m.read, m.starred], [true, true]);
       expect(m.lastListedAt.toUtc(), clock);
+    });
+
+    test('a listed time replaces a header\'s day, and a later listed day keeps it', () async {
+      bbs.addPersonal(10);
+      await engine.sync(conn);
+      final id = (await messages()).single.id;
+      // XRouter lists a time for the first 24 hours, then the node's own day,
+      // which east of UTC can be the day after the UTC one.
+      final evening = DateTime.utc(2026, 10, 28, 18, 55);
+      clock = DateTime.utc(2026, 10, 29, 9);
+      bbs.addPersonal(10, date: evening);
+      await engine.sync(conn);
+      expect((await messages()).single.date.toUtc(), evening);
+      bbs.addPersonal(10, date: DateTime.utc(2026, 10, 29));
+      await engine.sync(conn);
+      final m = (await messages()).single;
+      expect([m.id, m.date.toUtc()], [id, evening]);
+    });
+
+    test('a header an older version dated in the future takes the listed date', () async {
+      bbs.addPersonal(10);
+      await engine.sync(conn);
+      await db.update(db.messages).write(MessagesCompanion(date: Value(now.add(const Duration(hours: 11)))));
+      await engine.sync(conn);
+      expect((await messages()).single.date.toUtc(), day);
     });
 
     test('the BBS no longer listing it: downloaded mail stays, headers go, starred or not', () async {

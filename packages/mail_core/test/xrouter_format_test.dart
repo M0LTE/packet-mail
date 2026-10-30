@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mail_core/mail_core.dart';
 import 'package:test/test.dart';
 
@@ -9,7 +11,7 @@ void main() {
       final local = parseXrouterListingLine('    1 PN 07:49  311  Q0OTH          Q0USR  Hello from user', now)!;
       expect((local.number, local.type, local.status, local.size, local.to, local.at, local.from, local.subject),
           (1, MessageType.personal, 'N', 311, 'Q0OTH', null, 'Q0USR', 'Hello from user'));
-      expect(local.date, DateTime.utc(2026, 10, 29, 7, 49));
+      expect(local.date, DateTime(2026, 10, 29, 7, 49).toUtc());
 
       final remote = parseXrouterListingLine('    2 P\$ 14/10  297  Q0OTH  @GB7XYZ Q0USR  For another BBS', now)!;
       expect((remote.status, remote.at, remote.date), (r'$', 'GB7XYZ', DateTime.utc(2026, 10, 14)));
@@ -30,13 +32,47 @@ void main() {
       expect(xrouterListingDate('20/12', now), DateTime.utc(2025, 12, 20));
     });
 
-    test('a time goes on the day that brings it closest to now', () {
-      // A node an hour ahead of UTC, just after its midnight.
-      final lateUtc = DateTime.utc(2026, 10, 29, 23, 45);
-      expect(xrouterListingDate('00:30', lateUtc), DateTime.utc(2026, 10, 30, 0, 30));
-      expect(xrouterListingDate('23:10', lateUtc), DateTime.utc(2026, 10, 29, 23, 10));
-      expect(xrouterListingDate('23:50', DateTime.utc(2026, 10, 30, 0, 5)), DateTime.utc(2026, 10, 29, 23, 50));
+    test('a time is from the last 24 hours, never later than now', () {
+      // The phone's time zone stands in for the node's, whatever it is.
+      DateTime at(int y, int mo, int d, int h, int mi) => DateTime(y, mo, d, h, mi).toUtc();
+      final morning = DateTime(2026, 10, 30, 7, 30);
+      // The report in #66: at 07:30, 18:55 was yesterday evening, not tonight.
+      expect(xrouterListingDate('18:55', morning), at(2026, 10, 29, 18, 55));
+      expect(xrouterListingDate('07:29', morning), at(2026, 10, 30, 7, 29));
+      expect(xrouterListingDate('07:31', morning), at(2026, 10, 30, 7, 31)); // a node clock a little ahead
+      expect(xrouterListingDate('07:45', morning), at(2026, 10, 29, 7, 45));
+      expect(xrouterListingDate('00:10', morning), at(2026, 10, 30, 0, 10));
     });
+
+    test('a time just before midnight, seen just after it, is yesterday', () {
+      DateTime at(int y, int mo, int d, int h, int mi) => DateTime(y, mo, d, h, mi).toUtc();
+      final pastMidnight = DateTime(2026, 10, 30, 0, 5);
+      expect(xrouterListingDate('23:50', pastMidnight), at(2026, 10, 29, 23, 50));
+      expect(xrouterListingDate('00:01', pastMidnight), at(2026, 10, 30, 0, 1));
+      expect(xrouterListingDate('23:50', DateTime(2027, 1, 1, 0, 5)), at(2026, 12, 31, 23, 50));
+    });
+
+    test('times across the clock change and in other time zones', () async {
+      // The time zone is fixed when a process starts, so each runs in its own.
+      Future<List<String>> probe(String tz) async {
+        final r = await Process.run('dart', ['run', 'test/support/date_probe.dart'], environment: {'TZ': tz});
+        expect(r.exitCode, 0, reason: '${r.stderr}');
+        return (r.stdout as String).trim().split('\n').last.split(',');
+      }
+
+      // UK clocks went back at 02:00 on 25 October 2026 and forward at 01:00
+      // on 29 March. Seen at 09:00 GMT, 18:55 was the evening before, in BST.
+      expect((await probe('Europe/London')).take(4), [
+        '2026-10-24T17:55:00.000Z',
+        '2026-10-25T08:30:00.000Z',
+        '2026-03-28T23:30:00.000Z',
+        '2026-03-29T11:15:00.000Z',
+      ]);
+      // A node and phone in India, as on the test XRouter run with that zone.
+      expect((await probe('Asia/Kolkata'))[4], '2026-10-29T18:55:00.000Z');
+      // New York, at 03:30 in the morning: 18:55 was the evening before.
+      expect((await probe('America/New_York'))[5], '2026-10-29T22:55:00.000Z');
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 
   group('reading', () {
@@ -63,6 +99,27 @@ void main() {
       expect(m.routing, hasLength(1));
       expect((m.from, m.to, m.bid, m.statusBeforeRead), ('G8PZT@GB7PZT.#24.GBR.EU', 'Q0OTH', 'AE2FAA5010XR', 'N'));
       expect(m.date, DateTime.utc(2026, 10, 28, 7, 49));
+    });
+
+    test('the time is UTC from the node\'s own R: line, as Rcvd is its local time', () {
+      // Recorded on the test XRouter run in India's time zone: Rcvd 13:33 is 08:03 UTC.
+      final rcvd = header.replaceFirst('Rcvd: 28/10/26 at 07:49', 'Rcvd: 30/10/26 at 13:33');
+      final m = parseXrouterRead(
+        7,
+        '${rcvd}R:261030/0803Z @:Q0XR.#42.GBR.EURO [] #:4 XrLin505p\r'
+        '\r'
+        'Body\r'
+        '[ end of message 7 ]\r',
+      )!;
+      expect(m.date, DateTime.utc(2026, 10, 30, 8, 3));
+      // A stamp a minute out still counts.
+      expect(xrouterReceived('30/10/26 at 13:33', ['R:261030/0804Z @:Q0XR']), DateTime.utc(2026, 10, 30, 8, 4));
+    });
+
+    test('without a matching R: line the phone\'s time zone stands in', () {
+      expect(xrouterReceived('30/10/26 at 13:33', ['R:261029/2107Z @:GB7PZT']), DateTime(2026, 10, 30, 13, 33).toUtc());
+      expect(xrouterReceived('30/10/26 at 13:33', const []), DateTime(2026, 10, 30, 13, 33).toUtc());
+      expect(xrouterReceived('', const []), isNull);
     });
 
     test('keeps a body with no such block, even one starting with a header-like line', () {

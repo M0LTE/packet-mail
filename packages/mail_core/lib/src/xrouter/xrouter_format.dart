@@ -7,19 +7,22 @@ const xrouterMaxTitleLength = 60;
 /// XRouter cuts bulletin categories (the To of `SB`) to this length.
 const xrouterMaxCategoryLength = 6;
 
-/// A listing date: `hh:mm` for today, `dd/mm` for earlier days (no year).
+/// A listing date: `hh:mm` for mail received in the last 24 hours, `dd/mm`
+/// for older mail (no year).
 ///
-/// "Today" is the node's, in its local time, so a time is put on whichever
-/// of yesterday, today and tomorrow brings it closest to [now]. A day picks
-/// the most recent year that doesn't put the date more than a day in the
-/// future.
+/// Times are the node's local time. The phone's time zone stands in for the
+/// node's, so a time goes on the latest day that doesn't put it after [now]
+/// (allowing a few minutes for clocks that differ), and is returned in UTC.
+/// A day picks the most recent year that doesn't put the date more than a
+/// day in the future, and is stored as midnight UTC with no time.
 DateTime xrouterListingDate(String text, DateTime now) {
   final time = RegExp(r'^(\d\d):(\d\d)$').firstMatch(text);
   if (time != null) {
-    final today = DateTime.utc(now.year, now.month, now.day, int.parse(time[1]!), int.parse(time[2]!));
-    final candidates = [today.subtract(const Duration(days: 1)), today, today.add(const Duration(days: 1))];
-    candidates.sort((a, b) => a.difference(now).abs().compareTo(b.difference(now).abs()));
-    return candidates.first;
+    final local = now.toLocal();
+    final h = int.parse(time[1]!), m = int.parse(time[2]!);
+    final today = DateTime(local.year, local.month, local.day, h, m);
+    final latest = local.add(const Duration(minutes: 10));
+    return (today.isAfter(latest) ? DateTime(local.year, local.month, local.day - 1, h, m) : today).toUtc();
   }
   final day = RegExp(r'^(\d\d)/(\d\d)$').firstMatch(text);
   if (day == null) throw FormatException('Not an XRouter listing date', text);
@@ -27,6 +30,27 @@ DateTime xrouterListingDate(String text, DateTime now) {
   var date = DateTime.utc(now.year, m, d);
   if (date.isAfter(now.add(const Duration(days: 1)))) date = DateTime.utc(now.year - 1, m, d);
   return date;
+}
+
+/// When a read message arrived, from its `Rcvd` header (the node's local
+/// time) and its routing. The node stamps its own `R:` line, at the top, in
+/// UTC; if that agrees with `Rcvd` give or take a time zone, it is the exact
+/// time. Otherwise the phone's time zone stands in for the node's.
+DateTime? xrouterReceived(String rcvd, List<String> routing) {
+  final m = RegExp(r'^(\d\d)/(\d\d)/(\d\d) at (\d\d):(\d\d)').firstMatch(rcvd);
+  if (m == null) return null;
+  final f = [for (var i = 1; i <= 5; i++) int.parse(m[i]!)];
+  final wall = DateTime.utc(2000 + f[2], f[1], f[0], f[3], f[4]);
+  final r = routing.isEmpty ? null : RegExp(r'^R:(\d\d)(\d\d)(\d\d)/(\d\d)(\d\d)Z').firstMatch(routing.first);
+  if (r != null) {
+    final g = [for (var i = 1; i <= 5; i++) int.parse(r[i]!)];
+    final stamped = DateTime.utc(2000 + g[0], g[1], g[2], g[3], g[4]);
+    // Time zones are whole quarter hours; allow a minute or two either way.
+    final offset = wall.difference(stamped).inMinutes;
+    final fromQuarter = (offset + 2) % 15 - 2;
+    if (offset.abs() <= 14 * 60 + 2 && fromQuarter.abs() <= 2) return stamped;
+  }
+  return DateTime(wall.year, wall.month, wall.day, wall.hour, wall.minute).toUtc();
 }
 
 // `    2 P$ 07:34  227  Q0OTH  @GB7XYZ Q0USR  Second`; the At column is blank
@@ -103,7 +127,6 @@ ReadMessage? parseXrouterRead(int number, String text) {
   }
   final body = i < end ? raw.sublist(i, end) : const <String>[];
 
-  final rcvd = RegExp(r'^(\d\d)/(\d\d)/(\d\d) at (\d\d):(\d\d)').firstMatch(headers['Rcvd'] ?? '');
   return ReadMessage(
     number: number,
     type: MessageType.fromLetter(typeLine?[1] ?? 'P'),
@@ -111,11 +134,7 @@ ReadMessage? parseXrouterRead(int number, String text) {
     from: headers['From'] ?? '',
     to: (headers['To'] ?? '').split(' ').first,
     subject: headers['Subj'] ?? '',
-    // The received time, as listings show, so a message keeps its day.
-    date: rcvd == null
-        ? DateTime.utc(1970)
-        : DateTime.utc(2000 + int.parse(rcvd[3]!), int.parse(rcvd[2]!), int.parse(rcvd[1]!), int.parse(rcvd[4]!),
-            int.parse(rcvd[5]!)),
+    date: xrouterReceived(headers['Rcvd'] ?? '', routing) ?? DateTime.utc(1970),
     bid: headers['BID'] ?? headers['MID'] ?? '',
     routing: routing,
     body: body.join('\n'),
