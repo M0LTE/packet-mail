@@ -140,6 +140,7 @@ Enter subject (or empty line to abort):\r\n
 - Lines starting `R:`, `SP ...`, or looking like the prompt are plain text in a body **[S]**.
 - Nothing is validated: `SP NOTACALL` became `NOTACA`, `SB TOOLONGCAT` became `TOOLON`, and any `@` text is taken **[S]**. The driver checks callsigns, categories (1 to 6 letters or digits) and addresses before sending.
 - The size the mailbox reports includes the headers it adds **[S]**.
+- **Mail for the sysop:** `SP SYSOP` says `To: SYSOP @ Q0XR` (the node itself) and is saved locally, listed `SYSOP` with no `@` **[S]**. The mailbox's own `S` command ("Send a message to sysop", `MAN SEND`) produces exactly the same `To:` line, so `SYSOP` is the address XRouter itself uses for its sysop, on a standard PMS and a full BBS (`PMSTYPE=4`) alike **[S]** (2026-10-30, #67; `other-reports-to-sysop.jsonl`). The sysop's own call is configurable (`SysopCallsign` in `PMS.CFG`, default the PMS call without SSID) and isn't visible to users, which is another reason to use `SYSOP`. The app's Report sends there, the same as on LinBPQ.
 
 ## 8. Killing, White Pages and leaving
 

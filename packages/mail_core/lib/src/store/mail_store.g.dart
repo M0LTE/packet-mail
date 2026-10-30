@@ -4348,6 +4348,224 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
   }
 }
 
+class $BlockedStationsTable extends BlockedStations
+    with TableInfo<$BlockedStationsTable, BlockedStation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BlockedStationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _callsignMeta = const VerificationMeta(
+    'callsign',
+  );
+  @override
+  late final GeneratedColumn<String> callsign = GeneratedColumn<String>(
+    'callsign',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _blockedAtMeta = const VerificationMeta(
+    'blockedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> blockedAt = GeneratedColumn<DateTime>(
+    'blocked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [callsign, blockedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'blocked_stations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BlockedStation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('callsign')) {
+      context.handle(
+        _callsignMeta,
+        callsign.isAcceptableOrUnknown(data['callsign']!, _callsignMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_callsignMeta);
+    }
+    if (data.containsKey('blocked_at')) {
+      context.handle(
+        _blockedAtMeta,
+        blockedAt.isAcceptableOrUnknown(data['blocked_at']!, _blockedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_blockedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {callsign};
+  @override
+  BlockedStation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BlockedStation(
+      callsign: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}callsign'],
+      )!,
+      blockedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}blocked_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BlockedStationsTable createAlias(String alias) {
+    return $BlockedStationsTable(attachedDatabase, alias);
+  }
+}
+
+class BlockedStation extends DataClass implements Insertable<BlockedStation> {
+  final String callsign;
+  final DateTime blockedAt;
+  const BlockedStation({required this.callsign, required this.blockedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['callsign'] = Variable<String>(callsign);
+    map['blocked_at'] = Variable<DateTime>(blockedAt);
+    return map;
+  }
+
+  BlockedStationsCompanion toCompanion(bool nullToAbsent) {
+    return BlockedStationsCompanion(
+      callsign: Value(callsign),
+      blockedAt: Value(blockedAt),
+    );
+  }
+
+  factory BlockedStation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BlockedStation(
+      callsign: serializer.fromJson<String>(json['callsign']),
+      blockedAt: serializer.fromJson<DateTime>(json['blockedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'callsign': serializer.toJson<String>(callsign),
+      'blockedAt': serializer.toJson<DateTime>(blockedAt),
+    };
+  }
+
+  BlockedStation copyWith({String? callsign, DateTime? blockedAt}) =>
+      BlockedStation(
+        callsign: callsign ?? this.callsign,
+        blockedAt: blockedAt ?? this.blockedAt,
+      );
+  BlockedStation copyWithCompanion(BlockedStationsCompanion data) {
+    return BlockedStation(
+      callsign: data.callsign.present ? data.callsign.value : this.callsign,
+      blockedAt: data.blockedAt.present ? data.blockedAt.value : this.blockedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BlockedStation(')
+          ..write('callsign: $callsign, ')
+          ..write('blockedAt: $blockedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(callsign, blockedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BlockedStation &&
+          other.callsign == this.callsign &&
+          other.blockedAt == this.blockedAt);
+}
+
+class BlockedStationsCompanion extends UpdateCompanion<BlockedStation> {
+  final Value<String> callsign;
+  final Value<DateTime> blockedAt;
+  final Value<int> rowid;
+  const BlockedStationsCompanion({
+    this.callsign = const Value.absent(),
+    this.blockedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BlockedStationsCompanion.insert({
+    required String callsign,
+    required DateTime blockedAt,
+    this.rowid = const Value.absent(),
+  }) : callsign = Value(callsign),
+       blockedAt = Value(blockedAt);
+  static Insertable<BlockedStation> custom({
+    Expression<String>? callsign,
+    Expression<DateTime>? blockedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (callsign != null) 'callsign': callsign,
+      if (blockedAt != null) 'blocked_at': blockedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BlockedStationsCompanion copyWith({
+    Value<String>? callsign,
+    Value<DateTime>? blockedAt,
+    Value<int>? rowid,
+  }) {
+    return BlockedStationsCompanion(
+      callsign: callsign ?? this.callsign,
+      blockedAt: blockedAt ?? this.blockedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (callsign.present) {
+      map['callsign'] = Variable<String>(callsign.value);
+    }
+    if (blockedAt.present) {
+      map['blocked_at'] = Variable<DateTime>(blockedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BlockedStationsCompanion(')
+          ..write('callsign: $callsign, ')
+          ..write('blockedAt: $blockedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$MailStore extends GeneratedDatabase {
   _$MailStore(QueryExecutor e) : super(e);
   $MailStoreManager get managers => $MailStoreManager(this);
@@ -4360,6 +4578,9 @@ abstract class _$MailStore extends GeneratedDatabase {
       $OutgoingRecipientsTable(this);
   late final $ContactsTable contacts = $ContactsTable(this);
   late final $SubscriptionsTable subscriptions = $SubscriptionsTable(this);
+  late final $BlockedStationsTable blockedStations = $BlockedStationsTable(
+    this,
+  );
   late final Index messagesBid = Index(
     'messages_bid',
     'CREATE INDEX messages_bid ON messages (bid)',
@@ -4377,6 +4598,7 @@ abstract class _$MailStore extends GeneratedDatabase {
     outgoingRecipients,
     contacts,
     subscriptions,
+    blockedStations,
     messagesBid,
   ];
   @override
@@ -7424,6 +7646,160 @@ typedef $$SubscriptionsTableProcessedTableManager =
       Subscription,
       PrefetchHooks Function()
     >;
+typedef $$BlockedStationsTableCreateCompanionBuilder =
+    BlockedStationsCompanion Function({
+      required String callsign,
+      required DateTime blockedAt,
+      Value<int> rowid,
+    });
+typedef $$BlockedStationsTableUpdateCompanionBuilder =
+    BlockedStationsCompanion Function({
+      Value<String> callsign,
+      Value<DateTime> blockedAt,
+      Value<int> rowid,
+    });
+
+class $$BlockedStationsTableFilterComposer
+    extends Composer<_$MailStore, $BlockedStationsTable> {
+  $$BlockedStationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get callsign => $composableBuilder(
+    column: $table.callsign,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get blockedAt => $composableBuilder(
+    column: $table.blockedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BlockedStationsTableOrderingComposer
+    extends Composer<_$MailStore, $BlockedStationsTable> {
+  $$BlockedStationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get callsign => $composableBuilder(
+    column: $table.callsign,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get blockedAt => $composableBuilder(
+    column: $table.blockedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BlockedStationsTableAnnotationComposer
+    extends Composer<_$MailStore, $BlockedStationsTable> {
+  $$BlockedStationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get callsign =>
+      $composableBuilder(column: $table.callsign, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get blockedAt =>
+      $composableBuilder(column: $table.blockedAt, builder: (column) => column);
+}
+
+class $$BlockedStationsTableTableManager
+    extends
+        RootTableManager<
+          _$MailStore,
+          $BlockedStationsTable,
+          BlockedStation,
+          $$BlockedStationsTableFilterComposer,
+          $$BlockedStationsTableOrderingComposer,
+          $$BlockedStationsTableAnnotationComposer,
+          $$BlockedStationsTableCreateCompanionBuilder,
+          $$BlockedStationsTableUpdateCompanionBuilder,
+          (
+            BlockedStation,
+            BaseReferences<_$MailStore, $BlockedStationsTable, BlockedStation>,
+          ),
+          BlockedStation,
+          PrefetchHooks Function()
+        > {
+  $$BlockedStationsTableTableManager(
+    _$MailStore db,
+    $BlockedStationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BlockedStationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BlockedStationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BlockedStationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> callsign = const Value.absent(),
+                Value<DateTime> blockedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BlockedStationsCompanion(
+                callsign: callsign,
+                blockedAt: blockedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String callsign,
+                required DateTime blockedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => BlockedStationsCompanion.insert(
+                callsign: callsign,
+                blockedAt: blockedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$BlockedStationsTable, BlockedStation>(table),
+                  BaseReferences<
+                    _$MailStore,
+                    $BlockedStationsTable,
+                    BlockedStation
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BlockedStationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$MailStore,
+      $BlockedStationsTable,
+      BlockedStation,
+      $$BlockedStationsTableFilterComposer,
+      $$BlockedStationsTableOrderingComposer,
+      $$BlockedStationsTableAnnotationComposer,
+      $$BlockedStationsTableCreateCompanionBuilder,
+      $$BlockedStationsTableUpdateCompanionBuilder,
+      (
+        BlockedStation,
+        BaseReferences<_$MailStore, $BlockedStationsTable, BlockedStation>,
+      ),
+      BlockedStation,
+      PrefetchHooks Function()
+    >;
 
 class $MailStoreManager {
   final _$MailStore _db;
@@ -7444,4 +7820,6 @@ class $MailStoreManager {
       $$ContactsTableTableManager(_db, _db.contacts);
   $$SubscriptionsTableTableManager get subscriptions =>
       $$SubscriptionsTableTableManager(_db, _db.subscriptions);
+  $$BlockedStationsTableTableManager get blockedStations =>
+      $$BlockedStationsTableTableManager(_db, _db.blockedStations);
 }

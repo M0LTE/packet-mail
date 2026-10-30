@@ -173,4 +173,18 @@ void defineScenarios(Connect connect) {
     expect(() => d.listSent('Q0USR LB'), throwsArgumentError);
     await d.disconnect();
   });
+
+  test('a report to SYSOP is accepted and stays on this BBS for its sysop', () async {
+    final d = driverFor(await connect('user-reports-to-sysop', BpqPort.fbb), BpqPort.fbb);
+    await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+    final r = await d.sendPersonal(
+      to: MailAddress.parse('SYSOP').address!,
+      subject: 'Report: Driver bulletin',
+      body: 'Not wanted here.\n\n> Bulletin body.',
+    );
+    expect(r.notes, isEmpty);
+    final listed = (await d.listSent('Q0USR')).firstWhere((h) => h.number == r.number);
+    expect((listed.to, listed.at, listed.status), ('SYSOP', null, 'N'));
+    await d.disconnect();
+  });
 }

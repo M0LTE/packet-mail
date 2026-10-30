@@ -29,6 +29,15 @@ void main() {
     expect(r.address!.isBare, isTrue);
   });
 
+  test('a bare SYSOP is the sysop of the BBS it goes through, not a bulletin', () {
+    final r = MailAddress.parse('sysop');
+    expect(r.problems, isEmpty);
+    expect(r.address!.isSysop, isTrue);
+    expect(bulletinLookalike('SYSOP'), isNull);
+    expect(MailAddress.parse('G4APL').address!.isSysop, isFalse);
+    expect(MailAddress.parse('SYSOP@GB7RDG').problems.where((p) => p.blocking), isNotEmpty);
+  });
+
   test('a route without a continent is a warning, not an error', () {
     final r = MailAddress.parse('G4APL@GB7CIP.#32.GBR');
     expect(r.address, isNotNull);

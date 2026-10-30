@@ -172,3 +172,13 @@ class Subscriptions extends Table {
   TextColumn get category => text().nullable()();
   TextColumn get area => text().nullable()();
 }
+
+/// A station whose mail and bulletins are hidden on this phone, by base
+/// callsign (no SSID). Local only: nothing is sent to the BBS.
+class BlockedStations extends Table {
+  TextColumn get callsign => text()();
+  DateTimeColumn get blockedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {callsign};
+}

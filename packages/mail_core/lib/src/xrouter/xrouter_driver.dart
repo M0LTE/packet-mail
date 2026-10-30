@@ -202,7 +202,7 @@ class XRouterDriver implements MailDriver {
   @override
   Future<SendReceipt> sendPersonal(
       {required MailAddress to, required String subject, required String body, String? bid}) {
-    if (!isCallsign(to.call)) throw ArgumentError.value(to, 'to', 'not a callsign');
+    if (!isCallsign(to.call) && !to.isSysop) throw ArgumentError.value(to, 'to', 'not a callsign');
     _checkRoute(to.at, 'to');
     return _send('SP ${to.call}${to.at == null ? '' : ' @ ${to.at}'}', to.toString(), subject, body);
   }

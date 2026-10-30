@@ -299,7 +299,7 @@ SP G8BPQ;G4ABC@GB7XXX           (several addressees, separated by ';')
 - Joined `to@via` is treated as an internet email address (prefixed `rms:` or `smtp:` if those gateways exist) when the to part is longer than 6 characters, or the last element of via is not a continent, a known country code, `MARS`, `USA` or `WW` (`CheckifPacket`, lzhuf32.c:739-778). Keep categories to 6 characters, and when in doubt use the spaced `@ via` form, which skips this check **[C]**.
 - To: SSID removed, uppercased, cut to **6** characters (so `SB WEATHER @ GBR` is stored as `WEATHE`). **[C]** (5694-5698)
 - With no @ given, for a known local user with a home BBS the BBS adds it and says `Address @%s added from HomeBBS\r`; otherwise from White Pages: `Address @%s added from WP\r`; for users flagged for Winlink redirect, `Redirecting to winlink.org\r`. **[C]** (5458-5506)
-- To `SYSOP` is always local. **[C]**
+- To `SYSOP` is always local. **[C]** Confirmed on the test BBS: `SP SYSOP` is accepted with no address note and lists as `SYSOP` with no `@` (recorded 2026-10-30 in `user-reports-to-sysop.jsonl`, #67). The app's Report sends there.
 
 ### 9.3 Dialogue
 

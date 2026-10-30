@@ -1003,6 +1003,15 @@ void main() {
       expect(r.note, 'Home BBS for G8BPQ from your address book: GB7BPQ.#23.GBR.EURO.');
     });
 
+    test('mail to SYSOP goes as it is, with no home BBS lookup', () async {
+      await queue(['SYSOP']);
+      await engine.sync(conn);
+      expect(bbs.calls, isNot(contains('lookUpHomeBbs SYSOP')));
+      expect(bbs.calls, contains('sendPersonal SYSOP'));
+      final r = (await recipients()).single;
+      expect([r.state, r.address], ['sent', 'SYSOP']);
+    });
+
     test('an unknown bare callsign is held and the message stays in the outbox', () async {
       await queue(['G8BPQ', 'M0LTE@GB7RDG.#42.GBR.EURO']);
       final r = await engine.sync(conn);

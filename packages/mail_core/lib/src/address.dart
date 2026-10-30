@@ -43,6 +43,11 @@ final _category = RegExp(r'^[A-Z0-9]{1,6}$');
 /// True if [s] looks like an amateur callsign (no SSID).
 bool isCallsign(String s) => _callsign.hasMatch(s.toUpperCase());
 
+/// The sysop of the BBS the mail is sent through. Both LinBPQ and XRouter
+/// keep mail to a bare `SYSOP` on that BBS for its sysop (docs/bpq-protocol.md
+/// 9.2, docs/xrouter-protocol.md).
+const sysopCall = 'SYSOP';
+
 /// The part after `@`: a BBS callsign followed by its hierarchical route,
 /// for example `GB7RDG.#42.GBR.EURO`, or a bulletin flood area like `GBR`.
 class HierarchicalAddress {
@@ -88,6 +93,10 @@ class MailAddress {
   /// True when there is no `@` part, so the home BBS must be looked up.
   bool get isBare => at == null;
 
+  /// True for a bare `SYSOP`: the sysop of the BBS it is sent through, with
+  /// no home BBS to look up.
+  bool get isSysop => call == sysopCall && at == null;
+
   @override
   String toString() => at == null ? call : '$call@$at';
 
@@ -104,6 +113,7 @@ class MailAddress {
     if (s.isEmpty) return (address: null, problems: [const AddressProblem('Enter a callsign.')]);
     final at = s.indexOf('@');
     final call = at < 0 ? s : s.substring(0, at);
+    if (at < 0 && call == sysopCall) return (address: MailAddress(call), problems: problems);
     if (!isCallsign(call)) {
       problems.add(AddressProblem('$call does not look like a callsign.'));
     }
@@ -162,7 +172,7 @@ class BulletinAddress {
   final at = s.indexOf('@');
   final category = at < 0 ? s : s.substring(0, at);
   if (isCallsign(category) || !_category.hasMatch(category)) return null;
-  if (at < 0) return knownCategories.contains(category) ? (category: category, area: null) : null;
+  if (at < 0) return knownCategories.contains(category) && category != sysopCall ? (category: category, area: null) : null;
   final parsed = BulletinAddress.parse(s);
   final area = parsed.address?.area;
   if (area == null || parsed.problems.any((p) => p.blocking)) return null;

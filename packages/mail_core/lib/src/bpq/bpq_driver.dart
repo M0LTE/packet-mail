@@ -166,7 +166,7 @@ class BpqDriver implements MailDriver {
   @override
   Future<SendReceipt> sendPersonal(
       {required MailAddress to, required String subject, required String body, String? bid}) {
-    if (!isCallsign(to.call)) throw ArgumentError.value(to, 'to', 'not a callsign');
+    if (!isCallsign(to.call) && !to.isSysop) throw ArgumentError.value(to, 'to', 'not a callsign');
     if (bid != null && !_bidPattern.hasMatch(bid)) throw ArgumentError.value(bid, 'bid');
     // The spaced "@ via" form stops BPQ mistaking a short route for an email address.
     final at = to.at == null ? '' : ' @ ${to.at}';

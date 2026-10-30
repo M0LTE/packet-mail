@@ -221,6 +221,21 @@ void defineXRouterScenarios(XRouterConnect connect) {
     expect(await d.lookUpHomeBbs('Q0XR'), 'Q0XR.#42.GBR.EURO');
     await d.disconnect();
   });
+
+  test('a report to SYSOP is accepted and stays on this node for its sysop', () async {
+    final d = xrouterDriverFor(await connect('other-reports-to-sysop'));
+    await d.logIn(user: 'Q0OTH', password: 'other', name: 'Olive Other');
+    final r = await d.sendPersonal(
+      to: MailAddress.parse('SYSOP').address!,
+      subject: 'Report: Colour bulletin',
+      body: 'Not wanted here.\n\n> Bulletin in colour.',
+    );
+    // The node says `To: SYSOP @ Q0XR`: its own sysop, the same as its S command.
+    expect(r.notes, isEmpty);
+    final listed = (await d.listSent('Q0OTH')).firstWhere((h) => h.number == r.number);
+    expect((listed.to, listed.at, listed.status), ('SYSOP', null, 'N'));
+    await d.disconnect();
+  });
 }
 
 /// Turns ANSI colour on (`NC ON`) for a user, as they would at a terminal,

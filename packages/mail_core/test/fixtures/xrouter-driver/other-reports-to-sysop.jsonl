@@ -1,0 +1,30 @@
+# Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
+{"t":0.005,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.005,"dir":"tx","data":"Q0OTH\r"}
+{"t":0.015,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.016,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.016,"dir":"tx","data":"PMS\r"}
+{"t":0.026,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":0.066,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.067,"dir":"tx","data":"NP 0\r"}
+{"t":0.08,"dir":"rx","data":"\u001b[1;37;40mPagination is OFF\u001b[1;37;40m\r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.08,"dir":"tx","data":"LC\r"}
+{"t":0.087,"dir":"rx","data":"\u001b[1;37;40mBulletin Categories matching '*':\r\n\r\n\u001b[1;37;40m ALL    2  \r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.087,"dir":"tx","data":"LB 1\r"}
+{"t":0.098,"dir":"rx","data":"\u001b[1;32;40m Msg# TS Rcvd  Size  To      At     From   Subject\r\n\u001b[1;37;40m    7 B$ 09:09  293  ALL    @GBR    Q0USR  Colour bulletin\r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.099,"dir":"tx","data":"SP SYSOP\r"}
+{"t":0.107,"dir":"rx","data":"\u001b[1;37;40mTo: SYSOP @ Q0XR\r\n\u001b[1;37;40m\u001b[1;36;40mEnter subject (or empty line to abort):\r\n\u001b[1;37;40m"}
+{"t":0.107,"dir":"tx","data":"Report: Colour bulletin\r"}
+{"t":0.117,"dir":"rx","data":"\u001b[1;36;40m\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n\u001b[1;37;40m"}
+{"t":0.117,"dir":"tx","data":"Not wanted here.\r"}
+{"t":0.118,"dir":"tx","data":"\r"}
+{"t":0.118,"dir":"tx","data":"> Bulletin in colour.\r"}
+{"t":0.118,"dir":"tx","data":"/EX\r"}
+{"t":0.158,"dir":"rx","data":"\u001b[1;33;40m\r\n*** Message 8 saved\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.158,"dir":"tx","data":"L< Q0OTH\r"}
+{"t":0.168,"dir":"rx","data":"\u001b[1;32;40m Msg# TS Rcvd  Size  To      At     From   Subject\r\n\u001b[1;37;40m    8 PN 09:09  321  SYSOP          Q0OTH  Report: Colour bulletin\r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.168,"dir":"tx","data":"B\r"}
+{"t":0.178,"dir":"rx","data":"\u001b[1;33;40m  - Logged off\r\n\u001b[1;37;40m"}
+{"t":0.221,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.221,"dir":"tx","data":"B\r"}
+{"t":0.229,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}

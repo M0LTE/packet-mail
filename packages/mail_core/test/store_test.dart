@@ -17,6 +17,16 @@ void main() {
         loginName: 'tf',
       ));
 
+  test('a version 3 database gains the blocked stations table', () async {
+    final old = MailStore(NativeDatabase.memory(setup: (raw) => raw.execute('PRAGMA user_version = 3')));
+    await old.into(old.blockedStations).insert(BlockedStationsCompanion.insert(
+          callsign: 'G4APL',
+          blockedAt: DateTime.utc(2026, 10, 30),
+        ));
+    expect((await old.select(old.blockedStations).get()).map((b) => b.callsign), ['G4APL']);
+    await old.close();
+  });
+
   MessagesCompanion message(int connection, int number) => MessagesCompanion.insert(
         connectionId: connection,
         bbsNumber: number,

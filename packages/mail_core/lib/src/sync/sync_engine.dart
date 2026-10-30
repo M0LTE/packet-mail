@@ -307,7 +307,8 @@ class SyncEngine {
       final problems = parsed.problems.where((p) => p.blocking).toList();
       if (parsed.address == null || problems.isNotEmpty) return _failed(problems.join(' '));
       var to = parsed.address!;
-      if (to.isBare) {
+      // Mail to SYSOP stays on this BBS, for its sysop.
+      if (to.isBare && !to.isSysop) {
         final home = await _homeBbs(driver, to.call);
         final full = home == null ? null : MailAddress.parse('${to.call}@${home.address}').address;
         if (home == null || full == null) {
