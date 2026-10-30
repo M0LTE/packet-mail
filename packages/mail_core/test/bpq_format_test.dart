@@ -51,6 +51,16 @@ void main() {
       expect(bpqDate('15-Dec', now), DateTime.utc(2025, 12, 15));
       expect(bpqDate('29-Oct', now), DateTime.utc(2026, 10, 29));
     });
+
+    test('29 February is in the last leap year, not 1 March', () {
+      expect(bpqDate('29-Feb', now), DateTime.utc(2024, 2, 29));
+      expect(bpqDate('29-Feb', now, hour: 7, minute: 50), DateTime.utc(2024, 2, 29, 7, 50));
+      expect(bpqDate('29-Feb', DateTime.utc(2028, 3, 1)), DateTime.utc(2028, 2, 29));
+      expect(bpqDate('29-Feb', DateTime.utc(2028, 2, 28, 12)), DateTime.utc(2028, 2, 29));
+      expect(bpqDate('29-Feb', DateTime.utc(2028, 2, 1)), DateTime.utc(2024, 2, 29));
+      expect(bpqDate('29-Feb', DateTime.utc(2104, 1, 1)), DateTime.utc(2096, 2, 29)); // 2100 isn't a leap year
+      expect(bpqDate('28-Feb', DateTime.utc(2027, 1, 1)), DateTime.utc(2026, 2, 28));
+    });
   });
 
   group('reading', () {
