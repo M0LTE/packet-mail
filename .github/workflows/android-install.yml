@@ -1,0 +1,63 @@
+name: Android install test
+
+# Installs a released APK on emulators at the oldest Android we support, Android 9 and a current
+# one, then launches the app and checks it stays up. Runs by hand for any release, and from CI
+# after each tag's GitHub release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag whose APK to test (blank for the latest release)
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+
+jobs:
+  install:
+    name: Install and launch on API ${{ matrix.api }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 24
+            target: google_apis
+          - api: 28
+            target: default
+          - api: 35
+            target: google_apis
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REL_TAG: ${{ inputs.release_tag }}
+        run: |
+          mkdir apk
+          gh release download $REL_TAG -R "$GITHUB_REPOSITORY" -p '*.apk' -D apk
+          ls -l apk
+          echo "APK=$(ls apk/*.apk)" >> "$GITHUB_ENV"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: bash .github/scripts/android-install-test.sh "$APK" out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-install-api${{ matrix.api }}
+          path: out

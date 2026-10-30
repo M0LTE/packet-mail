@@ -313,3 +313,10 @@ jobs:
           else
             gh release create "$REL_TAG" "$apk" -R "$GITHUB_REPOSITORY" --title "Packet Mail $v ($BUILD)" --notes-file notes.md
           fi
+
+  android-install:
+    name: Android install test
+    needs: [github-release]
+    uses: ./.github/workflows/android-install.yml
+    with:
+      release_tag: ${{ inputs.release_tag || github.ref_name }}
