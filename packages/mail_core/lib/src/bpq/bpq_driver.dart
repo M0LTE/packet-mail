@@ -66,31 +66,53 @@ class BpqDriver implements MailDriver {
   /// never asks.
   static const _loginPromptWait = Duration(seconds: 5);
 
+  /// How long to listen before logging in at an FBB port, which sends
+  /// nothing until we do. A telnet port or an XRouter node greets in that time.
+  static const _greetingWait = Duration(seconds: 1);
+
   /// A telnet port opens with telnet negotiation (IAC, byte 255) and a
   /// `user:` prompt; an FBB port sends nothing until we do.
   static bool _telnetGreeting(String received) => received.startsWith('\u00FF') || received.startsWith('user:');
 
+  static Duration _atMost(Duration a, Duration b) => a < b ? a : b;
+
   @override
   Future<void> logIn({required String user, required String password, required String name}) async {
     if (port == BpqPort.telnet) {
+      final String greeting;
       try {
-        await _session.readUntil('user:', timeout: timeout < _loginPromptWait ? timeout : _loginPromptWait);
+        greeting = await _session.readUntil(RegExp('user:|Callsign: '), timeout: _atMost(timeout, _loginPromptWait));
       } on SessionTimeout {
         throw BbsError(BbsErrorKind.wrongPort, _fbbPortMessage);
       }
+      if (greetsLikeXRouter(greeting)) throw BbsError(BbsErrorKind.wrongPort, choseWronglyXRouter);
       await _session.sendLine(user);
       await _session.readUntil('password:', timeout: timeout);
       await _session.sendSecretLine(password);
       final r = await _session.readUntil(RegExp(r'Telnet Server\r|password:|user:'), timeout: timeout);
       if (_loginRefused.hasMatch(r)) throw BbsError(BbsErrorKind.loginFailed, _refusedMessage);
     } else {
-      if (_telnetGreeting(_session.pending)) throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);
+      // Anything that greets before we speak is not an FBB port.
+      await _session.sees(RegExp('Callsign: |\u00FF|^user:'), timeout: _atMost(timeout, _greetingWait));
+      final early = _session.pending;
+      if (greetsLikeXRouter(early)) throw BbsError(BbsErrorKind.wrongPort, choseWronglyXRouter);
+      if (_telnetGreeting(early)) throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);
       await _session.sendLine(user);
       await _session.sendSecretLine(password);
     }
     await _session.sendLine('BBS');
 
-    var text = await _session.readUntil(RegExp('${_anyPrompt.pattern}|user:|password:'), timeout: timeout);
+    String text;
+    try {
+      text = await _session.readUntil(RegExp('${_anyPrompt.pattern}|user:|password:'), timeout: timeout);
+    } on SessionTimeout catch (e) {
+      // An XRouter node whose greeting came too late to catch above.
+      if (greetsLikeXRouter(e.received)) throw BbsError(BbsErrorKind.wrongPort, choseWronglyXRouter);
+      rethrow;
+    } on SessionClosed catch (e) {
+      if (greetsLikeXRouter(e.received)) throw BbsError(BbsErrorKind.wrongPort, choseWronglyXRouter);
+      rethrow;
+    }
     // A bad user name on an FBB port also gets `user:`, but never telnet negotiation.
     if (port == BpqPort.fbb && text.startsWith('\u00FF')) {
       throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);

@@ -25,6 +25,8 @@ For Packet Mail's purposes it has everything the LinBPQ driver uses: personal ma
 
 Whether a password is asked for depends on the caller's IP address, from `ACCESS.SYS`: flag 1 callsign only, 2 password required, 4 guest (password `guest`, read-only) **[D]**. The shipped sample asks only Internet callers for a password. Passwords live in `USERPASS.SYS` as `CALL password`, callsign without SSID, no spaces, not case-sensitive **[D]**. The login name has to be a callsign.
 
+**Telling it from LinBPQ.** The greeting arrives at once (within milliseconds on the test node) and is the only way to tell an XRouter node from a LinBPQ BBS before sending anything. The LinBPQ driver listens for a second before logging in at an FBB port (which says nothing until spoken to); if `Callsign: ` or `Xrouter v` turns up, it stops and says to choose XRouter, as its telnet-port mode does on seeing `Callsign: ` instead of `user:`. The other way round, this driver says to choose LinBPQ on seeing `user:` (LinBPQ's telnet port), and suggests it when nothing at all arrives within 5 seconds (LinBPQ's FBB port). Recorded in `packages/mail_core/test/fixtures/mismatch/` **[S]**.
+
 **The node has no prompt.** After a good password the welcome is free text with no end marker, so there is nothing to wait for. The driver sends `PMS\r` straight after the password (or the callsign, when no password is asked for). After a bad password the node has already hung up and the line goes nowhere **[S]**.
 
 ## 3. Entering the mailbox

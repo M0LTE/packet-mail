@@ -38,9 +38,21 @@ enum BbsErrorKind {
   /// The BBS said something we don't understand.
   protocol,
 
-  /// The port answers like the other kind (telnet or FBB) to the one chosen.
+  /// The port answers like another kind (telnet or FBB), or another BBS
+  /// type, than the one chosen.
   wrongPort,
 }
+
+/// Said when a node greets like XRouter but another BBS type was chosen.
+const choseWronglyXRouter = 'This is an XRouter node. Choose BBS type XRouter (usually port 23).';
+
+/// Said when a port behaves like LinBPQ but XRouter was chosen.
+const choseWronglyLinBpq = 'This is a LinBPQ BBS. Choose BBS type LinBPQ (FBB port, usually 8011).';
+
+/// True if [received] starts the way XRouter's telnet port greets: its
+/// version (`Xrouter v505p`) and a `Callsign: ` prompt.
+bool greetsLikeXRouter(String received) =>
+    received.contains('Callsign: ') || received.toLowerCase().contains('xrouter v');
 
 class BbsError implements Exception {
   BbsError(this.kind, this.message);

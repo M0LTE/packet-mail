@@ -5,7 +5,6 @@ import 'package:mail_core/mail_core.dart';
 import '../connections.dart';
 import '../host_warning.dart';
 import '../providers.dart';
-import '../theme.dart';
 import '../validation.dart';
 
 /// The fields of a connection, with Test connection and a save button.
@@ -42,8 +41,10 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
   late final _login = TextEditingController(text: widget.initial?.loginName);
   late final _password = TextEditingController(text: widget.initialPassword);
   var _showPassword = false;
-  late var _portKind = PortKind.byId(widget.initial?.portKind ?? PortKind.fbb.id);
   late var _type = BbsType.byId(widget.initial?.bbsType ?? BbsType.bpq.id);
+
+  /// XRouter connections are stored as telnet; switching one to LinBPQ offers the FBB port.
+  late var _portKind = _type.hasPortKinds ? PortKind.byId(widget.initial?.portKind ?? PortKind.fbb.id) : PortKind.fbb;
   late var _download = PersonalDownload.byId(widget.initial?.personalDownload ?? PersonalDownload.onOpen.id);
   var _validateAsTyped = false;
   var _testing = false;
@@ -156,7 +157,7 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
               labelText: 'Host',
               hintText: '192.168.1.20',
               helperText: hostMayBeOnInternet(_host.text) ? internetHostWarning : null,
-              helperStyle: text.bodySmall?.copyWith(color: Logbook.stampRed),
+              helperMaxLines: 2,
             ),
             keyboardType: TextInputType.url,
             autocorrect: false,

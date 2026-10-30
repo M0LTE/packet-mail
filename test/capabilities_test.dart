@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
+import 'package:packetmail/connections.dart';
 import 'package:packetmail/providers.dart';
 
 import 'helpers.dart';
@@ -34,6 +35,20 @@ void main() {
     expect(find.widgetWithText(TextFormField, '23'), findsOneWidget);
     expect(find.text('Your callsign.'), findsOneWidget);
 
+    // Back to LinBPQ offers its FBB port, then XRouter its telnet port again.
+    await tester.tap(find.byKey(const ValueKey('bbs-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('LinBPQ').last);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, '8011'), findsOneWidget);
+    final kinds = tester.widget<SegmentedButton<PortKind>>(find.byType(SegmentedButton<PortKind>));
+    expect(kinds.selected, {PortKind.fbb});
+    await tester.tap(find.byKey(const ValueKey('bbs-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('XRouter').last);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, '23'), findsOneWidget);
+
     await enter(tester, 'Name', 'Club node');
     await enter(tester, 'Host', '192.168.1.30');
     await enter(tester, 'Login name', 'M0LTE');
@@ -43,6 +58,15 @@ void main() {
     expect(find.text('192.168.1.30:23, XRouter'), findsOneWidget);
     final c = (await tester.runAsync(() => app.store.select(app.store.connections).getSingle()))!;
     expect([c.bbsType, c.portKind, c.port], ['xrouter', 'telnet', 23]);
+
+    // Editing it and switching to LinBPQ offers the FBB port, not telnet.
+    await tapText(tester, 'Club node');
+    await tester.tap(find.byKey(const ValueKey('bbs-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('LinBPQ').last);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, '8011'), findsOneWidget);
+    expect(tester.widget<SegmentedButton<PortKind>>(find.byType(SegmentedButton<PortKind>)).selected, {PortKind.fbb});
     await app.dispose(tester);
   });
 

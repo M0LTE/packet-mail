@@ -50,17 +50,26 @@ class XRouterDriver implements MailDriver {
   static final _callsignLogin = RegExp(r'^[A-Z0-9]{1,6}$');
   static const _refusedMessage = 'The node did not accept the callsign or password.';
 
+  /// XRouter asks for the callsign as soon as we connect.
+  static const _greetingWait = Duration(seconds: 5);
+  static const _noCallsignPrompt =
+      'No callsign prompt. If this is a LinBPQ BBS, choose BBS type LinBPQ (FBB port, usually 8011).';
+
   @override
   Future<void> logIn({required String user, required String password, required String name}) async {
     final call = user.trim().toUpperCase();
     if (!_callsignLogin.hasMatch(call)) {
       throw BbsError(BbsErrorKind.loginFailed, 'XRouter needs your callsign, without an SSID, as the login name.');
     }
+    // A LinBPQ telnet port asks `user:` instead; its FBB port says nothing.
+    final String greeting;
     try {
-      await _session.readUntil('Callsign: ', timeout: timeout);
+      greeting = await _session.readUntil(RegExp('Callsign: |user:'),
+          timeout: timeout < _greetingWait ? timeout : _greetingWait);
     } on SessionTimeout {
-      throw BbsError(BbsErrorKind.wrongPort, "No callsign prompt. This doesn't look like an XRouter telnet port.");
+      throw BbsError(BbsErrorKind.wrongPort, _noCallsignPrompt);
     }
+    if (greeting.endsWith('user:')) throw BbsError(BbsErrorKind.wrongPort, choseWronglyLinBpq);
     await _session.sendLine(call);
     // A password prompt, or the first line of the node's welcome when the
     // node doesn't want one. A refused callsign closes the connection.

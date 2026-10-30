@@ -100,6 +100,23 @@ class LineSession {
     }
   }
 
+  /// Waits up to [timeout] for [pattern] to appear in what has arrived, and
+  /// says whether it did. Reads nothing, so the text stays for [readUntil].
+  Future<bool> sees(Pattern pattern, {required Duration timeout}) async {
+    final deadline = DateTime.now().add(timeout);
+    while (pattern.allMatches(pending).isEmpty) {
+      final remaining = deadline.difference(DateTime.now());
+      if (_closed || remaining <= Duration.zero) return false;
+      final w = _waiter = Completer<void>();
+      try {
+        await w.future.timeout(remaining);
+      } on TimeoutException {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// [raw] without escape sequences, and where each of its characters came from.
   static (String, List<int>) _clean(String raw) {
     if (!raw.contains('\x1b')) return (raw, _Identity(raw.length));

@@ -26,3 +26,5 @@ docker rm -f packet-mail-test-xrouter packet-mail-test-xrouter-bbs
 ```
 
 Node `Q0XR`, users `Q0USR` (password `user`) and `Q0OTH` (`other`). `xrouter/record-all.sh` records the standard scenario into `packages/mail_core/test/fixtures/xrouter-local/`. The driver's live tests: `PACKET_MAIL_TEST_XROUTER=1 dart test test/xrouter_live_test.dart` in `packages/mail_core`, on a fresh XRouter of each kind, with `RECORD_FIXTURES=1` to refresh the replay recordings. See docs/xrouter-protocol.md.
+
+With both running, `PACKET_MAIL_TEST_BBS=1 PACKET_MAIL_TEST_XROUTER=1 dart test test/mismatch_live_test.dart` checks each driver on the other software's ports (the wrong BBS type chosen). It sends nothing, so neither needs to be fresh; `RECORD_FIXTURES=1` refreshes `test/fixtures/mismatch/`.

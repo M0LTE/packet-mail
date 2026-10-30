@@ -1,7 +1,8 @@
 import 'dart:io';
 
-/// Shown under the host when [hostMayBeOnInternet] says so.
-const internetHostWarning = 'This address may be on the internet. Your password is sent unencrypted; consider Tailscale.';
+/// A gentle tip under the host when [hostMayBeOnInternet] says so. It
+/// blocks nothing: internet addresses are fine.
+const internetHostWarning = 'On the internet your password travels unencrypted. Tailscale keeps it private.';
 
 /// True unless [host] is clearly on the local network or on Tailscale.
 ///

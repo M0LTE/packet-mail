@@ -97,20 +97,28 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Start the test XRouters
+      - name: Start the test XRouters, and a LinBPQ for the wrong-type checks
         run: |
           test-bbs/xrouter/run.sh
           test-bbs/xrouter/run.sh bbs
+          test-bbs/run.sh
       - name: Driver scenarios against it
         working-directory: packages/mail_core
         run: dart test test/xrouter_live_test.dart
         env:
+          PACKET_MAIL_TEST_XROUTER: '1'
+      - name: Each driver on the other software's ports
+        working-directory: packages/mail_core
+        run: dart test test/mismatch_live_test.dart
+        env:
+          PACKET_MAIL_TEST_BBS: '1'
           PACKET_MAIL_TEST_XROUTER: '1'
       - name: XRouter log on failure
         if: failure()
         run: |
           docker logs packet-mail-test-xrouter
           docker logs packet-mail-test-xrouter-bbs
+          docker logs packet-mail-test-bbs
 
   feedback-receiver:
     name: Feedback receiver
