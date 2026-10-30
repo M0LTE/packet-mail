@@ -8,6 +8,34 @@ const knownContinents = {'EURO', 'EU', 'NOAM', 'SOAM', 'CEAM', 'ASIA', 'AFR', 'O
 /// Bulletin flood areas that stand alone rather than naming a BBS.
 const knownFloodAreas = {'WW', 'ALLUS', 'EU', 'EURO', 'GBR', 'USA', 'NOAM'};
 
+/// Bulletin categories common enough that one typed as a personal address
+/// was surely meant as a bulletin.
+const knownCategories = {
+  'ALL',
+  'WX',
+  'NEWS',
+  'KEPS',
+  'KEP',
+  'DX',
+  'SALE',
+  'AMSAT',
+  'RSGB',
+  'ARRL',
+  'ARES',
+  'RAYNET',
+  'SOLAR',
+  'TECH',
+  'HELP',
+  'INFO',
+  'PACKET',
+  'APRS',
+  'CONTST',
+  'QST',
+  'SYSOP',
+  'EMGSVC',
+  'MESH',
+};
+
 final _callsign = RegExp(r'^(?=.*\d)(?=.*[A-Z])[A-Z0-9]{3,6}$');
 final _element = RegExp(r'^#?[A-Z0-9]{1,6}$');
 final _category = RegExp(r'^[A-Z0-9]{1,6}$');
@@ -120,6 +148,27 @@ class BulletinAddress {
     if (area == null) return (address: null, problems: problems);
     return (address: BulletinAddress(category, area), problems: problems);
   }
+}
+
+/// What a personal address that is really a bulletin address was meant to
+/// be: the category, and the area if one was given. Null when [text] is a
+/// callsign, or nothing like a bulletin.
+///
+/// `ALL@OARC`, `ALL@WW` and `WX@GBR` are bulletins; so is a known category
+/// alone, such as `NEWS`. Something that is not a callsign `@` a flood area,
+/// or `@` something that is not a BBS, is taken as a bulletin too.
+({String category, String? area})? bulletinLookalike(String text) {
+  final s = text.trim().toUpperCase();
+  final at = s.indexOf('@');
+  final category = at < 0 ? s : s.substring(0, at);
+  if (isCallsign(category) || !_category.hasMatch(category)) return null;
+  if (at < 0) return knownCategories.contains(category) ? (category: category, area: null) : null;
+  final parsed = BulletinAddress.parse(s);
+  final area = parsed.address?.area;
+  if (area == null || parsed.problems.any((p) => p.blocking)) return null;
+  final plausible =
+      knownCategories.contains(category) || knownFloodAreas.contains(area.first) || !isCallsign(area.first);
+  return plausible ? (category: category, area: area.toString()) : null;
 }
 
 HierarchicalAddress? _parseRoute(String s, List<AddressProblem> problems) {

@@ -101,6 +101,55 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('a bulletin address in To is stopped, with one tap to write a bulletin instead', (tester) async {
+    final app = TestApp();
+    await seedStation(app, tester);
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await openCompose(app, tester);
+
+    for (final (typed, button) in [
+      ('ALL@WW', 'Write a bulletin to ALL at WW instead'),
+      ('wx@gbr', 'Write a bulletin to WX at GBR instead'),
+      ('ALL@OARC', 'Write a bulletin to ALL at OARC instead'),
+    ]) {
+      await type(tester, 'to', typed);
+      expect(find.text('${typed.toUpperCase()} is a bulletin address. Personal mail goes to a callsign.'), findsOneWidget);
+      expect(find.text(button), findsOneWidget);
+    }
+
+    // It cannot go as personal mail.
+    await type(tester, 'subject', 'Club news');
+    await type(tester, 'body', 'Hi everyone');
+    await send(app, tester);
+    expect(await outgoing(app, tester), isEmpty);
+
+    // Genuine callsigns get no offer.
+    await type(tester, 'to', 'M0LTE@GB7RDG.#42.GBR.EURO');
+    await tester.pump(const Duration(seconds: 1)); // the old error fades out
+    expect(find.byKey(const ValueKey('switch-to-bulletin')), findsNothing);
+    expect(find.textContaining('bulletin address'), findsNothing);
+    await type(tester, 'to', 'G8BPQ');
+    expect(find.byKey(const ValueKey('switch-to-bulletin')), findsNothing);
+
+    // The switch keeps what was written.
+    await type(tester, 'to', 'ALL@OARC');
+    await tester.tap(find.byKey(const ValueKey('switch-to-bulletin')));
+    await settleAll(app, tester);
+    expect(find.text('New bulletin'), findsOneWidget);
+    expect(find.text('New message'), findsNothing);
+    expect(find.widgetWithText(TextFormField, 'ALL'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'OARC'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Club news'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Hi everyone'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('send-bulletin')));
+    await settleAll(app, tester);
+    final queued = await outgoing(app, tester);
+    expect(queued.single.type, 'bulletin');
+    expect(queued.single.subject, 'Club news');
+    await app.dispose(tester);
+  });
+
   testWidgets('what will be sent is shown first when it differs, and odd characters stop it', (tester) async {
     final app = TestApp()..offline = 'No reply';
     await seedStation(app, tester);
@@ -239,6 +288,7 @@ void main() {
 
     await showBox(app, tester, 'sent');
     expect(find.text('Net tonight'), findsOneWidget); // one item, not two
+    expect(find.text('Bulletin to ALL@GBR'), findsOneWidget);
     expect(find.text('Forwarded'), findsOneWidget);
     expect(find.text('Forwarding'), findsOneWidget);
     expect(find.text('Not read yet'), findsOneWidget);
@@ -248,6 +298,7 @@ void main() {
     await settleAll(app, tester);
     expect(find.text('News body.'), findsOneWidget);
     expect(find.text('Number 4000. Forwarding'), findsOneWidget);
+    expect(find.text('Bulletin to ALL@GBR'), findsOneWidget);
     await app.dispose(tester);
   });
 

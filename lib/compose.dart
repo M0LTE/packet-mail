@@ -91,9 +91,20 @@ String? recipientsError(String text) {
   if (list.isEmpty) return 'Add who it is to, such as G8BPQ or G8BPQ@GB7BPQ.#23.GBR.EURO.';
   for (final r in list) {
     final blocking = r.problems.where((p) => p.blocking);
-    if (blocking.isNotEmpty) return blocking.first.message;
+    if (blocking.isEmpty) continue;
+    if (bulletinLookalike(r.text) != null) {
+      return '${r.text.toUpperCase()} is a bulletin address. Personal mail goes to a callsign.';
+    }
+    return blocking.first.message;
   }
   return null;
+}
+
+/// The bulletin To was meant to be, when it holds one bulletin address and
+/// nothing else, such as ALL@GBR. Null otherwise.
+({String category, String? area})? bulletinInstead(String text) {
+  final list = parseRecipients(text);
+  return list.length == 1 ? bulletinLookalike(list.single.text) : null;
 }
 
 /// Warnings that don't stop sending, such as a route with no continent.

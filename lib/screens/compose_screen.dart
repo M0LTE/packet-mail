@@ -7,6 +7,7 @@ import '../contacts.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import 'bulletin_compose_screen.dart';
 import 'message_screen.dart';
 
 /// Writes personal mail: To, subject and body. Sending puts it in the
@@ -131,6 +132,23 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
 
   var _leaving = false;
 
+  /// Swaps this message for a bulletin, keeping what was written.
+  void _switchToBulletin(String category, String? area) {
+    _leaving = true;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => BulletinComposeScreen(
+          category: category,
+          area: area,
+          subject: _subject.text,
+          body: _body.text,
+          connectionId: _connectionId,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -238,6 +256,20 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 ),
               ),
             ),
+            if (bulletinInstead(_to.text) case final b?)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const ValueKey('switch-to-bulletin'),
+                  onPressed: () => _switchToBulletin(b.category, b.area),
+                  icon: const Icon(Icons.article_outlined, size: 18),
+                  label: Text(
+                    b.area == null
+                        ? 'Write a ${b.category} bulletin instead'
+                        : 'Write a bulletin to ${b.category} at ${b.area} instead',
+                  ),
+                ),
+              ),
             if (connections.length > 1) ...[
               const SizedBox(height: 8),
               DropdownButtonFormField<int>(

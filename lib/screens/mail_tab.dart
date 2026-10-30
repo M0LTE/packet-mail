@@ -418,7 +418,9 @@ class OutgoingRow extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'To ${to.join(', ')}',
+                          m.type == 'bulletin'
+                              ? 'Bulletin to ${item.recipients.map((r) => r.address).join(', ')}'
+                              : 'To ${to.join(', ')}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: text.titleSmall,
@@ -479,7 +481,10 @@ class SentListingRow extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          listing.at == null ? 'To ${listing.toCall}' : 'To ${listing.toCall}@${listing.at}',
+                          [
+                            listing.type == 'bulletin' ? 'Bulletin to' : 'To',
+                            listing.at == null ? listing.toCall : '${listing.toCall}@${listing.at}',
+                          ].join(' '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: text.titleSmall,

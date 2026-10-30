@@ -21,10 +21,15 @@ Future<void> openBulletinCompose(BuildContext context, {String? category, String
 
 /// Writes a bulletin: a category at an area, a subject and the text.
 class BulletinComposeScreen extends ConsumerStatefulWidget {
-  const BulletinComposeScreen({super.key, this.category, this.area});
+  const BulletinComposeScreen({super.key, this.category, this.area, this.subject, this.body, this.connectionId});
 
   final String? category;
   final String? area;
+
+  /// Carried over when a message is switched to a bulletin.
+  final String? subject;
+  final String? body;
+  final int? connectionId;
 
   @override
   ConsumerState<BulletinComposeScreen> createState() => _BulletinComposeScreenState();
@@ -34,9 +39,9 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
   final _form = GlobalKey<FormState>();
   late final _category = TextEditingController(text: widget.category ?? '');
   late final _area = TextEditingController(text: widget.area ?? '');
-  final _subject = TextEditingController();
-  final _body = TextEditingController();
-  int? _connectionId;
+  late final _subject = TextEditingController(text: widget.subject ?? '');
+  late final _body = TextEditingController(text: widget.body ?? '');
+  late int? _connectionId = widget.connectionId;
   var _sending = false;
   var _leaving = false;
 
@@ -51,8 +56,8 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
   bool get _edited =>
       _category.text != (widget.category ?? '') ||
       _area.text != (widget.area ?? '') ||
-      _subject.text.isNotEmpty ||
-      _body.text.isNotEmpty;
+      _subject.text != (widget.subject ?? '') ||
+      _body.text != (widget.body ?? '');
 
   @override
   void dispose() {
@@ -155,7 +160,7 @@ class _BulletinComposeScreenState extends ConsumerState<BulletinComposeScreen> {
               const SizedBox(height: 8),
               if (connections.length > 1)
                 DropdownButtonFormField<int>(
-                  initialValue: _connectionId ?? connections.first.id,
+                  initialValue: connections.any((c) => c.id == _connectionId) ? _connectionId : connections.first.id,
                   decoration: const InputDecoration(labelText: 'Send through'),
                   items: [for (final c in connections) DropdownMenuItem(value: c.id, child: Text(c.name))],
                   onChanged: (id) => setState(() => _connectionId = id),

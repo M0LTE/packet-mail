@@ -76,7 +76,10 @@ class OutgoingScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(r.address, style: text.titleSmall),
+                              Text(
+                                item.message.type == 'bulletin' ? 'Bulletin to ${r.address}' : r.address,
+                                style: text.titleSmall,
+                              ),
                               Text(
                                 recipientState(r),
                                 style: hdr?.copyWith(
@@ -196,7 +199,13 @@ class _SentListingScreenState extends ConsumerState<SentListingScreen> {
                     children: [
                       Text(l.subject.isEmpty ? '(no subject)' : l.subject, style: text.headlineSmall),
                       const SizedBox(height: 8),
-                      Text(l.at == null ? l.toCall : '${l.toCall}@${l.at}', style: text.titleSmall),
+                      Text(
+                        [
+                          if (l.type == 'bulletin') 'Bulletin to',
+                          l.at == null ? l.toCall : '${l.toCall}@${l.at}',
+                        ].join(' '),
+                        style: text.titleSmall,
+                      ),
                       Text(
                         [
                           'Number ${l.bbsNumber}',

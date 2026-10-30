@@ -62,4 +62,29 @@ void main() {
       expect(BulletinAddress.parse('TOOLONGCAT@WW').problems, isNotEmpty);
     });
   });
+
+  group('bulletinLookalike', () {
+    test('ALL@OARC is a bulletin to ALL at OARC', () {
+      expect(bulletinLookalike('all@oarc'), (category: 'ALL', area: 'OARC'));
+      final r = MailAddress.parse('ALL@OARC');
+      expect(r.problems.where((p) => p.blocking), isNotEmpty);
+    });
+    test('ALL@WW and WX@GBR are bulletins', () {
+      expect(bulletinLookalike('ALL@WW'), (category: 'ALL', area: 'WW'));
+      expect(bulletinLookalike('WX@GBR'), (category: 'WX', area: 'GBR'));
+    });
+    test('a known category alone is a bulletin with no area yet', () {
+      expect(bulletinLookalike('NEWS'), (category: 'NEWS', area: null));
+    });
+    test('a word at a BBS is not taken for a bulletin', () {
+      expect(bulletinLookalike('FRED@GB7RDG'), isNull);
+      expect(bulletinLookalike('FRED'), isNull);
+    });
+    test('callsigns are never bulletins', () {
+      for (final a in ['M0LTE', 'G8BPQ@GB7BPQ.#23.GBR.EURO', 'M0LTE@GB7RDG', '2E0ABC']) {
+        expect(bulletinLookalike(a), isNull, reason: a);
+        expect(MailAddress.parse(a).problems.where((p) => p.blocking), isEmpty, reason: a);
+      }
+    });
+  });
 }
