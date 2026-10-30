@@ -116,6 +116,13 @@ void main() {
       expect(xrouterReceived('30/10/26 at 13:33', ['R:261030/0804Z @:Q0XR']), DateTime.utc(2026, 10, 30, 8, 4));
     });
 
+    test('a time on midnight UTC still counts as a time', () {
+      final midnight = xrouterReceived('30/10/26 at 00:00', ['R:261030/0000Z @:Q0XR'])!;
+      expect(hasTime(midnight), isTrue);
+      expect(midnight.difference(DateTime.utc(2026, 10, 30)).inSeconds, 0);
+      expect(hasTime(xrouterListingDate('00:00', DateTime.utc(2026, 10, 30, 12))), isTrue);
+    });
+
     test('without a matching R: line the phone\'s time zone stands in', () {
       expect(xrouterReceived('30/10/26 at 13:33', ['R:261029/2107Z @:GB7PZT']), DateTime(2026, 10, 30, 13, 33).toUtc());
       expect(xrouterReceived('30/10/26 at 13:33', const []), DateTime(2026, 10, 30, 13, 33).toUtc());

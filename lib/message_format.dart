@@ -1,6 +1,10 @@
 /// Small pure helpers for showing messages: times, senders, routes.
 library;
 
+import 'package:mail_core/mail_core.dart' show hasTime;
+
+export 'package:mail_core/mail_core.dart' show hasTime;
+
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const _monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June', //
@@ -42,12 +46,6 @@ String _fullDay(DateTime when, DateTime now) {
   return '${when.day} ${_monthNames[when.month - 1]}$year';
 }
 
-/// True if a stored date carries a time of day. BBS listings give only the
-/// day, stored as midnight UTC, until reading the message fills in the time.
-bool hasTime(DateTime stored) {
-  final u = stored.toUtc();
-  return u.hour != 0 || u.minute != 0 || u.second != 0 || u.millisecond != 0;
-}
 
 /// The listing's day as a local date, so it isn't moved by the time zone.
 DateTime _dayOnly(DateTime stored) {

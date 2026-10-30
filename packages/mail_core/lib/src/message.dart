@@ -101,3 +101,14 @@ class SendReceipt {
   /// warning that the message may not be delivered.
   final List<String> notes;
 }
+
+/// True if a stored date carries a time of day. A listing that gives only
+/// the day is stored as midnight UTC; a time that falls on midnight UTC is
+/// stored a millisecond later (see [withTime]) so it isn't mistaken for one.
+bool hasTime(DateTime stored) {
+  final u = stored.toUtc();
+  return u.hour != 0 || u.minute != 0 || u.second != 0 || u.millisecond != 0;
+}
+
+/// [when] marked as carrying a time of day, even at midnight UTC.
+DateTime withTime(DateTime when) => hasTime(when) ? when : when.add(const Duration(milliseconds: 1));

@@ -22,7 +22,7 @@ DateTime xrouterListingDate(String text, DateTime now) {
     final h = int.parse(time[1]!), m = int.parse(time[2]!);
     final today = DateTime(local.year, local.month, local.day, h, m);
     final latest = local.add(const Duration(minutes: 10));
-    return (today.isAfter(latest) ? DateTime(local.year, local.month, local.day - 1, h, m) : today).toUtc();
+    return withTime((today.isAfter(latest) ? DateTime(local.year, local.month, local.day - 1, h, m) : today).toUtc());
   }
   final day = RegExp(r'^(\d\d)/(\d\d)$').firstMatch(text);
   if (day == null) throw FormatException('Not an XRouter listing date', text);
@@ -48,9 +48,9 @@ DateTime? xrouterReceived(String rcvd, List<String> routing) {
     // Time zones are whole quarter hours; allow a minute or two either way.
     final offset = wall.difference(stamped).inMinutes;
     final fromQuarter = (offset + 2) % 15 - 2;
-    if (offset.abs() <= 14 * 60 + 2 && fromQuarter.abs() <= 2) return stamped;
+    if (offset.abs() <= 14 * 60 + 2 && fromQuarter.abs() <= 2) return withTime(stamped);
   }
-  return DateTime(wall.year, wall.month, wall.day, wall.hour, wall.minute).toUtc();
+  return withTime(DateTime(wall.year, wall.month, wall.day, wall.hour, wall.minute).toUtc());
 }
 
 // `    2 P$ 07:34  227  Q0OTH  @GB7XYZ Q0USR  Second`; the At column is blank

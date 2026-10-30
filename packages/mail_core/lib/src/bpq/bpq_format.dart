@@ -95,7 +95,7 @@ ReadMessage? parseReadMessage(int number, String text, DateTime now) {
     from: headers['From'] ?? '',
     to: headers['To'] ?? '',
     subject: headers['Title'] ?? '',
-    date: dt == null ? now : bpqDate(dt[1]!, now, hour: int.parse(dt[2]!), minute: int.parse(dt[3]!)),
+    date: dt == null ? now : withTime(bpqDate(dt[1]!, now, hour: int.parse(dt[2]!), minute: int.parse(dt[3]!))),
     bid: headers['Bid'] ?? '',
     routing: routing,
     body: body.join('\n'),

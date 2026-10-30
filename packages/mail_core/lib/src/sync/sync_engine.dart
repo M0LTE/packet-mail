@@ -768,12 +768,13 @@ class SyncEngine {
   }
 
   /// True if a header's stored date should take the listed one: the listing
-  /// gives a time (never less exact than what a header holds), or the stored
-  /// date is in the future, where older versions could put XRouter mail.
+  /// gives a time (never less exact than what a header holds), or it gives
+  /// only the day, which XRouter does once mail is 24 hours old, while the
+  /// stored time is recent or in the future (a guess near the 24 hours, or
+  /// where older versions could put XRouter mail).
   static bool _betterListedDate(DateTime stored, DateTime listed, DateTime now) {
-    final l = listed.toUtc();
-    final timed = l.hour != 0 || l.minute != 0;
-    return (timed && !stored.isAtSameMomentAs(listed)) || stored.isAfter(now.add(const Duration(hours: 1)));
+    if (hasTime(listed)) return !stored.isAtSameMomentAs(listed);
+    return hasTime(stored) && stored.isAfter(now.subtract(const Duration(hours: 23)));
   }
 
   /// True if a stored subject and a listed one are the same. Where listings

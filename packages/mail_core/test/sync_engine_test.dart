@@ -498,10 +498,24 @@ void main() {
       bbs.addPersonal(10, date: evening);
       await engine.sync(conn);
       expect((await messages()).single.date.toUtc(), evening);
+      clock = DateTime.utc(2026, 10, 30, 9);
       bbs.addPersonal(10, date: DateTime.utc(2026, 10, 29));
       await engine.sync(conn);
       final m = (await messages()).single;
       expect([m.id, m.date.toUtc()], [id, evening]);
+    });
+
+    test('a time guessed near the 24 hours gives way to the listed day', () async {
+      // At 07:58, mail from 08:05 the day before still lists as "08:05" and
+      // is taken as a node clock running a little ahead: today at 08:05.
+      clock = DateTime.utc(2026, 10, 29, 7, 58);
+      bbs.addPersonal(10, date: DateTime.utc(2026, 10, 29, 8, 5));
+      await engine.sync(conn);
+      // Once it lists as the day before, that day wins.
+      clock = DateTime.utc(2026, 10, 29, 8, 10);
+      bbs.addPersonal(10, date: day);
+      await engine.sync(conn);
+      expect((await messages()).single.date.toUtc(), day);
     });
 
     test('a header an older version dated in the future takes the listed date', () async {
