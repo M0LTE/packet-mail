@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
+import '../report.dart';
 import '../sync.dart';
 import '../theme.dart';
 import 'bulletins_tab.dart';
@@ -175,6 +176,11 @@ class SettingsTab extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ReportScreen())),
           ),
           const Divider(indent: 24),
+          if (ref.watch(appDetailsProvider).value case final app?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: Text('Packet Mail ${app.version} (build ${app.build})', style: text.labelMedium),
+            ),
         ],
       ),
     );
