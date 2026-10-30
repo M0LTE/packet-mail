@@ -94,7 +94,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   }
 
   /// Hides everything from the sender on this phone, after asking unless
-  /// [asked], and leaves the message.
+  /// [asked] (after a report, whose outbox note this replaces), and leaves
+  /// the message.
   Future<void> _block(Message m, {bool asked = false}) async {
     final call = bareCall(m.fromCall);
     if (!asked && !await confirmBlock(context, call)) return;
@@ -108,7 +109,11 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('Blocked $call. Their mail and bulletins are hidden.'),
+          content: Text(
+            asked
+                ? 'Report in the outbox. Blocked $call.'
+                : 'Blocked $call. Their mail and bulletins are hidden.',
+          ),
           action: SnackBarAction(label: 'Undo', onPressed: () => unblockStation(store, call)),
         ),
       );
@@ -122,6 +127,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
     if (sent != true || !mounted) return;
     final call = bareCall(m.fromCall);
+    if (ref.read(identityProvider).value?.callsign.toUpperCase() == call) return;
     if (ref.read(blockedCallsProvider).value?.contains(call) ?? false) return;
     if (await confirmBlock(context, call, also: true) && mounted) await _block(m, asked: true);
   }

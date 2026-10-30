@@ -17,13 +17,19 @@ void main() {
         loginName: 'tf',
       ));
 
-  test('a version 3 database gains the blocked stations table', () async {
-    final old = MailStore(NativeDatabase.memory(setup: (raw) => raw.execute('PRAGMA user_version = 3')));
+  test('a version 3 database gains the blocked stations table and keeps its data', () async {
+    final old = MailStore(NativeDatabase.memory(setup: (raw) {
+      raw.execute('CREATE TABLE contacts (callsign TEXT NOT NULL PRIMARY KEY, name TEXT, home_bbs TEXT, '
+          'notes TEXT, source TEXT NOT NULL, edited INTEGER NOT NULL DEFAULT 0)');
+      raw.execute("INSERT INTO contacts (callsign, source) VALUES ('M9TWM', 'typed')");
+      raw.execute('PRAGMA user_version = 3');
+    }));
     await old.into(old.blockedStations).insert(BlockedStationsCompanion.insert(
           callsign: 'G4APL',
           blockedAt: DateTime.utc(2026, 10, 30),
         ));
     expect((await old.select(old.blockedStations).get()).map((b) => b.callsign), ['G4APL']);
+    expect((await old.select(old.contacts).get()).map((c) => c.callsign), ['M9TWM']); // what was there stays
     await old.close();
   });
 

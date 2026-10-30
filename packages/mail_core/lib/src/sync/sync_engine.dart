@@ -454,6 +454,9 @@ class SyncEngine {
     final parsed = MailAddress.parse(read.from);
     final address = parsed.address;
     if (address == null || address.at == null || parsed.problems.any((p) => p.blocking)) return;
+    // A blocked station stays out of the address book too.
+    final blocked = store.select(store.blockedStations)..where((b) => b.callsign.equals(address.call));
+    if (await blocked.getSingleOrNull() != null) return;
     await _learnHomeBbs(address.call, address.at!, 'mail');
   }
 

@@ -243,7 +243,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('confirm-block')));
     await _settle(app, tester);
     expect(find.text('Bad words'), findsNothing);
-    expect(find.text('Blocked G8XYZ. Their mail and bulletins are hidden.'), findsOneWidget);
+    expect(find.text('Report in the outbox. Blocked G8XYZ.'), findsOneWidget);
     await app.dispose(tester);
   });
 }

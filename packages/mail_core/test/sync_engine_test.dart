@@ -368,6 +368,14 @@ void main() {
       expect(await contacts(), isEmpty);
     });
 
+    test('a blocked station is not added to contacts', () async {
+      await db
+          .into(db.blockedStations)
+          .insert(BlockedStationsCompanion.insert(callsign: 'M9TWM', blockedAt: DateTime.utc(2026, 10, 30)));
+      await receive({10: 'M9TWM@GB7LOX.#19.GBR.EURO', 11: 'G4APL@GB7CIP.#32.GBR.EURO'});
+      expect((await contacts()).map((c) => c.callsign), ['G4APL']);
+    });
+
     test('bulletins add no contacts', () async {
       bbs.addBulletin(20);
       bbs.senders[20] = 'G8BPQ@GB7BPQ.#76.GBR.EU';
