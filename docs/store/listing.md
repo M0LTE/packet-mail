@@ -31,3 +31,21 @@ Packet Mail is for licensed radio amateurs. It talks to your own BBS over your l
 **Privacy policy URL:** https://packet-mail.m0lte.uk/privacy.html
 
 **App review notes:** see docs/store/review-answers.md (demo BBS at packet-mail-app.m0lte.compute.oarc.uk port 8011, login demo / demo).
+
+## Google Play
+
+**App name:** Packet Mail
+
+**Short description (80 characters):** Packet radio BBS mail and bulletins, in a proper mail app.
+
+**Full description:** the same text as the App Store description above.
+
+**App icon:** `docs/store/creative/play-icon-512.png` (512 x 512).
+
+**Feature graphic:** `docs/store/creative/play-feature-1024x500.png` (1024 x 500).
+
+**Phone screenshots:** `docs/store/screenshots/1080x1920/` (the six, in order).
+
+**Category:** Communication. **Tags:** Email, Productivity.
+
+**Contact email:** app-support@tomfanning.name. **Website:** https://packet-mail.m0lte.uk/
