@@ -41,6 +41,7 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
   late final _port = TextEditingController(text: '${widget.initial?.port ?? PortKind.fbb.defaultPort}');
   late final _login = TextEditingController(text: widget.initial?.loginName);
   late final _password = TextEditingController(text: widget.initialPassword);
+  var _showPassword = false;
   late var _portKind = PortKind.byId(widget.initial?.portKind ?? PortKind.fbb.id);
   late var _type = BbsType.byId(widget.initial?.bbsType ?? BbsType.bpq.id);
   late var _download = PersonalDownload.byId(widget.initial?.personalDownload ?? PersonalDownload.onOpen.id);
@@ -194,11 +195,17 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _password,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Password',
               helperText: 'Kept in the phone\'s secure storage.',
+              suffixIcon: IconButton(
+                key: const ValueKey('show-password'),
+                icon: Icon(_showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                tooltip: _showPassword ? 'Hide password' : 'Show password',
+                onPressed: () => setState(() => _showPassword = !_showPassword),
+              ),
             ),
-            obscureText: true,
+            obscureText: !_showPassword,
             autocorrect: false,
             enableSuggestions: false,
           ),
