@@ -44,6 +44,18 @@ Apple ties a submission to one version number, so a fix before review needs a ne
 
 Each release tag also publishes a GitHub release named after the version and build the stores show, for example "Packet Mail 1.0.0 (81)", with the signed Android APK attached (signed with the upload key, so it installs side by side with nothing and updates itself from later APKs). The text is a short default; edit it on GitHub to add release notes.
 
+Alongside the universal APK (`packet-mail-<ver>-<build>.apk`, about 62 MB) the release has one APK per processor, about a third of the size: `-arm64.apk` for most phones, `-arm32.apk` for older or cheaper ones, and `-x86_64.apk` for emulators and Chromebooks. They all share one version code, so someone can move between them without uninstalling.
+
+After the release, the "Android install test" workflow installs its APKs on Android 7, 9 and 15 emulators: fresh, the x86_64 APK with the universal one over it, and as an update over the previous release, launching the app each time. Run it by hand for any release with `gh workflow run "Android install test" -R m0lte/packet-mail -f release_tag=v1.0.7`.
+
+### If it won't install
+
+"App not installed" after the installer starts almost always means one of these:
+
+- **Not enough storage.** The phone needs room for the APK and the installed app, so two or three times the APK's size. Free some space, or pick the smaller arm64 or arm32 APK.
+- **A copy installed from somewhere else**, signed with a different key, for example a build from source or the v0.1.0 test APK. Uninstall that copy first (its local mail goes with it).
+- **The wrong processor:** the arm64 APK won't install on a 32-bit phone. Use arm32 or the universal APK.
+
 To redo a release for an existing tag (for example after adding the APK step), run the CI workflow by hand with `release_tag` set to the tag and `build_number` set to the App Store build number: `gh workflow run CI -R m0lte/packet-mail -f release_tag=v1.0.0 -f build_number=81`. That rebuilds the Android files from the tag and publishes or updates the release; it never uploads to TestFlight.
 
 ## Tag names

@@ -18,9 +18,9 @@ echo "Android $(adb shell getprop ro.build.version.release) (API $(adb shell get
 # install <label> <apk> [-r]
 install() {
   adb logcat -c
-  adb install $3 "$2" > "$out/install-$1.txt" 2>&1
+  adb install ${3:-} "$2" > "$out/install-$1.txt" 2>&1
   local rc=$?
-  echo "[$1] adb install $3 $(basename "$2"): exit code $rc"
+  echo "[$1] adb install ${3:-} $(basename "$2"): exit code $rc"
   cat "$out/install-$1.txt"
   adb logcat -d -s PackageManager:V PackageInstaller:V PackageParser:V > "$out/logcat-install-$1.txt"
   cat "$out/logcat-install-$1.txt"
