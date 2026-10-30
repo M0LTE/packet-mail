@@ -103,6 +103,11 @@ void main() {
       expect(m.body, 'plain \x1b[31mred\x1b[0m text\n\x1b[1;44;33mbold yellow on blue\x1b[0m');
     });
 
+    test('text before the end marker on its line is kept; a marker on the header line is not a message', () {
+      expect(parseXrouterRead(5, 'Msg#: 5  Type: PN\rFrom: A\r\rline1\rlast[ end of message 5 ]\r')!.body, 'line1\nlast');
+      expect(parseXrouterRead(5, 'Msg#: 5 [ end of message 5 ]\r'), isNull);
+    });
+
     test('anything else is not a message', () {
       expect(parseXrouterRead(7, 'Msg 7 not found\r'), isNull);
     });

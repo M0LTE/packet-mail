@@ -79,6 +79,12 @@ void main() {
       expect(ansiRuns('$e[31ma$e[mb'), [AnsiRun('a', fg(1)), const AnsiRun('b', AnsiStyle.plain)]);
     });
 
+    test('underline style sub-parameters and intermediates', () {
+      expect(ansiRuns('$e[4:0mX'), [const AnsiRun('X', AnsiStyle.plain)]);
+      expect(ansiRuns('$e[4:3mX'), [const AnsiRun('X', AnsiStyle(underline: true))]);
+      expect(ansiRuns('$e[1 mX'), [const AnsiRun('X', AnsiStyle.plain)]);
+    });
+
     test('ignores malformed colours, other sequences and anything cut off', () {
       expect(ansiRuns('$e[38;5ma'), [const AnsiRun('a', AnsiStyle.plain)]);
       expect(ansiRuns('$e[38;2;1;2ma'), [const AnsiRun('a', AnsiStyle.plain)]);

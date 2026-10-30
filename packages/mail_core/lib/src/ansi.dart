@@ -23,11 +23,11 @@ class AnsiToken {
   final bool complete;
 
   /// For a complete CSI sequence: its final character (`m` for SGR) and the
-  /// parameter characters before it (`1;37;40`).
+  /// parameter and intermediate characters before it (`1;37;40`).
   final String? csiFinal;
   final String? csiParams;
 
-  bool get isSgr => csiFinal == 'm' && (csiParams == null || !csiParams!.contains(RegExp(r'[<=>?]')));
+  bool get isSgr => csiFinal == 'm' && RegExp(r'^[0-9;:]*$').hasMatch(csiParams ?? '');
 }
 
 const _esc = 0x1b, _cr = 0x0d, _lf = 0x0a, _bel = 0x07;
@@ -56,7 +56,6 @@ Iterable<AnsiToken> ansiTokens(String text) sync* {
       while (i < n && text.codeUnitAt(i) >= 0x30 && text.codeUnitAt(i) <= 0x3f) {
         i++;
       }
-      final paramEnd = i;
       while (i < n && text.codeUnitAt(i) >= 0x20 && text.codeUnitAt(i) <= 0x2f) {
         i++;
       }
@@ -68,7 +67,7 @@ Iterable<AnsiToken> ansiTokens(String text) sync* {
       if (f >= 0x40 && f <= 0x7e) {
         i++;
         yield AnsiToken(start, i,
-            escape: true, csiFinal: String.fromCharCode(f), csiParams: text.substring(params, paramEnd));
+            escape: true, csiFinal: String.fromCharCode(f), csiParams: text.substring(params, i - 1));
       } else {
         // Malformed: drop what came so far and treat this byte as text.
         yield AnsiToken(start, i, escape: true);
@@ -232,6 +231,11 @@ AnsiStyle _applySgr(AnsiStyle style, String params) {
   for (var i = 0; i < groups.length; i++) {
     final sub = groups[i].split(':');
     final c = num(sub.first);
+    if (sub.length > 1 && c != 38 && c != 48) {
+      // Only the underline style (4:0 off, 4:1 to 4:5 on) is understood.
+      if (c == 4) s = s.copyWith(underline: num(sub[1]) != 0);
+      continue;
+    }
     switch (c) {
       case 0:
         s = AnsiStyle.plain;

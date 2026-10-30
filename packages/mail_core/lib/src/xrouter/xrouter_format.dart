@@ -68,9 +68,17 @@ ReadMessage? parseXrouterRead(int number, String text) {
   final all = ansiLines(text);
   final first = all.indexWhere((l) => l.clean.contains('Msg#: $number '));
   final last = all.lastIndexWhere((l) => l.clean.contains('[ end of message $number ]'));
-  if (first < 0 || last < first) return null;
+  if (first < 0 || last <= first) return null;
   final raw = all.sublist(first, last).map((l) => l.raw).toList();
   final lines = all.sublist(first, last).map((l) => l.clean).toList();
+  // Text before the end marker on its line, if a BBS left out the line end.
+  final marker = '[ end of message $number ]';
+  final tail = all[last].clean.substring(0, all[last].clean.indexOf(marker));
+  if (tail.isNotEmpty) {
+    final at = all[last].raw.indexOf(marker);
+    raw.add(at < 0 ? tail : all[last].raw.substring(0, at));
+    lines.add(tail);
+  }
 
   final headers = <String, String>{};
   var i = 1;

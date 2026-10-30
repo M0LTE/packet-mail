@@ -47,9 +47,17 @@ ReadMessage? parseReadMessage(int number, String text, DateTime now) {
   final all = ansiLines(text);
   final first = all.indexWhere((l) => l.clean.contains('From: '));
   final last = all.lastIndexWhere((l) => l.clean.contains('[End of Message #$number from '));
-  if (first < 0 || last < first) return null;
+  if (first < 0 || last <= first) return null;
   final raw = all.sublist(first, last).map((l) => l.raw).toList();
   final lines = all.sublist(first, last).map((l) => l.clean).toList();
+  // Text before the end marker on its line, if a BBS left out the line end.
+  final marker = '[End of Message #$number from ';
+  final tail = all[last].clean.substring(0, all[last].clean.indexOf(marker));
+  if (tail.isNotEmpty) {
+    final at = all[last].raw.indexOf(marker);
+    raw.add(at < 0 ? tail : all[last].raw.substring(0, at));
+    lines.add(tail);
+  }
   lines[0] = lines[0].substring(lines[0].indexOf('From: '));
 
   final headers = <String, String>{};

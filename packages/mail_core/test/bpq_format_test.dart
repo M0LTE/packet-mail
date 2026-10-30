@@ -103,6 +103,12 @@ void main() {
     expect(m.body, '\x1b[31mred\x1b[0m line');
   });
 
+  test('text before the end marker on its line is kept; a marker on the header line is not a message', () {
+    final now = DateTime.utc(2026, 10, 30);
+    expect(parseReadMessage(5, 'From: A\rTo: B\r\rline1\rlast[End of Message #5 from A]\r', now)!.body, 'line1\nlast');
+    expect(parseReadMessage(5, 'From: A [End of Message #5 from A]\r', now), isNull);
+  });
+
   test('body escaping', () {
     expect(BpqDriver.escapeBody('ok\n/EX\ninvalid command here\nAlready Connected\n'),
         ['ok', ' /EX', ' invalid command here', ' Already Connected']);
