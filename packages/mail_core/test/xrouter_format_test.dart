@@ -75,6 +75,34 @@ void main() {
       expect(m.body, 'Date: next Tuesday\nBring cake.');
     });
 
+    test('with colour on (NC ON): header codes ignored, body codes kept', () {
+      // RH 4 as recorded on the test XRouter with NC ON; the body was sent
+      // with colour codes of its own.
+      const g = '\x1b[1;32;40m', w = '\x1b[1;37;40m';
+      final m = parseXrouterRead(4, '${g}Msg#: ${w}4  ${g}Type: ${w}P\$  ${g}Size: ${w}330\r'
+          '${g}Rcvd: ${w}30/10/26$g at ${w}07:34   ${g}Created: ${w}30/10/26$g at ${w}07:34Z\r'
+          '${g}From: ${w}Q0USR\r'
+          '${g}To:   ${w}Q0OTH @ ?\r'
+          '${g}MID:  ${w}AE4489C040XR\r'
+          '${g}Subj: ${w}Coloured body\r'
+          '\r'
+          'R:261030/0734Z @:Q0XR.#42.GBR.EURO [] #:4 XrLin505p\r'
+          'Date: Fri, 30 Oct 2026 07:34:53 +0000\r'
+          'From: q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r'
+          'To: q0oth@?\r'
+          'Subject: Coloured body\r'
+          'Message-ID: <AE4489C040XR>\r'
+          '\r'
+          'plain \x1b[31mred\x1b[0m text\r'
+          '\x1b[1;44;33mbold yellow on blue\x1b[0m\r'
+          '$w\r'
+          '[ end of message 4 ]\r')!;
+      expect((m.from, m.to, m.subject, m.bid, m.statusBeforeRead), ('Q0USR', 'Q0OTH', 'Coloured body', 'AE4489C040XR', r'$'));
+      expect(m.date, DateTime.utc(2026, 10, 30, 7, 34));
+      expect(m.routing, hasLength(1));
+      expect(m.body, 'plain \x1b[31mred\x1b[0m text\n\x1b[1;44;33mbold yellow on blue\x1b[0m');
+    });
+
     test('anything else is not a message', () {
       expect(parseXrouterRead(7, 'Msg 7 not found\r'), isNull);
     });

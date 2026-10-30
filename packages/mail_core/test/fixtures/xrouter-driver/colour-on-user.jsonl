@@ -1,0 +1,23 @@
+# Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
+{"t":0.009,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.009,"dir":"tx","data":"Q0USR\r"}
+{"t":0.019,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.019,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.019,"dir":"tx","data":"PMS\r"}
+{"t":0.029,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":0.071,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.071,"dir":"tx","data":"NC ON\r"}
+{"t":0.08,"dir":"rx","data":"\u001b[1;37;40mYour ANSI colour preference is registered as 'ON'\r\n\u001b[1;37;40m\u001b[1;37;40mUse \"NC {on | off}\" to change it\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.081,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":0.09,"dir":"rx","data":"\u001b[1;37;40mTo: Q0OTH @ ?\r\n\u001b[1;37;40m\u001b[1;36;40mEnter subject (or empty line to abort):\r\n\u001b[1;37;40m"}
+{"t":0.383,"dir":"tx","data":"Coloured body\r"}
+{"t":0.383,"dir":"rx","data":"\u001b[1;36;40m\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n\u001b[1;37;40m"}
+{"t":0.684,"dir":"tx","data":"plain \u001b[31mred\u001b[0m text\r"}
+{"t":0.985,"dir":"tx","data":"\u001b[1;44;33mbold yellow on blue\u001b[0m\r"}
+{"t":1.286,"dir":"tx","data":"/EX\r"}
+{"t":1.295,"dir":"rx","data":"\u001b[1;33;40m\r\n*** Message 5 saved\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":1.587,"dir":"tx","data":"B\r"}
+{"t":1.588,"dir":"rx","data":"\u001b[1;33;40m  - Logged off\r\n\u001b[1;37;40m"}
+{"t":1.598,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":1.599,"dir":"tx","data":"B\r"}
+{"t":1.609,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}

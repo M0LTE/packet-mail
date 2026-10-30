@@ -1,3 +1,4 @@
+import '../ansi.dart';
 import '../message.dart';
 
 /// XRouter's mailbox stores titles up to this length and cuts longer ones.
@@ -59,11 +60,17 @@ MessageHeader? parseXrouterListingLine(String line, DateTime now) {
 /// stored. That starts with the R: lines and, for mail written on an
 /// XRouter, an RFC 822 style block (Date, From, To, Subject, Message-ID)
 /// and a blank line, which are dropped.
+///
+/// With colour on (`NC ON`) the mailbox colours its header block and the
+/// line after the body; those codes are ignored. Codes inside the body
+/// itself are part of the message and kept.
 ReadMessage? parseXrouterRead(int number, String text) {
-  final start = text.indexOf('Msg#: $number ');
-  final end = text.lastIndexOf('[ end of message $number ]');
-  if (start < 0 || end < 0) return null;
-  final lines = text.substring(start, end).replaceAll('\r\n', '\r').replaceAll('\n', '\r').split('\r');
+  final all = ansiLines(text);
+  final first = all.indexWhere((l) => l.clean.contains('Msg#: $number '));
+  final last = all.lastIndexWhere((l) => l.clean.contains('[ end of message $number ]'));
+  if (first < 0 || last < first) return null;
+  final raw = all.sublist(first, last).map((l) => l.raw).toList();
+  final lines = all.sublist(first, last).map((l) => l.clean).toList();
 
   final headers = <String, String>{};
   var i = 1;
@@ -81,11 +88,12 @@ ReadMessage? parseXrouterRead(int number, String text) {
   if (routing.isNotEmpty && i < lines.length && lines[i].isEmpty) i++;
   i = _skipRfcHeaders(lines, i);
 
-  var body = lines.sublist(i < lines.length ? i : lines.length);
   // The mailbox adds an empty line before the end marker.
-  while (body.isNotEmpty && body.last.trim().isEmpty) {
-    body = body.sublist(0, body.length - 1);
+  var end = lines.length;
+  while (end > i && lines[end - 1].trim().isEmpty) {
+    end--;
   }
+  final body = i < end ? raw.sublist(i, end) : const <String>[];
 
   final rcvd = RegExp(r'^(\d\d)/(\d\d)/(\d\d) at (\d\d):(\d\d)').firstMatch(headers['Rcvd'] ?? '');
   return ReadMessage(

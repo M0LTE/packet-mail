@@ -162,7 +162,93 @@ void defineXRouterScenarios(XRouterConnect connect) {
     await expectLater(d.logIn(user: 'NOCALL', password: 'x', name: 'x'), throwsKind(BbsErrorKind.loginFailed));
     await d.disconnect();
   });
+
+  test('colour on (NC ON): sends, lists what it sent and looks people up through the codes', () async {
+    await colourOn(await connect('colour-on-user'), 'Q0USR', 'user',
+        ['SP Q0OTH', 'Coloured body', ...colouredBody, '/EX']);
+    await colourOn(await connect('colour-on-other'), 'Q0OTH', 'other');
+
+    final d = xrouterDriverFor(await connect('colour-user-sends'));
+    await d.logIn(user: 'Q0USR', password: 'user', name: 'Tom User');
+    expect(d.viaBbs, isFalse);
+    final mail = await d.sendPersonal(to: MailAddress.parse('Q0OTH').address!, subject: 'In colour', body: 'Hello.');
+    expect(mail.number, 6);
+    expect(mail.notes, isEmpty);
+    final bull = await d.sendBulletin(
+        to: BulletinAddress.parse('ALL@GBR').address!, subject: 'Colour bulletin', body: 'Bulletin in colour.');
+    expect(bull.number, 7);
+    expect((await d.listSent('Q0USR')).map((h) => (h.number, h.to, h.subject)).toList(), containsAllInOrder([
+      (5, 'Q0OTH', 'Coloured body'),
+      (6, 'Q0OTH', 'In colour'),
+      (7, 'ALL', 'Colour bulletin'),
+    ]));
+    expect(await d.lookUpHomeBbs('Q0XR'), 'Q0XR.#42.GBR.EURO');
+    expect(await d.lookUpHomeBbs('G8PZT'), isNull);
+    await expectLater(
+      d.sendBulletin(to: BulletinAddress.parse('ALL@GBR').address!, subject: '', body: 'x'),
+      throwsArgumentError,
+    );
+    await d.disconnect();
+  });
+
+  test('colour on (NC ON): lists, reads personal mail and bulletins, and kills', () async {
+    final d = xrouterDriverFor(await connect('colour-other-reads'));
+    await d.logIn(user: 'Q0OTH', password: 'other', name: 'Olive Other');
+    final inbox = await d.listPersonal();
+    expect(inbox.map((h) => (h.number, h.from, h.subject)), containsAllInOrder([
+      (5, 'Q0USR', 'Coloured body'),
+      (6, 'Q0USR', 'In colour'),
+    ]));
+
+    final coloured = await d.read(5);
+    expect((coloured.subject, coloured.from, coloured.to), ('Coloured body', 'Q0USR', 'Q0OTH'));
+    expect(coloured.body.split('\n'), colouredBody); // the body's own codes are kept
+
+    final plain = await d.read(6);
+    expect((plain.subject, plain.statusBeforeRead, plain.body), ('In colour', r'$', 'Hello.'));
+    expect(plain.routing.single, startsWith('R:'));
+
+    final bulls = await d.listBulletins();
+    expect(bulls.first.number, 7);
+    final bull = await d.read(7);
+    expect((bull.type, bull.to, bull.subject, bull.body), (MessageType.bulletin, 'ALL', 'Colour bulletin', 'Bulletin in colour.'));
+
+    await d.kill(6);
+    await expectLater(d.read(6), throwsKind(BbsErrorKind.notFound));
+    await expectLater(d.read(4), throwsKind(BbsErrorKind.notAllowed));
+    await expectLater(d.kill(7), throwsKind(BbsErrorKind.notAllowed));
+    expect(await d.lookUpHomeBbs('Q0XR'), 'Q0XR.#42.GBR.EURO');
+    await d.disconnect();
+  });
 }
+
+/// Turns ANSI colour on (`NC ON`) for a user, as they would at a terminal,
+/// and sends [lines] after it. The driver itself never changes the setting.
+Future<void> colourOn(Transport t, String call, String password, [List<String> lines = const []]) async {
+  final s = LineSession(TelnetFilter(t));
+  final prompt = RegExp(r'\[\d+\] [^\r]*>\r');
+  await s.readUntil('Callsign: ');
+  await s.sendLine(call);
+  await s.readUntil('Password: ');
+  await s.sendSecretLine(password);
+  await s.sendLine('PMS');
+  await s.readUntil(prompt);
+  await s.sendLine('NC ON');
+  await s.readUntil(prompt);
+  for (final l in lines) {
+    await s.sendLine(l);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+  }
+  await s.sendLine('B');
+  await s.readUntil('Welcome back');
+  await s.sendLine('B');
+  await s.readUntil('Goodbye');
+  await s.close();
+}
+
+/// A body with colour of its own, which the driver can't send (it turns
+/// control characters into spaces) but a terminal user can.
+const colouredBody = ['plain \x1b[31mred\x1b[0m text', '\x1b[1;44;33mbold yellow on blue\x1b[0m'];
 
 /// Scenarios for a node set up as a full BBS (`PMSTYPE=4`, test-bbs/xrouter
 /// `run.sh bbs`), where `PMS` hides bulletins. Fresh node, in this order.
@@ -211,6 +297,19 @@ void defineXRouterBbsScenarios(XRouterConnect connect) {
     expect(await d.listPersonal(), isEmpty);
     await expectLater(d.kill(1), throwsKind(BbsErrorKind.notAllowed));
     expect(await d.lookUpHomeBbs('Q0XR'), 'Q0XR.#42.GBR.EURO');
+    await d.disconnect();
+  });
+
+  test('full BBS, colour on (NC ON): moves to BBS and reads through the codes', () async {
+    await colourOn(await connect('bbs-colour-on'), 'Q0USR', 'user');
+    final d = xrouterDriverFor(await connect('bbs-colour-reads'));
+    await d.logIn(user: 'Q0USR', password: 'user', name: 'Tom User');
+    expect(d.viaBbs, isTrue);
+    expect((await d.listBulletins()).map((h) => h.number), [5, 2, 1]);
+    expect((await d.read(2)).body, 'Two.');
+    final sent = await d.sendPersonal(to: MailAddress.parse('Q0OTH').address!, subject: 'Colour', body: 'Six.');
+    expect(sent.number, 6);
+    expect((await d.read(6)).body, 'Six.');
     await d.disconnect();
   });
 }

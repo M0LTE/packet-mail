@@ -173,6 +173,23 @@ Enter subject (or empty line to abort):\r\n
 7. **Sysops** see and can kill everything, and their prompt lists more commands **[D]**. Use an ordinary account.
 8. **Other ways in.** AX.25 to `PMSCALL`, NetRom to `PMSALIAS`, NetRomX service 2, an HTTP interface and REST and MQTT interfaces exist **[D]**; only telnet is used here.
 
-## 10. The test XRouter
+## 10. Colour (`NC ON`)
+
+A user can turn on ANSI colour for their mailbox sessions with `NC ON` (`NC OFF` turns it off, `NC` alone shows it) **[S][D]**. The setting is stored per user and lasts across logins, so a client meets it on whoever it logs in as. Real users with colour on saw Packet Mail 1.0.3 fail with "Could not understand message N" (#65). Recorded in `fixtures/xrouter-local/colour.jsonl` and the driver's `colour-*` and `bbs-colour-*` scenarios.
+
+What carries codes **[S]**, on both a normal and a full BBS node:
+
+- **Nothing before the first command.** The node's login, `Connected to PMS` (or `BBS`), the SID, the welcome and the first prompt are plain even when colour is already on. So is the node's `Welcome back` after `B`.
+- **Every reply after that.** Each reply starts with an SGR such as `ESC[1;37;40m` (white), `ESC[1;32;40m` (green, listing headings and read headers), `ESC[1;35;40m` (magenta, errors such as `No messages found`, `Msg 99 not found`, `Operation aborted`, `No packet address for G8PZT`) or `ESC[1;33;40m` (yellow, `*** Message 2 saved`, `  - Logged off`). The prompt is preceded by `ESC[1;36;40m\r\n` and followed by `ESC[1;37;40m` after its CR LF, which lands at the start of the next reply.
+- **Codes can sit mid-line or at a line end.** The read header is `ESC[1;32;40mMsg#: ESC[1;37;40m1  ESC[1;32;40mType: ...`, so `Msg#: 1` is never contiguous; `I call` gives `Q0USR last seen on 01/01/70 at ?ESC[1;37;40m`. Listing rows have none except the code before the first row.
+- **The send dialogue:** `To:` and `Enter subject` lines are coloured, as is the line before `Enter message, ending ctrl-Z ...`.
+- **The body is not touched.** After the read header the R: line, the RFC 822 block and the body come exactly as stored. The mailbox adds `ESC[1;37;40m` on the blank line before `[ end of message n ]`. A body sent with codes of its own (by a terminal user) is stored and shown with them unchanged.
+- Only SGR is used: no cursor movement, no erase. The codes are always 7-bit `ESC [`.
+
+The driver doesn't change the setting (that would change it for the user's terminal logins too). Instead every driver reads through `LineSession`, which matches prompts and returns replies with all escape sequences stripped. Only a read asks for the codes, and the parsers ignore them in headers, keep them inside the body and drop the coloured blank line before the end marker. So the stored body of an XRouter message has codes only if its author put them there.
+
+LinBPQ's mailbox has no colour setting for users, and none was seen in its replies.
+
+## 11. The test XRouter
 
 `test-bbs/xrouter/run.sh` starts `ghcr.io/packethacking/xrouter:505p-amd64` with a loopback-only config, node `Q0XR`, mailbox `Q0XR-2` at `.#42.GBR.EURO`, telnet on `127.0.0.1:18023`, passwords required from every address, users `Q0USR` (password `user`) and `Q0OTH` (`other`). XRouter refuses to start without a `LOCATOR` and at least one interface, hence the loopback port. `record-all.sh` records the scenarios in `fixtures/xrouter-local/`. `run.sh bbs` starts a second one set up as a full BBS (`PMSTYPE=4`) on `127.0.0.1:18024`, for the driver's full BBS scenarios. The `bbs-*.jsonl` recordings in `fixtures/xrouter-local/` come from #57; the alias ones used a third node with a sysop entry in `PASSWORD.SYS`, a command alias added with `@ password` then `CMD ADD BBS ...`, or an `APPL` block, not kept in the repo.

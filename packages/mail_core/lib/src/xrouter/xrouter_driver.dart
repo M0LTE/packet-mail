@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../address.dart';
+import '../ansi.dart';
 import '../driver.dart';
 import '../message.dart';
 import '../transport/line_session.dart';
@@ -183,7 +184,9 @@ class XRouterDriver implements MailDriver {
     final end = RegExp('\\[ end of message $number \\]\\r'
         '|(?:^|\\r)Msg $number not found\\r'
         '|(?:^|\\r)Access to message $number denied\\r');
-    final text = await _session.readUntil(end, timeout: timeout);
+    // The body may carry escape codes of its own, so they come too.
+    final raw = await _session.readUntil(end, timeout: timeout, keepCodes: true);
+    final text = stripAnsi(raw);
     await _session.readUntil(_prompt, timeout: timeout);
     if (text.contains('Msg $number not found')) {
       throw BbsError(BbsErrorKind.notFound, 'Message $number is not on the BBS.');
@@ -191,7 +194,7 @@ class XRouterDriver implements MailDriver {
     if (text.contains('Access to message $number denied')) {
       throw BbsError(BbsErrorKind.notAllowed, 'Message $number is not available to you.');
     }
-    return parseXrouterRead(number, text) ??
+    return parseXrouterRead(number, raw) ??
         (throw BbsError(BbsErrorKind.protocol, 'Could not understand message $number.'));
   }
 

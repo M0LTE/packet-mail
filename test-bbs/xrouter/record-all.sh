@@ -35,3 +35,10 @@ rec other-read-kill Q0OTH other PMS 'NP 0' LM LN 'R 1' 'RH 1' LM 'K 1' 'K 1' 'R 
 
 # user sees what is left, kills own bulletin, and tries a BID.
 rec user-after Q0USR user PMS 'NP 0' 'L< Q0USR' LB 'K 3' LB 'SP Q0OTH $BID123'
+
+# Colour on (NC ON): login, send dialogue, listings, reads and replies, and a
+# body with colour codes of its own. Leaves Q0USR with colour on.
+rec colour Q0USR user PMS NC 'NC ON' 'NP 0' \
+  'SP Q0USR' 'Coloured body' $'plain \e[31mred\e[0m text' $'\e[1;44;33mbold yellow on blue\e[0m' '/EX' \
+  'SB ALL @ GBR' 'Colour bulletin' 'Bulletin body.' '/EX' 'SP Q0OTH' '' \
+  LM LB 'L< Q0USR' LC 'R 1' 'RH 1' 'RH 2' 'I Q0USR' 'I G8PZT' 'K 99' 'RH 99' B B

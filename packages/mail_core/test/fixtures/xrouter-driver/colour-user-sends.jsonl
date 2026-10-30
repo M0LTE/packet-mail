@@ -1,0 +1,40 @@
+# Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
+{"t":0.01,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.01,"dir":"tx","data":"Q0USR\r"}
+{"t":0.02,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.02,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.02,"dir":"tx","data":"PMS\r"}
+{"t":0.03,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":0.071,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.071,"dir":"tx","data":"NP 0\r"}
+{"t":0.081,"dir":"rx","data":"\u001b[1;37;40mPagination is OFF\u001b[1;37;40m\r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.082,"dir":"tx","data":"LC\r"}
+{"t":0.091,"dir":"rx","data":"\u001b[1;37;40mBulletin Categories matching '*':\r\n\r\n\u001b[1;37;40m ALL    1  \r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.092,"dir":"tx","data":"LB 1\r"}
+{"t":0.102,"dir":"rx","data":"\u001b[1;32;40m Msg# TS Rcvd  Size  To      At     From   Subject\r\n\u001b[1;37;40m    3 B$ 07:40  288  ALL    @GBR    Q0USR  Driver bulletin\r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.102,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":0.112,"dir":"rx","data":"\u001b[1;37;40mTo: Q0OTH @ ?\r\n\u001b[1;37;40m\u001b[1;36;40mEnter subject (or empty line to abort):\r\n\u001b[1;37;40m"}
+{"t":0.112,"dir":"tx","data":"In colour\r"}
+{"t":0.122,"dir":"rx","data":"\u001b[1;36;40m\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n\u001b[1;37;40m"}
+{"t":0.122,"dir":"tx","data":"Hello.\r"}
+{"t":0.122,"dir":"tx","data":"/EX\r"}
+{"t":0.142,"dir":"rx","data":"\u001b[1;33;40m\r\n*** Message 6 saved\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.143,"dir":"tx","data":"SB ALL @ GBR\r"}
+{"t":0.153,"dir":"rx","data":"\u001b[1;37;40mTo: ALL @ GBR\r\n\u001b[1;37;40m\u001b[1;36;40mEnter subject (or empty line to abort):\r\n\u001b[1;37;40m"}
+{"t":0.153,"dir":"tx","data":"Colour bulletin\r"}
+{"t":0.163,"dir":"rx","data":"\u001b[1;36;40m\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n\u001b[1;37;40m"}
+{"t":0.163,"dir":"tx","data":"Bulletin in colour.\r"}
+{"t":0.163,"dir":"tx","data":"/EX\r"}
+{"t":0.183,"dir":"rx","data":"\u001b[1;33;40m\r\n*** Message 7 saved\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.183,"dir":"tx","data":"L< Q0USR\r"}
+{"t":0.193,"dir":"rx","data":"\u001b[1;32;40m Msg# TS Rcvd  Size  To      At     From   Subject\r\n\u001b[1;37;40m    2 P$ 07:40  328  Q0OTH  @GB7XYZ Q0USR  A subject longer than the listing \r\n    3 B$ 07:40  288  ALL    @GBR    Q0USR  Driver bulletin\r\n    4 PN 07:40  281  Q0ZZZ          Q0USR  Fo"}
+{"t":0.234,"dir":"rx","data":"r someone else\r\n    5 P$ 07:41  330  Q0OTH  @?      Q0USR  Coloured body\r\n    6 P$ 07:41  274  Q0OTH  @?      Q0USR  In colour\r\n    7 B$ 07:41  293  ALL    @GBR    Q0USR  Colour bulletin\r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.235,"dir":"tx","data":"I Q0XR\r"}
+{"t":0.244,"dir":"rx","data":"\u001b[1;37;40m\r\nQ0XR last seen on 30/10/26 at Q0XR\u001b[1;37;40m.#42.GBR.EURO\r\n\u001b[1;37;40mName: ?   QTH: ?   Zip: ?   Src: U\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.244,"dir":"tx","data":"I G8PZT\r"}
+{"t":0.254,"dir":"rx","data":"\u001b[1;35;40m\r\nNo packet address for G8PZT\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.255,"dir":"tx","data":"B\r"}
+{"t":0.264,"dir":"rx","data":"\u001b[1;33;40m  - Logged off\r\n\u001b[1;37;40m"}
+{"t":0.305,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.305,"dir":"tx","data":"B\r"}
+{"t":0.315,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}

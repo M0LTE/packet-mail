@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
+import '../ansi.dart';
 import 'transport.dart';
 
 /// Thrown when the BBS doesn't send what we're waiting for in time.
@@ -24,6 +26,12 @@ class SessionClosed implements Exception {
 ///
 /// Packet BBSes speak 8-bit text with CR line ends, so everything is Latin-1
 /// and drivers parse by recognising prompts, never by timing.
+///
+/// Some BBSes colour their replies with ANSI escape sequences (XRouter with
+/// `NC ON`). Patterns are matched against the text without them, and what
+/// [readUntil] returns has them stripped too, so colour can't break parsing.
+/// Message bodies can carry codes of their own: ask for [keepCodes] to get
+/// the text as it came.
 class LineSession {
   LineSession(this.transport) {
     _sub = transport.incoming.listen(
@@ -50,8 +58,8 @@ class LineSession {
     w?.complete();
   }
 
-  /// What has arrived and not yet been read.
-  String get pending => _buffer.toString();
+  /// What has arrived and not yet been read, without escape sequences.
+  String get pending => stripAnsi(_buffer.toString());
 
   /// Sends [text] followed by CR.
   Future<void> sendLine(String text) => transport.write(latin1.encode('$text\r'));
@@ -61,27 +69,50 @@ class LineSession {
 
   /// Waits until [pattern] appears in what has arrived, then returns
   /// everything up to and including the match and keeps the rest.
-  Future<String> readUntil(Pattern pattern, {Duration timeout = const Duration(seconds: 30)}) async {
+  ///
+  /// The match is made on the text without escape sequences, and that is
+  /// what comes back unless [keepCodes] is set. Codes after the last matched
+  /// character stay for the next read.
+  Future<String> readUntil(Pattern pattern,
+      {Duration timeout = const Duration(seconds: 30), bool keepCodes = false}) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
-      final text = _buffer.toString();
-      final match = pattern.allMatches(text).firstOrNull;
+      final raw = _buffer.toString();
+      final (clean, at) = _clean(raw);
+      final match = pattern.allMatches(clean).firstOrNull;
       if (match != null) {
+        // Just past the last matched character in the raw text.
+        final end = match.end == 0 ? 0 : at[match.end - 1] + 1;
         _buffer
           ..clear()
-          ..write(text.substring(match.end));
-        return text.substring(0, match.end);
+          ..write(raw.substring(end));
+        return keepCodes ? raw.substring(0, end) : clean.substring(0, match.end);
       }
-      if (_closed) throw SessionClosed(text);
+      if (_closed) throw SessionClosed(clean);
       final remaining = deadline.difference(DateTime.now());
-      if (remaining <= Duration.zero) throw SessionTimeout(pattern, text);
+      if (remaining <= Duration.zero) throw SessionTimeout(pattern, clean);
       final w = _waiter = Completer<void>();
       try {
         await w.future.timeout(remaining);
       } on TimeoutException {
-        throw SessionTimeout(pattern, _buffer.toString());
+        throw SessionTimeout(pattern, pending);
       }
     }
+  }
+
+  /// [raw] without escape sequences, and where each of its characters came from.
+  static (String, List<int>) _clean(String raw) {
+    if (!raw.contains('\x1b')) return (raw, _Identity(raw.length));
+    final out = StringBuffer();
+    final at = <int>[];
+    for (final t in ansiTokens(raw)) {
+      if (t.escape) continue;
+      out.write(raw.substring(t.start, t.end));
+      for (var i = t.start; i < t.end; i++) {
+        at.add(i);
+      }
+    }
+    return (out.toString(), at);
   }
 
   /// Closes the transport first: cancelling a telnet filter waits for the
@@ -90,4 +121,15 @@ class LineSession {
     await transport.close();
     await _sub.cancel();
   }
+}
+
+/// Positions in text with no escape sequences: each is its own.
+class _Identity with ListMixin<int> {
+  _Identity(this.length);
+  @override
+  int length;
+  @override
+  int operator [](int i) => i;
+  @override
+  void operator []=(int i, int v) => throw UnsupportedError('read only');
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../address.dart';
+import '../ansi.dart';
 import '../driver.dart';
 import '../message.dart';
 import '../transport/line_session.dart';
@@ -148,7 +149,9 @@ class BpqDriver implements MailDriver {
     final end = RegExp('\\[End of Message #$number from [^\\]\\r]*\\]\\r'
         '|(?:^|\\r)Message $number not (?:found|for you)\\r'
         '|(?:^|\\r)File for Message $number not found\\r');
-    final text = await _session.readUntil(end, timeout: timeout);
+    // The body may carry escape codes of its own, so they come too.
+    final raw = await _session.readUntil(end, timeout: timeout, keepCodes: true);
+    final text = stripAnsi(raw);
     await _session.readUntil(_promptOrThrow, timeout: timeout);
     if (text.contains('Message $number not found')) {
       throw BbsError(BbsErrorKind.notFound, 'Message $number is not on the BBS.');
@@ -156,7 +159,7 @@ class BpqDriver implements MailDriver {
     if (text.contains('Message $number not for you')) {
       throw BbsError(BbsErrorKind.notAllowed, 'Message $number is not available to you.');
     }
-    return parseReadMessage(number, text, _clock().toUtc()) ??
+    return parseReadMessage(number, raw, _clock().toUtc()) ??
         (throw BbsError(BbsErrorKind.protocol, 'Could not understand message $number.'));
   }
 

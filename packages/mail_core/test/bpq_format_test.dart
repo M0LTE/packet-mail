@@ -85,6 +85,24 @@ void main() {
     });
   });
 
+  test('a body with colour codes of its own keeps them; header codes are ignored', () {
+    final m = parseReadMessage(
+        5,
+        '\x1b[1mFrom: \x1b[0mG8XYZ\r'
+        'To: Q0USR\r'
+        'Type/Status: PN\r'
+        'Date/Time: 29-Oct 07:50Z\r'
+        'Bid: 5_Q0BBS\r'
+        'Title: \x1b[32mArt\x1b[0m\r'
+        '\r'
+        '\x1b[31mred\x1b[0m line\r'
+        '\x1b[0m\r'
+        '[End of Message #5 from Q0BBS]\r',
+        DateTime.utc(2026, 10, 30))!;
+    expect((m.from, m.subject), ('G8XYZ', 'Art'));
+    expect(m.body, '\x1b[31mred\x1b[0m line');
+  });
+
   test('body escaping', () {
     expect(BpqDriver.escapeBody('ok\n/EX\ninvalid command here\nAlready Connected\n'),
         ['ok', ' /EX', ' invalid command here', ' Already Connected']);

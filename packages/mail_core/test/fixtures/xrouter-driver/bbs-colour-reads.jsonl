@@ -1,0 +1,41 @@
+# Recorded by xrouter_live_test.dart against test-bbs/xrouter; do not edit.
+{"t":0.01,"dir":"rx","data":"\r\nXrouter v505p\r\n\r\nCallsign: "}
+{"t":0.01,"dir":"tx","data":"Q0USR\r"}
+{"t":0.02,"dir":"rx","data":"\r\nPassword: "}
+{"t":0.02,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.02,"dir":"tx","data":"PMS\r"}
+{"t":0.03,"dir":"rx","data":"Q0XR XRouter test node\r\n"}
+{"t":0.071,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to PMS\r\n[XR-505p-BFHM$]\r\nWelcome to Q0XR's PMS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.071,"dir":"tx","data":"NP 0\r"}
+{"t":0.081,"dir":"rx","data":"\u001b[1;37;40mPagination is OFF\u001b[1;37;40m\r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.081,"dir":"tx","data":"LC\r"}
+{"t":0.091,"dir":"rx","data":"\u001b[1;37;40mBulletin Categories matching '*':\r\n\r\n\u001b[1;37;40m ALL    2   WX     1  \r\n\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.091,"dir":"tx","data":"LB 1\r"}
+{"t":0.101,"dir":"rx","data":"\u001b[1;35;40mNo messages found\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.102,"dir":"tx","data":"B\r"}
+{"t":0.112,"dir":"rx","data":"\u001b[1;33;40m  - Logged off\r\n\u001b[1;37;40m"}
+{"t":0.152,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.152,"dir":"tx","data":"BBS\r"}
+{"t":0.162,"dir":"rx","data":"\r\nQ0XR:XRTEST} Connected to BBS\r\n[XR-505p-BFHM$]\r\n"}
+{"t":0.203,"dir":"rx","data":"Welcome to Q0XR BBS\r\nYou have 0 new messages\r\nPlease use the 'NH' command to set your 'home' BBS.\r\n\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n"}
+{"t":0.203,"dir":"tx","data":"LB 99999\r"}
+{"t":0.213,"dir":"rx","data":"\u001b[1;32;40m Msg# TS Rcvd  Size  To      At     From   Subject\r\n\u001b[1;37;40m    5 B$ 07:41  270  ALL    @GBR    Q0USR  Answer\r\n    2 B$ 07:41  274  WX     @GB     Q0OTH  Local weather\r\n    1 B$ 07:41  276  ALL    @GBR    Q0OTH  Area bulletin\r\n\u001b[1;36;40m\r\n[0] B"}
+{"t":0.254,"dir":"rx","data":",H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.255,"dir":"tx","data":"RH 2\r"}
+{"t":0.264,"dir":"rx","data":"\u001b[1;32;40mMsg#: \u001b[1;37;40m2  \u001b[1;32;40mType: \u001b[1;37;40mB$  \u001b[1;32;40mSize: \u001b[1;37;40m274\r\n\u001b[1;32;40mRcvd: \u001b[1;37;40m30/10/26\u001b[1;32;40m at \u001b[1;37;40m07:41   \u001b[1;32;40mCreated: \u001b[1;37;40m30/10/26\u001b[1;32;40m at \u001b[1;37;40m07:41Z\r\n\u001b[1;32;40mFrom: \u001b[1;37;40mQ0OTH"}
+{"t":0.304,"dir":"rx","data":"\r\n\u001b[1;32;40mTo:   \u001b[1;37;40mWX @ GB\r\n\u001b[1;32;40mBID:  \u001b[1;37;40mAE44A0E020XR\r\n\u001b[1;32;40mSubj: \u001b[1;37;40mLocal weather\r\n\r\nR:261030/0741Z @:Q0XR.#42.GBR.EURO [] #:2 XrLin505p\r\nDate: Fri, 30 Oct 2026 07:41:02 +0000\r\nFrom: q0oth@q0xr.#42.gbr.euro <q0oth@q0xr-2.#42.gbr.euro>\r\nTo: wx@gb\r\nSubject: Local weather\r\nMessage-ID: <AE44A0E020XR>\r\n\r\nTwo.\r\n\u001b[1;37;40m\r\n[ end of message 2 ]\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[2] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.305,"dir":"tx","data":"SP Q0OTH\r"}
+{"t":0.314,"dir":"rx","data":"\u001b[1;37;40mTo: Q0OTH @ ?\r\n\u001b[1;37;40m\u001b[1;36;40mEnter subject (or empty line to abort):\r\n\u001b[1;37;40m"}
+{"t":0.314,"dir":"tx","data":"Colour\r"}
+{"t":0.325,"dir":"rx","data":"\u001b[1;36;40m\r\nEnter message, ending ctrl-Z or /EX (/QQ to abort)\r\n\u001b[1;37;40m"}
+{"t":0.325,"dir":"tx","data":"Six.\r"}
+{"t":0.325,"dir":"tx","data":"/EX\r"}
+{"t":0.345,"dir":"rx","data":"\u001b[1;33;40m\r\n*** Message 6 saved\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[0] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.346,"dir":"tx","data":"RH 6\r"}
+{"t":0.355,"dir":"rx","data":"\u001b[1;32;40mMsg#: \u001b[1;37;40m6  \u001b[1;32;40mType: \u001b[1;37;40mP$  \u001b[1;32;40mSize: \u001b[1;37;40m269\r\n\u001b[1;32;40mRcvd: \u001b[1;37;40m30/10/26\u001b[1;32;40m at \u001b[1;37;40m07:41   \u001b[1;32;40mCreated: \u001b[1;37;40m30/10/26\u001b[1;32;40m at \u001b[1;37;40m07:41Z\r\n\u001b[1;32;40mFrom: \u001b[1;37;40mQ0USR"}
+{"t":0.396,"dir":"rx","data":"\r\n\u001b[1;32;40mTo:   \u001b[1;37;40mQ0OTH @ ?\r\n\u001b[1;32;40mMID:  \u001b[1;37;40mAE44A10060XR\r\n\u001b[1;32;40mSubj: \u001b[1;37;40mColour\r\n\r\nR:261030/0741Z @:Q0XR.#42.GBR.EURO [] #:6 XrLin505p\r\nDate: Fri, 30 Oct 2026 07:41:04 +0000\r\nFrom: q0usr@q0xr.#42.gbr.euro <q0usr@q0xr-2.#42.gbr.euro>\r\nTo: q0oth@?\r\nSubject: Colour\r\nMessage-ID: <AE44A10060XR>\r\n\r\nSix.\r\n\u001b[1;37;40m\r\n[ end of message 6 ]\r\n\u001b[1;37;40m\u001b[1;36;40m\r\n[6] B,H,I,J,K,KM,L,LM,LN,M,N,R,SB,SP,SR,U,? >\r\n\u001b[1;37;40m"}
+{"t":0.397,"dir":"tx","data":"B\r"}
+{"t":0.406,"dir":"rx","data":"\u001b[1;33;40m  - Logged off\r\n\u001b[1;37;40m"}
+{"t":0.447,"dir":"rx","data":"\r\nQ0XR:XRTEST} Welcome back\r\n"}
+{"t":0.447,"dir":"tx","data":"B\r"}
+{"t":0.457,"dir":"rx","data":"\r\nQ0XR:XRTEST} Goodbye\r\n"}

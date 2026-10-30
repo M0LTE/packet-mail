@@ -1,3 +1,4 @@
+import '../ansi.dart';
 import '../message.dart';
 
 /// BPQMail silently cuts titles at this length.
@@ -40,12 +41,16 @@ MessageHeader? parseListingLine(String line, DateTime now) {
 }
 
 /// Parses the text of an `R n` reply up to and including the end marker.
+/// Escape sequences in the headers are ignored; those in the body are part
+/// of the message and kept.
 ReadMessage? parseReadMessage(int number, String text, DateTime now) {
-  final start = text.indexOf('From: ');
-  final end = text.lastIndexOf('[End of Message #$number from ');
-  if (start < 0 || end < 0) return null;
-  // Bodies from other systems may use LF or CRLF; treat every kind as a line end.
-  final lines = text.substring(start, end).replaceAll('\r\n', '\r').replaceAll('\n', '\r').split('\r');
+  final all = ansiLines(text);
+  final first = all.indexWhere((l) => l.clean.contains('From: '));
+  final last = all.lastIndexWhere((l) => l.clean.contains('[End of Message #$number from '));
+  if (first < 0 || last < first) return null;
+  final raw = all.sublist(first, last).map((l) => l.raw).toList();
+  final lines = all.sublist(first, last).map((l) => l.clean).toList();
+  lines[0] = lines[0].substring(lines[0].indexOf('From: '));
 
   final headers = <String, String>{};
   var i = 0;
@@ -66,11 +71,12 @@ ReadMessage? parseReadMessage(int number, String text, DateTime now) {
   }
   if (routing.isNotEmpty && i < lines.length && lines[i].isEmpty) i++;
 
-  var body = lines.sublist(i < lines.length ? i : lines.length);
   // The BBS adds empty lines before the end marker; trailing empty lines carry nothing.
-  while (body.isNotEmpty && body.last.trim().isEmpty) {
-    body = body.sublist(0, body.length - 1);
+  var end = lines.length;
+  while (end > i && lines[end - 1].trim().isEmpty) {
+    end--;
   }
+  final body = i < end ? raw.sublist(i, end) : const <String>[];
 
   final typeStatus = headers['Type/Status'] ?? 'PN';
   final dt = RegExp(r'^(\d\d-\w{3}) (\d\d):(\d\d)Z$').firstMatch(headers['Date/Time'] ?? '');
