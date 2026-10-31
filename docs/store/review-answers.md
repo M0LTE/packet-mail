@@ -40,7 +40,7 @@ Play Console, App content, Data safety.
 - **Does your app collect or share any of the required user data types?** Yes (Google counts any data sent off the device, even optional reports).
 - **Is all of the user data collected by your app encrypted in transit?** Yes (HTTPS).
 - **Do you provide a way for users to request that their data is deleted?** Yes: by emailing app-support@tomfanning.name.
-- **Data types collected** (all from optional problem reports; each: collected, not shared, optional, not processed ephemerally, purpose App functionality):
+- **Data types collected** (all from optional problem reports; each: collected, not shared, optional, not processed ephemerally, purpose Analytics, which Google defines as including diagnosing and fixing bugs):
   - **Personal info, Name:** the BBS greets the user by name in the traffic log.
   - **Personal info, User IDs:** callsign and BBS login name in the traffic log (never the password).
   - **Messages, Emails:** packet mail headers from listings, and message text if the user ticks the box.
