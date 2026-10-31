@@ -40,10 +40,13 @@ Play Console, App content, Data safety.
 - **Does your app collect or share any of the required user data types?** Yes (Google counts any data sent off the device, even optional reports).
 - **Is all of the user data collected by your app encrypted in transit?** Yes (HTTPS).
 - **Do you provide a way for users to request that their data is deleted?** Yes: by emailing app-support@tomfanning.name.
-- **Data types collected:**
-  - **App info and performance, Diagnostics.** Collected, not shared. Optional (user chooses to send a report). Purpose: App functionality. Processed ephemerally: No.
-  - **Messages, Other in-app messages** (the description and, only if the user ticks the box, message text in the traffic log). Collected, not shared. Optional. Purpose: App functionality.
-- Nothing else: no location, contacts from the phone, identifiers, financial or health data. Callsigns and mail go only to the user's own BBS, which Google does not count as the developer collecting them.
+- **Data types collected** (all from optional problem reports; each: collected, not shared, optional, not processed ephemerally, purpose App functionality):
+  - **Personal info, Name:** the BBS greets the user by name in the traffic log.
+  - **Personal info, User IDs:** callsign and BBS login name in the traffic log (never the password).
+  - **Messages, Emails:** packet mail headers from listings, and message text if the user ticks the box.
+  - **App activity, Other user-generated content:** the description the user types.
+  - **App info and performance, Diagnostics:** app and system versions, the BBS version line, the traffic log.
+- Nothing else: no email address, location, phone contacts, device IDs, financial or health data. The internet address is used briefly for rate limiting and not stored. Callsigns and mail go only to the user's own BBS, which Google does not count as the developer collecting them.
 
 ## Google Play: other forms
 
