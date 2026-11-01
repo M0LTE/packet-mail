@@ -66,4 +66,10 @@ void main() {
     expect(routeOrigin(null), isNull);
     expect(routeOrigin(''), isNull);
   });
+
+  test('a compact list drops the time from Yesterday', () {
+    expect(shortWhen('Yesterday 19:00'), 'Yesterday');
+    expect(shortWhen('09:12'), '09:12');
+    expect(shortWhen('Mon'), 'Mon');
+  });
 }

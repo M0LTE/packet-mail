@@ -57,12 +57,25 @@ class BulletinsTab extends ConsumerWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text(
-                all == null || all.isEmpty
-                    ? (byDate ? 'Newest first' : 'By category, then area')
-                    : '${_count(all.length, 'bulletin')}${unread > 0 ? ', $unread new' : ''}',
-                style: text.bodySmall?.copyWith(letterSpacing: 0.3),
+              padding: EdgeInsets.fromLTRB(20, 0, unread > 0 ? 8 : 20, unread > 0 ? 0 : 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      all == null || all.isEmpty
+                          ? (byDate ? 'Newest first' : 'By category, then area')
+                          : '${_count(all.length, 'bulletin')}${unread > 0 ? ', $unread new' : ''}',
+                      style: text.bodySmall?.copyWith(letterSpacing: 0.3),
+                    ),
+                  ),
+                  if (unread > 0)
+                    TextButton(
+                      key: const ValueKey('mark-all-read'),
+                      onPressed: () => markAllRead(context, ref, all!),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      child: const Text('Mark all read'),
+                    ),
+                ],
               ),
             ),
             if (!none)
@@ -120,14 +133,49 @@ class BulletinsTab extends ConsumerWidget {
 
 String _count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
 
-class _CategoryBlock extends StatelessWidget {
+/// Marks the unread ones among [bulletins] read, with Undo.
+Future<void> markAllRead(BuildContext context, WidgetRef ref, Iterable<Message> bulletins) async {
+  final ids = [
+    for (final m in bulletins)
+      if (!m.read) m.id,
+  ];
+  if (ids.isEmpty) return;
+  final store = ref.read(storeProvider);
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text('${_count(ids.length, 'bulletin')} marked read.'),
+        action: SnackBarAction(label: 'Undo', onPressed: () => setBulletinsRead(store, ids, false)),
+      ),
+    );
+  await setBulletinsRead(store, ids, true);
+}
+
+/// A small tick that marks a group read, shown while it has any unread.
+class _MarkRead extends StatelessWidget {
+  const _MarkRead({super.key, required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: 'Mark all read',
+    visualDensity: VisualDensity.compact,
+    padding: EdgeInsets.zero,
+    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+    icon: const Icon(Icons.done_all, size: 18, color: Logbook.inkFaint),
+    onPressed: onPressed,
+  );
+}
+
+class _CategoryBlock extends ConsumerWidget {
   const _CategoryBlock({required this.group, required this.subscriptions});
 
   final CategoryGroup group;
   final List<Subscription> subscriptions;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     void open(String? area) => Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -157,6 +205,11 @@ class _CategoryBlock extends StatelessWidget {
                   ),
                   if (covered(subscriptions, group.category, null)) const _SubscribedMark(),
                   _Counts(count: group.count, unread: group.unread),
+                  if (group.unread > 0)
+                    _MarkRead(
+                      key: ValueKey('mark-read-${group.category}'),
+                      onPressed: () => markAllRead(context, ref, group.bulletins),
+                    ),
                 ],
               ),
             ),
@@ -178,6 +231,11 @@ class _CategoryBlock extends StatelessWidget {
                     if (!covered(subscriptions, group.category, null) && covered(subscriptions, group.category, a.area))
                       const _SubscribedMark(),
                     _Counts(count: a.bulletins.length, unread: a.unread),
+                    if (a.unread > 0)
+                      _MarkRead(
+                        key: ValueKey('mark-read-${group.category}-${a.area}'),
+                        onPressed: () => markAllRead(context, ref, a.bulletins),
+                      ),
                     const Icon(Icons.chevron_right, size: 18, color: Logbook.inkFaint),
                   ],
                 ),
@@ -352,12 +410,23 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
     final call = bareCall(m.fromCall);
     final name = ref.watch(contactNamesProvider).value?[call];
     final unread = !m.read;
-    return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => MessageScreen(messageId: m.id, from: widget.from),
-        ),
+    void open() => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MessageScreen(messageId: m.id, from: widget.from),
       ),
+    );
+    if (ref.watch(compactListsProvider)) {
+      return CompactRow(
+        call: call,
+        subject: m.subject,
+        when: listWhen(m.date, ref.watch(clockProvider)()),
+        unread: unread,
+        starred: m.starred,
+        onTap: open,
+      );
+    }
+    return InkWell(
+      onTap: open,
       child: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Logbook.rule)),

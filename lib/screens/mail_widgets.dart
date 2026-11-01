@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../message_format.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
@@ -207,6 +208,95 @@ class Choices extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A message in a compact list: one line of callsign, subject and date.
+/// Unread is bold with a small red dot where the stamp would be.
+class CompactRow extends StatelessWidget {
+  const CompactRow({
+    super.key,
+    required this.call,
+    required this.subject,
+    required this.when,
+    this.unread = false,
+    this.starred = false,
+    this.problem = false,
+    this.onTap,
+  });
+
+  final String call;
+  final String subject;
+  final String when;
+  final bool unread;
+  final bool starred;
+
+  /// Something went wrong with it, such as a send that failed.
+  final bool problem;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final weight = unread ? FontWeight.w700 : FontWeight.w400;
+    final wght = [FontVariation('wght', unread ? 700 : 400)];
+    final colour = unread ? Logbook.ink : Logbook.inkSoft;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Logbook.rule)),
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 7, 20, 7),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 8,
+              child: unread
+                  ? Container(
+                      key: const ValueKey('unread-dot'),
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(color: Logbook.stampRed, shape: BoxShape.circle),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 72,
+              child: Text(
+                call,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.titleSmall?.copyWith(color: colour, fontWeight: weight, fontVariations: wght),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                subject.isEmpty ? '(no subject)' : subject,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.titleMedium?.copyWith(
+                  fontSize: 15,
+                  height: 1.2,
+                  color: colour,
+                  fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
+                  fontVariations: [FontVariation('wght', unread ? 600 : 400)],
+                ),
+              ),
+            ),
+            if (problem) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.error_outline, size: 14, color: Logbook.stampRed),
+            ],
+            if (starred) ...[const SizedBox(width: 6), const Icon(Icons.star, size: 13, color: Logbook.stampRed)],
+            const SizedBox(width: 8),
+            Text(shortWhen(when), style: text.bodySmall),
+          ],
+        ),
       ),
     );
   }

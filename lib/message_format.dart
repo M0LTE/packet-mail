@@ -25,6 +25,10 @@ String listTime(DateTime when, DateTime now) {
 
 const _yesterday = 'Yesterday';
 
+/// [listTime] or [listWhen] cut short for a compact list: "Yesterday"
+/// without its time.
+String shortWhen(String listed) => listed.startsWith('$_yesterday ') ? _yesterday : listed;
+
 /// The day part of [listTime], or null for today.
 String? _listDay(DateTime when, DateTime now) {
   // Calendar days, counted in UTC so a clock change can't make a day 23 or 25 hours long.

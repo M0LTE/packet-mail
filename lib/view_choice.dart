@@ -33,3 +33,18 @@ class BulletinsByDate extends Notifier<bool> {
     ref.read(prefsProvider).setBool(_key, byDate);
   }
 }
+
+/// Compact lists (true): one line per message, so about twice as many fit.
+final compactListsProvider = NotifierProvider<CompactLists, bool>(CompactLists.new);
+
+class CompactLists extends Notifier<bool> {
+  static const _key = 'lists.compact';
+
+  @override
+  bool build() => ref.watch(prefsProvider).getBool(_key) ?? false;
+
+  void set(bool compact) {
+    state = compact;
+    ref.read(prefsProvider).setBool(_key, compact);
+  }
+}

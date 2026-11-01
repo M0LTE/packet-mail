@@ -302,6 +302,16 @@ class MessageRow extends ConsumerWidget {
     final call = bareCall(message.fromCall);
     final name = ref.watch(contactNamesProvider).value?[call];
     final unread = !message.read;
+    if (ref.watch(compactListsProvider)) {
+      return CompactRow(
+        call: call,
+        subject: message.subject,
+        when: listWhen(message.date, ref.watch(clockProvider)()),
+        unread: unread,
+        starred: message.starred,
+        onTap: onTap,
+      );
+    }
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -398,6 +408,15 @@ class OutgoingRow extends ConsumerWidget {
             problem: r.state == 'failed' || r.state == 'held',
           ),
     ];
+    if (ref.watch(compactListsProvider)) {
+      return CompactRow(
+        call: to.isEmpty ? '?' : to.first,
+        subject: m.subject,
+        when: listTime(when.toLocal(), ref.watch(clockProvider)()),
+        problem: lines.any((l) => l.problem),
+        onTap: onTap,
+      );
+    }
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -460,6 +479,15 @@ class SentListingRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final state = bbsSentState(listing, homeBbs: homeBbs);
+    if (ref.watch(compactListsProvider)) {
+      return CompactRow(
+        key: ValueKey('sent-listing-${listing.bbsNumber}'),
+        call: listing.toCall,
+        subject: listing.subject,
+        when: listWhen(listing.date, ref.watch(clockProvider)()),
+        onTap: onTap,
+      );
+    }
     return InkWell(
       key: ValueKey('sent-listing-${listing.bbsNumber}'),
       onTap: onTap,

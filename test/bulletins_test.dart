@@ -50,6 +50,9 @@ Future<void> settleAll(TestApp app, WidgetTester tester) async {
 Future<List<Subscription>> subscriptions(TestApp app, WidgetTester tester) async =>
     (await tester.runAsync(() => app.store.select(app.store.subscriptions).get()))!;
 
+Future<int> unreadCount(TestApp app, WidgetTester tester) async =>
+    (await tester.runAsync(() => app.store.select(app.store.messages).get()))!.where((m) => !m.read).length;
+
 Message _m(int id, String to, String? at, {bool read = false}) => Message(
   id: id,
   connectionId: 1,
@@ -166,6 +169,70 @@ void main() {
     expect(find.text('Oldest'), findsNothing);
     expect(again.prefs.getBool('bulletins.byDate'), isFalse);
     await again.dispose(tester);
+  });
+
+  testWidgets('Mark all read on the Bulletins tab marks every one read here, with Undo', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addBulletin(app, tester, c, number: 1, subject: 'Gales tonight');
+    await addBulletin(app, tester, c, number: 2, area: 'EURO', subject: 'Heat across Europe', read: true);
+    await addBulletin(app, tester, c, number: 3, category: 'ALL', area: 'WW', subject: 'Contest this weekend');
+    await app.pump(tester);
+    await tester.tap(find.text('Bulletins').last);
+    await settleAll(app, tester);
+    final connects = app.bbs.connects;
+
+    await tester.tap(find.byKey(const ValueKey('mark-all-read')));
+    await settleAll(app, tester);
+    expect(find.text('3 bulletins'), findsOneWidget);
+    expect(find.text('2 bulletins marked read.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('mark-all-read')), findsNothing);
+    expect(await unreadCount(app, tester), 0);
+    expect(app.bbs.connects, connects);
+
+    await tester.tap(find.text('Undo'));
+    await settleAll(app, tester);
+    expect(find.text('3 bulletins, 2 new'), findsOneWidget);
+    expect(await unreadCount(app, tester), 2);
+
+    // By date offers it too.
+    await tester.tap(find.text('By date'));
+    await settleAll(app, tester);
+    await tester.tap(find.byKey(const ValueKey('mark-all-read')));
+    await settleAll(app, tester);
+    expect(find.text('3 bulletins'), findsOneWidget);
+    expect(await unreadCount(app, tester), 0);
+    await app.dispose(tester);
+  });
+
+  testWidgets('a category or one area of it can be marked read on its own', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addBulletin(app, tester, c, number: 1, subject: 'Gales tonight');
+    await addBulletin(app, tester, c, number: 2, area: 'EURO', subject: 'Heat across Europe');
+    await addBulletin(app, tester, c, number: 3, category: 'ALL', area: 'WW', subject: 'Contest this weekend');
+    await app.pump(tester);
+    await tester.tap(find.text('Bulletins').last);
+    await settleAll(app, tester);
+
+    await tester.tap(find.byKey(const ValueKey('mark-read-WX-EURO')));
+    await settleAll(app, tester);
+    expect(find.text('1 bulletin marked read.'), findsOneWidget);
+    expect(find.text('3 bulletins, 2 new'), findsOneWidget);
+    expect(find.byKey(const ValueKey('mark-read-WX-EURO')), findsNothing);
+    expect(find.byKey(const ValueKey('mark-read-WX-GBR')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('mark-read-WX')));
+    await settleAll(app, tester);
+    expect(find.text('3 bulletins, 1 new'), findsOneWidget);
+    expect(find.byKey(const ValueKey('mark-read-WX')), findsNothing);
+    expect(find.byKey(const ValueKey('mark-read-ALL')), findsOneWidget);
+    expect(await unreadCount(app, tester), 1);
+
+    await tester.tap(find.text('Undo'));
+    await settleAll(app, tester);
+    expect(find.text('3 bulletins, 2 new'), findsOneWidget);
+    await app.dispose(tester);
   });
 
   testWidgets('Fetch downloads a bulletin and leaves it unread', (tester) async {

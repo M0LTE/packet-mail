@@ -240,6 +240,8 @@ void main() {
     ]);
     await tapText(tester, 'Settings');
     await tester.pump();
+    // The last line of Settings, below the fold on a small test screen.
+    await tester.scrollUntilVisible(find.text('Packet Mail 1.0.5 (build 123)'), 100);
     expect(find.text('Packet Mail 1.0.5 (build 123)'), findsOneWidget);
     await app.dispose(tester);
   });

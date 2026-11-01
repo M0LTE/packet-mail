@@ -7,6 +7,7 @@ import '../providers.dart';
 import '../report.dart';
 import '../sync.dart';
 import '../theme.dart';
+import '../view_choice.dart';
 import 'blocked_screen.dart';
 import 'bulletins_tab.dart';
 import 'connections_screen.dart';
@@ -178,6 +179,15 @@ class SettingsTab extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
             onTap: () =>
                 Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BlockedStationsScreen())),
+          ),
+          SwitchListTile(
+            key: const ValueKey('compact-lists'),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            activeThumbColor: Logbook.stampRed,
+            title: Text('Compact lists', style: text.titleMedium),
+            subtitle: Text('One line per message, so more fit on screen', style: text.labelMedium),
+            value: ref.watch(compactListsProvider),
+            onChanged: (on) => ref.read(compactListsProvider.notifier).set(on),
           ),
           const Divider(indent: 24),
           Padding(

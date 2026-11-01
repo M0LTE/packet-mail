@@ -130,6 +130,12 @@ Future<void> fetchBulletin(MailStore store, SyncEngine engine, Message m) async 
   }
 }
 
+/// Marks bulletins read or unread. Their read state is the app's own, so
+/// nothing goes to the BBS.
+Future<void> setBulletinsRead(MailStore store, Iterable<int> ids, bool read) => (store.update(
+  store.messages,
+)..where((m) => m.id.isIn(ids) & m.type.equals('bulletin'))).write(MessagesCompanion(read: Value(read)));
+
 /// A bulletin category as typed, such as WX. Returns one plain line, or null when fine.
 String? checkBulletinCategory(String? text, {bool optional = false}) {
   final s = (text ?? '').trim().toUpperCase();
