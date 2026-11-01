@@ -356,3 +356,48 @@ jobs:
     uses: ./.github/workflows/android-install.yml
     with:
       release_tag: ${{ inputs.release_tag || github.ref_name }}
+
+  google-play:
+    name: Upload to Google Play closed testing
+    needs: [android-release]
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Skip until Play access is set up
+        id: ready
+        run: |
+          if [ -n "$PLAY_JSON" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Google Play upload skipped: needs the PLAY_SERVICE_ACCOUNT_JSON secret."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go
+      - uses: actions/download-artifact@v4
+        if: steps.ready.outputs.go
+        with:
+          name: packet-mail-android-bundle
+          path: bundle
+      - name: Release notes for this version
+        if: steps.ready.outputs.go
+        run: |
+          v=${GITHUB_REF_NAME#v}; v=${v%%-*}
+          case "$v" in *.*.*) ;; *) v="$v.0" ;; esac
+          mkdir -p whatsnew
+          if [ -f "release-notes/$v.txt" ]; then
+            cp "release-notes/$v.txt" whatsnew/whatsnew-en-GB
+          else
+            echo "Packet Mail $v. Bug fixes and improvements." > whatsnew/whatsnew-en-GB
+          fi
+          head -c 500 whatsnew/whatsnew-en-GB > whatsnew/tmp && mv whatsnew/tmp whatsnew/whatsnew-en-GB
+      - uses: r0adkll/upload-google-play@v1
+        if: steps.ready.outputs.go
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: m0lte.packetmail
+          releaseFiles: bundle/app-release.aab
+          track: alpha
+          status: completed
+          whatsNewDirectory: whatsnew

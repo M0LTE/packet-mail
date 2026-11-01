@@ -61,3 +61,7 @@ To redo a release for an existing tag (for example after adding the APK step), r
 ## Tag names
 
 Always three parts, matching what the stores show: `v1.0.0`, `v1.0.1`, `v1.1.0`. Every new build that goes out gets a new version (a fix after 1.0.0 is 1.0.1). The hyphen suffix is only for rebuilding a version that is already waiting in App Store review. Tags are never moved or reused once pushed.
+
+## Google Play
+
+A release tag also uploads the signed app bundle to Google Play's **closed testing** track and rolls it out to its testers, once the `PLAY_SERVICE_ACCOUNT_JSON` secret exists (a Google Cloud service account with release rights for Packet Mail in Play Console). The "What's new" text comes from `release-notes/<version>.txt` (en-GB, up to 500 characters); write it before tagging. Promoting to production stays a manual step in Play Console.
