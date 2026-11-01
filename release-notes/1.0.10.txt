@@ -1,0 +1,1 @@
+Small improvements to wording and to how releases are delivered. No changes to how the app works.
