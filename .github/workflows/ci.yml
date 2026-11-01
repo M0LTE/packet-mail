@@ -398,6 +398,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: m0lte.packetmail
           releaseFiles: bundle/app-release.aab
-          track: alpha
+          tracks: alpha
           status: completed
           whatsNewDirectory: whatsnew
