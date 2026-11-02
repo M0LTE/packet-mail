@@ -113,16 +113,22 @@ void main() {
 
   group('merging duplicates', () {
     Future<int> add(String name,
-        {String login = 'G4ABC', String type = 'bpq', String kind = 'fbb', List<HostPort> at = const []}) async {
-      final id = await db.into(db.connections).insert(
-          ConnectionsCompanion.insert(name: name, bbsType: type, portKind: kind, loginName: login));
+        {String login = 'G4ABC',
+        String type = 'bpq',
+        String kind = 'fbb',
+        String? bbs = 'GB7BDH',
+        List<HostPort> at = const []}) async {
+      final id = await db.into(db.connections).insert(ConnectionsCompanion.insert(
+          name: name, bbsType: type, portKind: kind, loginName: login, bbsCall: Value(bbs)));
       await db.setAddresses(id, at);
       return id;
     }
 
-    test('the same BBS type and login name, in any case, is a duplicate', () async {
+    test('the same login on the same BBS, in any case, is a duplicate; on another BBS it is not', () async {
       final local = await add('GB7BDH Local');
       await add('GB7RDG', login: 'M0LTE');
+      await add('GB7RDG as G4ABC', bbs: 'GB7RDG'); // the same callsign on another BBS
+      await add('Not logged in yet', bbs: null);
       await add('Club', type: 'xrouter', kind: 'telnet');
       await add('GB7BDH telnet', kind: 'telnet');
       final tailscale = await add('GB7BDH Tailscale', login: 'g4abc');
@@ -156,5 +162,18 @@ void main() {
       expect((await db.select(db.outgoing).getSingle()).connectionId, keep);
       expect(await db.select(db.connectionAddresses).get(), hasLength(2));
     });
+  });
+
+  test('a version 6 database gains the BBS callsign, unknown until the next login', () async {
+    final old = MailStore(NativeDatabase.memory(setup: (raw) {
+      raw.execute('CREATE TABLE connections (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, '
+          "bbs_type TEXT NOT NULL, port_kind TEXT NOT NULL, login_name TEXT NOT NULL, personal_download TEXT NOT NULL "
+          "DEFAULT 'onOpen', last_sync_at INTEGER, last_sync_result TEXT, starts_bbs INTEGER NULL, last_via TEXT NULL)");
+      raw.execute("INSERT INTO connections (name, bbs_type, port_kind, login_name) VALUES ('GB7BDH', 'bpq', 'fbb', 'G4ABC')");
+      raw.execute('PRAGMA user_version = 6');
+    }));
+    addTearDown(old.close);
+    final c = await old.select(old.connections).getSingle();
+    expect([c.name, c.bbsCall], ['GB7BDH', null]);
   });
 }

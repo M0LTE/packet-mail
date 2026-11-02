@@ -251,7 +251,7 @@ class _MergeOfferState extends ConsumerState<MergeOffer> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${pair.older.name} and ${pair.newer.name} log in as ${pair.older.loginName}. '
+            '${pair.older.name} and ${pair.newer.name} both log in as ${pair.older.loginName} on ${pair.older.bbsCall}. '
             'Merge them into one connection with both addresses?',
             style: text.bodyMedium,
           ),

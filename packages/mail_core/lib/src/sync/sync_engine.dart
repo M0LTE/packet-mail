@@ -114,9 +114,10 @@ class HomeBbsAnswer {
 /// Each step stores its changes as it goes, so a session that fails part way
 /// keeps what it had already done. Only one session runs per connection at a
 /// time; opening a message waits for a sync on its connection to finish.
-/// Connections with the same BBS type and login name may be one account
-/// reached two ways, and a BBS refuses a second login, so their sessions
-/// take turns too.
+/// Connections with the same BBS type, login name and BBS callsign are one
+/// account reached two ways, and a BBS refuses a second login, so their
+/// sessions take turns too. Until the BBS callsign is known, connections
+/// with the same login that don't know it yet take turns.
 class SyncEngine {
   SyncEngine(
     this.store,
@@ -187,7 +188,7 @@ class SyncEngine {
   Future<T> _asAccount<T>(int connectionId, Future<T> Function() work) async {
     final c = await (store.select(store.connections)..where((c) => c.id.equals(connectionId))).getSingleOrNull();
     if (c == null) return work();
-    final key = '${c.bbsType} ${c.loginName.trim().toUpperCase()}';
+    final key = '${c.bbsType} ${c.loginName.trim().toUpperCase()} ${c.bbsCall?.toUpperCase() ?? '?'}';
     final before = _accounts[key] ?? Future<void>.value();
     final done = Completer<void>();
     _accounts[key] = done.future;

@@ -30,7 +30,10 @@ Future<MailDriver> connectDriver(MailStore store, PasswordStore passwords, Conne
     logIn: (driver) => driver.logIn(user: connection.loginName, password: password, name: identity?.name ?? ''),
   );
   await (store.update(store.connections)..where((c) => c.id.equals(connection.id))).write(ConnectionsCompanion(
-      lastVia: Value(addresses.length > 1 ? viaName(address, addresses) : null)));
+    lastVia: Value(addresses.length > 1 ? viaName(address, addresses) : null),
+    // Which BBS this is, to tell the same BBS reached two ways from another.
+    bbsCall: driver.bbsCall == null ? const Value.absent() : Value(driver.bbsCall),
+  ));
   return driver;
 }
 

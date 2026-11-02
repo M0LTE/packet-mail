@@ -107,7 +107,8 @@ Future<int> saveConnection(
         old.bbsType == draft.bbsType;
     await (store.update(store.connections)..where((c) => c.id.equals(id))).write(same
         ? draft.toCompanion()
-        : draft.toCompanion().copyWith(startsBbs: const Value(null), lastVia: const Value(null)));
+        : draft.toCompanion()
+            .copyWith(startsBbs: const Value(null), lastVia: const Value(null), bbsCall: const Value(null)));
     await store.setAddresses(id, draft.addresses);
     return id;
   });

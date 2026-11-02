@@ -2,21 +2,27 @@ import 'package:drift/drift.dart';
 
 import 'mail_store.dart';
 
-/// Two connections that look like the same account on the same BBS: the
-/// same BBS type, port kind and login name. [older] was added first.
+/// Two connections to the same account on the same BBS: the same BBS type,
+/// port kind and login name, and the same BBS callsign learned at login.
+/// [older] was added first.
 typedef DuplicatePair = ({Connection older, Connection newer});
 
 /// The same account set up twice, for example once by its address at home
 /// and once over Tailscale. Each connection appears in one pair at most.
+/// Connections that haven't logged in yet are never paired: the same login
+/// on two different BBSes is common, as it is usually the user's callsign.
 Future<List<DuplicatePair>> findDuplicateConnections(MailStore store) async {
   final all = await (store.select(store.connections)..orderBy([(c) => OrderingTerm(expression: c.id)])).get();
   final pairs = <DuplicatePair>[];
   final paired = <int>{};
   for (final (i, a) in all.indexed) {
-    if (paired.contains(a.id)) continue;
+    if (paired.contains(a.id) || a.bbsCall == null) continue;
     for (final b in all.skip(i + 1)) {
       if (paired.contains(b.id)) continue;
-      if (b.bbsType == a.bbsType && b.portKind == a.portKind && b.loginName.trim().toUpperCase() == a.loginName.trim().toUpperCase()) {
+      if (b.bbsType == a.bbsType &&
+          b.portKind == a.portKind &&
+          b.bbsCall?.toUpperCase() == a.bbsCall!.toUpperCase() &&
+          b.loginName.trim().toUpperCase() == a.loginName.trim().toUpperCase()) {
         pairs.add((older: a, newer: b));
         paired.addAll([a.id, b.id]);
         break;

@@ -253,16 +253,22 @@ void main() {
     await app.dispose(tester);
   });
 
-  Future<(TestApp, int, int)> twins(WidgetTester tester) async {
+  /// Two connections with the same login, which last logged in to [olderBbs]
+  /// and [newerBbs] (null: not yet).
+  Future<(TestApp, int, int)> twins(WidgetTester tester,
+      {String? olderBbs = 'GB7RDG', String? newerBbs = 'GB7RDG'}) async {
     late int older, newer;
     final app = await seeded(tester, also: (app, id) async {
       final store = app.store;
       older = id;
+      await (store.update(store.connections)..where((c) => c.id.equals(id)))
+          .write(ConnectionsCompanion(bbsCall: Value(olderBbs)));
       newer = await store.into(store.connections).insert(ConnectionsCompanion.insert(
             name: 'Home BBS Tailscale',
             bbsType: 'bpq',
             portKind: 'fbb',
             loginName: 'M0LTE',
+            bbsCall: Value(newerBbs),
           ));
       await store.setAddresses(newer, const [HostPort('gb7rdg.tail1234.ts.net', 8011)]);
       await app.passwords.write(newer, 'other');
@@ -283,7 +289,21 @@ void main() {
     return (app, older, newer);
   }
 
-  const offer = 'Home BBS and Home BBS Tailscale log in as m0lte. Merge them into one connection with both addresses?';
+  const offer = 'Home BBS and Home BBS Tailscale both log in as m0lte on GB7RDG. '
+      'Merge them into one connection with both addresses?';
+
+  testWidgets('the same login on two different BBSes is not offered for merging', (tester) async {
+    final (app, _, _) = await twins(tester, newerBbs: 'GB7BDH');
+    expect(find.byKey(const ValueKey('merge-offer')), findsNothing);
+    expect(find.text('Home BBS Tailscale'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
+  testWidgets('no merge offer until both have logged in', (tester) async {
+    final (app, _, _) = await twins(tester, newerBbs: null);
+    expect(find.byKey(const ValueKey('merge-offer')), findsNothing);
+    await app.dispose(tester);
+  });
 
   testWidgets('two connections for one account are offered as one, and merging keeps each message once',
       (tester) async {

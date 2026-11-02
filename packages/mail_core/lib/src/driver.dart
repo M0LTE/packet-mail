@@ -73,6 +73,11 @@ abstract interface class MailDriver {
   /// logged in, or null to use the identity's callsign.
   String? get sentAs;
 
+  /// The BBS's own callsign, such as GB7RDG, once logged in, or null if it
+  /// didn't say. Tells two connections to the same BBS apart from two BBSes
+  /// where the user has the same login.
+  String? get bbsCall;
+
   /// Logs in and enters the mail BBS. [name] answers a first-time "enter your name" prompt.
   Future<void> logIn({required String user, required String password, required String name});
 

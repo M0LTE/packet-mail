@@ -10,7 +10,7 @@ class MailStore extends _$MailStore {
   MailStore(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -29,8 +29,9 @@ class MailStore extends _$MailStore {
                 'SELECT id, 0, host, port FROM connections');
             // Rebuilding the table must not cascade into the mail that refers to it.
             await customStatement('PRAGMA foreign_keys = OFF');
-            await m.alterTable(TableMigration(connections, newColumns: [connections.lastVia]));
+            await m.alterTable(TableMigration(connections, newColumns: [connections.lastVia, connections.bbsCall]));
           }
+          if (from >= 6 && from < 7) await m.addColumn(connections, connections.bbsCall);
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
       );

@@ -19,7 +19,7 @@ A phone app for iPhone and Android, released on both app stores, that gives pack
 | Identity | Separate from connections. One identity in v1 |
 | Background sync | Later |
 | Away from home | Documented as Tailscale; a one-line warning when the host isn't a private or Tailscale address |
-| Several addresses | One connection holds an ordered list of addresses (host and port), for example home network then Tailscale. Each is tried in turn with a short connect timeout and the first that answers is used; a refused login does not move on. Port kind, BBS type and login stay per connection. Two connections with the same BBS type, port kind and login are offered once for merging, and never sync at once (#74) |
+| Several addresses | One connection holds an ordered list of addresses (host and port), for example home network then Tailscale. Each is tried in turn with a short connect timeout and the first that answers is used; a refused login does not move on. Port kind, BBS type and login stay per connection. Each login records the BBS's own callsign (LinBPQ: its `de CALL>` prompt; XRouter: its `CALL:ALIAS} Connected to PMS` banner). Two connections with the same BBS type, port kind, login and BBS callsign are offered once for merging, and never sync at once; the same login on two different BBSes is neither (#74) |
 | Repo | `m0lte/packet-mail` on Tom's own account, not part of packet-net |
 | App ID | `m0lte.packetmail` (Android doesn't allow hyphens; it can never change after first publish) |
 | Demo BBS | Tom hosts a public one of his own hardened design, wire compatible with BPQ, reached through the LinBPQ driver's FBB port |

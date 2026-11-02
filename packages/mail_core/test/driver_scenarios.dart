@@ -60,7 +60,9 @@ const tricky = 'Line one\n'
 void defineScenarios(Connect connect) {
   test('new user logs in, answers the name prompt and sends', () async {
     final d = driverFor(await connect('user-send', BpqPort.fbb), BpqPort.fbb);
+    expect(d.bbsCall, isNull);
     await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+    expect(d.bbsCall, 'Q0TST'); // the BBS says who it is, to tell two BBSes apart
 
     final p = await d.sendPersonal(
       to: MailAddress.parse('Q0OTH@Q0TST.#42.GBR.EURO').address!,
@@ -140,6 +142,7 @@ void defineScenarios(Connect connect) {
   test('telnet port works the same way', () async {
     final d = driverFor(await connect('telnet', BpqPort.telnet), BpqPort.telnet);
     await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+    expect(d.bbsCall, 'Q0TST');
     expect((await d.listBulletins()).single.subject, 'Driver bulletin');
     await d.disconnect();
   });
@@ -262,6 +265,7 @@ void defineScenarios(Connect connect) {
       final d = driverFor(await connect('auto-start-${port.name}', port), port, startsBbs: null, onStartsBbs: learned.add);
       await d.logIn(user: 'auto', password: 'auto', name: 'Auto User');
       expect(learned, [true]);
+      expect(d.bbsCall, 'Q0TST');
       expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
       expect(await d.listSent('Q0AUT'), isEmpty);
       await d.disconnect();

@@ -38,6 +38,10 @@ class Connections extends Table {
   /// The address the last connection used, as shown in the sync status
   /// ("via 192.168.1.87"): the host, with the port if the host is listed twice.
   TextColumn get lastVia => text().nullable()();
+
+  /// The BBS's own callsign, as it said at the last login; null until then,
+  /// and again after the addresses, login or BBS type change.
+  TextColumn get bbsCall => text().nullable()();
 }
 
 /// Where a connection's BBS can be reached, tried in [position] order

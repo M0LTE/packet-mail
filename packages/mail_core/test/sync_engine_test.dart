@@ -90,6 +90,8 @@ class FakeBbs implements MailDriver {
   /// What the BBS records as our call, when the driver knows.
   @override
   String? sentAs;
+  @override
+  String? bbsCall;
 
   @override
   Future<void> logIn({required String user, required String password, required String name}) async {}
@@ -343,6 +345,24 @@ void main() {
     gate.complete();
     await Future.wait(syncs);
     expect(connected.last, twin);
+  });
+
+  test('the same login on two different BBSes syncs at once', () async {
+    final elsewhere = await addConnection(name: 'GB7BDH');
+    for (final (id, call) in [(conn, 'GB7RDG'), (elsewhere, 'GB7BDH')]) {
+      await (db.update(db.connections)..where((c) => c.id.equals(id))).write(ConnectionsCompanion(bbsCall: Value(call)));
+    }
+    final gate = Completer<void>();
+    final connected = <int>[];
+    engine = SyncEngine(db, (c) async {
+      connected.add(c.id);
+      return _Gated(bbs, gate.future, () {});
+    }, clock: () => clock);
+    final syncs = [engine.sync(conn), engine.sync(elsewhere)];
+    await pumpEventQueue();
+    expect(connected, unorderedEquals([conn, elsewhere]));
+    gate.complete();
+    await Future.wait(syncs);
   });
 
   test('merging waits for a running sync on either connection', () async {
@@ -1618,6 +1638,8 @@ abstract class _Wrapper implements MailDriver {
   Set<DriverCapability> get capabilities => inner.capabilities;
   @override
   String? get sentAs => inner.sentAs;
+  @override
+  String? get bbsCall => inner.bbsCall;
   @override
   Future<void> logIn({required String user, required String password, required String name}) =>
       inner.logIn(user: user, password: password, name: name);

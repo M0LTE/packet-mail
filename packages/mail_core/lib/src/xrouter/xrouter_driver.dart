@@ -43,6 +43,13 @@ class XRouterDriver implements MailDriver {
   /// The node takes no SSID on telnet, so this is the callsign we logged in with.
   @override
   String? get sentAs => _call;
+
+  @override
+  String? get bbsCall => _bbsCall;
+  String? _bbsCall;
+
+  /// The node's callsign from its mailbox banner: `Q0XR:XRTEST} Connected to PMS`.
+  static final _pmsCall = RegExp(r'([A-Z0-9]+(?:-\d+)?):[A-Z0-9#]*\} Connected to PMS');
   String? _call;
 
   /// The mailbox prompt: `[n] B,H,I,...,? >`, where n is the last message read.
@@ -94,6 +101,7 @@ class XRouterDriver implements MailDriver {
     }
     _inMailbox = true;
     _call = call;
+    _bbsCall = _pmsCall.firstMatch(text)?.group(1);
     await _command('NP 0');
     if (await _pmsHidesBulletins()) await _enterBbs();
   }

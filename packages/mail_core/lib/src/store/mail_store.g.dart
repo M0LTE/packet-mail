@@ -423,6 +423,17 @@ class $ConnectionsTable extends Connections
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _bbsCallMeta = const VerificationMeta(
+    'bbsCall',
+  );
+  @override
+  late final GeneratedColumn<String> bbsCall = GeneratedColumn<String>(
+    'bbs_call',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -435,6 +446,7 @@ class $ConnectionsTable extends Connections
     lastSyncResult,
     startsBbs,
     lastVia,
+    bbsCall,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -522,6 +534,12 @@ class $ConnectionsTable extends Connections
         lastVia.isAcceptableOrUnknown(data['last_via']!, _lastViaMeta),
       );
     }
+    if (data.containsKey('bbs_call')) {
+      context.handle(
+        _bbsCallMeta,
+        bbsCall.isAcceptableOrUnknown(data['bbs_call']!, _bbsCallMeta),
+      );
+    }
     return context;
   }
 
@@ -571,6 +589,10 @@ class $ConnectionsTable extends Connections
         DriftSqlType.string,
         data['${effectivePrefix}last_via'],
       ),
+      bbsCall: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bbs_call'],
+      ),
     );
   }
 
@@ -606,6 +628,10 @@ class Connection extends DataClass implements Insertable<Connection> {
   /// The address the last connection used, as shown in the sync status
   /// ("via 192.168.1.87"): the host, with the port if the host is listed twice.
   final String? lastVia;
+
+  /// The BBS's own callsign, as it said at the last login; null until then,
+  /// and again after the addresses, login or BBS type change.
+  final String? bbsCall;
   const Connection({
     required this.id,
     required this.name,
@@ -617,6 +643,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     this.lastSyncResult,
     this.startsBbs,
     this.lastVia,
+    this.bbsCall,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -638,6 +665,9 @@ class Connection extends DataClass implements Insertable<Connection> {
     }
     if (!nullToAbsent || lastVia != null) {
       map['last_via'] = Variable<String>(lastVia);
+    }
+    if (!nullToAbsent || bbsCall != null) {
+      map['bbs_call'] = Variable<String>(bbsCall);
     }
     return map;
   }
@@ -662,6 +692,9 @@ class Connection extends DataClass implements Insertable<Connection> {
       lastVia: lastVia == null && nullToAbsent
           ? const Value.absent()
           : Value(lastVia),
+      bbsCall: bbsCall == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bbsCall),
     );
   }
 
@@ -681,6 +714,7 @@ class Connection extends DataClass implements Insertable<Connection> {
       lastSyncResult: serializer.fromJson<String?>(json['lastSyncResult']),
       startsBbs: serializer.fromJson<bool?>(json['startsBbs']),
       lastVia: serializer.fromJson<String?>(json['lastVia']),
+      bbsCall: serializer.fromJson<String?>(json['bbsCall']),
     );
   }
   @override
@@ -697,6 +731,7 @@ class Connection extends DataClass implements Insertable<Connection> {
       'lastSyncResult': serializer.toJson<String?>(lastSyncResult),
       'startsBbs': serializer.toJson<bool?>(startsBbs),
       'lastVia': serializer.toJson<String?>(lastVia),
+      'bbsCall': serializer.toJson<String?>(bbsCall),
     };
   }
 
@@ -711,6 +746,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     Value<String?> lastSyncResult = const Value.absent(),
     Value<bool?> startsBbs = const Value.absent(),
     Value<String?> lastVia = const Value.absent(),
+    Value<String?> bbsCall = const Value.absent(),
   }) => Connection(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -724,6 +760,7 @@ class Connection extends DataClass implements Insertable<Connection> {
         : this.lastSyncResult,
     startsBbs: startsBbs.present ? startsBbs.value : this.startsBbs,
     lastVia: lastVia.present ? lastVia.value : this.lastVia,
+    bbsCall: bbsCall.present ? bbsCall.value : this.bbsCall,
   );
   Connection copyWithCompanion(ConnectionsCompanion data) {
     return Connection(
@@ -743,6 +780,7 @@ class Connection extends DataClass implements Insertable<Connection> {
           : this.lastSyncResult,
       startsBbs: data.startsBbs.present ? data.startsBbs.value : this.startsBbs,
       lastVia: data.lastVia.present ? data.lastVia.value : this.lastVia,
+      bbsCall: data.bbsCall.present ? data.bbsCall.value : this.bbsCall,
     );
   }
 
@@ -758,7 +796,8 @@ class Connection extends DataClass implements Insertable<Connection> {
           ..write('lastSyncAt: $lastSyncAt, ')
           ..write('lastSyncResult: $lastSyncResult, ')
           ..write('startsBbs: $startsBbs, ')
-          ..write('lastVia: $lastVia')
+          ..write('lastVia: $lastVia, ')
+          ..write('bbsCall: $bbsCall')
           ..write(')'))
         .toString();
   }
@@ -775,6 +814,7 @@ class Connection extends DataClass implements Insertable<Connection> {
     lastSyncResult,
     startsBbs,
     lastVia,
+    bbsCall,
   );
   @override
   bool operator ==(Object other) =>
@@ -789,7 +829,8 @@ class Connection extends DataClass implements Insertable<Connection> {
           other.lastSyncAt == this.lastSyncAt &&
           other.lastSyncResult == this.lastSyncResult &&
           other.startsBbs == this.startsBbs &&
-          other.lastVia == this.lastVia);
+          other.lastVia == this.lastVia &&
+          other.bbsCall == this.bbsCall);
 }
 
 class ConnectionsCompanion extends UpdateCompanion<Connection> {
@@ -803,6 +844,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
   final Value<String?> lastSyncResult;
   final Value<bool?> startsBbs;
   final Value<String?> lastVia;
+  final Value<String?> bbsCall;
   const ConnectionsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -814,6 +856,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     this.lastSyncResult = const Value.absent(),
     this.startsBbs = const Value.absent(),
     this.lastVia = const Value.absent(),
+    this.bbsCall = const Value.absent(),
   });
   ConnectionsCompanion.insert({
     this.id = const Value.absent(),
@@ -826,6 +869,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     this.lastSyncResult = const Value.absent(),
     this.startsBbs = const Value.absent(),
     this.lastVia = const Value.absent(),
+    this.bbsCall = const Value.absent(),
   }) : name = Value(name),
        bbsType = Value(bbsType),
        portKind = Value(portKind),
@@ -841,6 +885,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     Expression<String>? lastSyncResult,
     Expression<bool>? startsBbs,
     Expression<String>? lastVia,
+    Expression<String>? bbsCall,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -853,6 +898,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
       if (lastSyncResult != null) 'last_sync_result': lastSyncResult,
       if (startsBbs != null) 'starts_bbs': startsBbs,
       if (lastVia != null) 'last_via': lastVia,
+      if (bbsCall != null) 'bbs_call': bbsCall,
     });
   }
 
@@ -867,6 +913,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     Value<String?>? lastSyncResult,
     Value<bool?>? startsBbs,
     Value<String?>? lastVia,
+    Value<String?>? bbsCall,
   }) {
     return ConnectionsCompanion(
       id: id ?? this.id,
@@ -879,6 +926,7 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
       lastSyncResult: lastSyncResult ?? this.lastSyncResult,
       startsBbs: startsBbs ?? this.startsBbs,
       lastVia: lastVia ?? this.lastVia,
+      bbsCall: bbsCall ?? this.bbsCall,
     );
   }
 
@@ -915,6 +963,9 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     if (lastVia.present) {
       map['last_via'] = Variable<String>(lastVia.value);
     }
+    if (bbsCall.present) {
+      map['bbs_call'] = Variable<String>(bbsCall.value);
+    }
     return map;
   }
 
@@ -930,7 +981,8 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
           ..write('lastSyncAt: $lastSyncAt, ')
           ..write('lastSyncResult: $lastSyncResult, ')
           ..write('startsBbs: $startsBbs, ')
-          ..write('lastVia: $lastVia')
+          ..write('lastVia: $lastVia, ')
+          ..write('bbsCall: $bbsCall')
           ..write(')'))
         .toString();
   }
@@ -5204,6 +5256,7 @@ typedef $$ConnectionsTableCreateCompanionBuilder =
       Value<String?> lastSyncResult,
       Value<bool?> startsBbs,
       Value<String?> lastVia,
+      Value<String?> bbsCall,
     });
 typedef $$ConnectionsTableUpdateCompanionBuilder =
     ConnectionsCompanion Function({
@@ -5217,6 +5270,7 @@ typedef $$ConnectionsTableUpdateCompanionBuilder =
       Value<String?> lastSyncResult,
       Value<bool?> startsBbs,
       Value<String?> lastVia,
+      Value<String?> bbsCall,
     });
 
 final class $$ConnectionsTableReferences
@@ -5356,6 +5410,11 @@ class $$ConnectionsTableFilterComposer
 
   ColumnFilters<String> get lastVia => $composableBuilder(
     column: $table.lastVia,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bbsCall => $composableBuilder(
+    column: $table.bbsCall,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5518,6 +5577,11 @@ class $$ConnectionsTableOrderingComposer
     column: $table.lastVia,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get bbsCall => $composableBuilder(
+    column: $table.bbsCall,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ConnectionsTableAnnotationComposer
@@ -5564,6 +5628,9 @@ class $$ConnectionsTableAnnotationComposer
 
   GeneratedColumn<String> get lastVia =>
       $composableBuilder(column: $table.lastVia, builder: (column) => column);
+
+  GeneratedColumn<String> get bbsCall =>
+      $composableBuilder(column: $table.bbsCall, builder: (column) => column);
 
   Expression<T> connectionAddressesRefs<T extends Object>(
     Expression<T> Function($$ConnectionAddressesTableAnnotationComposer a) f,
@@ -5710,6 +5777,7 @@ class $$ConnectionsTableTableManager
                 Value<String?> lastSyncResult = const Value.absent(),
                 Value<bool?> startsBbs = const Value.absent(),
                 Value<String?> lastVia = const Value.absent(),
+                Value<String?> bbsCall = const Value.absent(),
               }) => ConnectionsCompanion(
                 id: id,
                 name: name,
@@ -5721,6 +5789,7 @@ class $$ConnectionsTableTableManager
                 lastSyncResult: lastSyncResult,
                 startsBbs: startsBbs,
                 lastVia: lastVia,
+                bbsCall: bbsCall,
               ),
           createCompanionCallback:
               ({
@@ -5734,6 +5803,7 @@ class $$ConnectionsTableTableManager
                 Value<String?> lastSyncResult = const Value.absent(),
                 Value<bool?> startsBbs = const Value.absent(),
                 Value<String?> lastVia = const Value.absent(),
+                Value<String?> bbsCall = const Value.absent(),
               }) => ConnectionsCompanion.insert(
                 id: id,
                 name: name,
@@ -5745,6 +5815,7 @@ class $$ConnectionsTableTableManager
                 lastSyncResult: lastSyncResult,
                 startsBbs: startsBbs,
                 lastVia: lastVia,
+                bbsCall: bbsCall,
               ),
           withReferenceMapper: (p0) => p0
               .map(

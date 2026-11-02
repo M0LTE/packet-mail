@@ -77,6 +77,15 @@ class BpqDriver implements MailDriver {
   String? get sentAs => null;
 
   @override
+  String? get bbsCall => _bbsCall;
+  String? _bbsCall;
+
+  /// The BBS's callsign: its prompt (`de GB7RDG>`), or else its banner
+  /// (`READNG:GB7RDG} Connected to BBS`).
+  static final _promptCall = RegExp(r'^de ([A-Z0-9]+(?:-\d+)?)>\r$');
+  static final _bannerCall = RegExp(r'[A-Z0-9#]*:([A-Z0-9]+(?:-\d+)?)\} Connected to BBS');
+
+  @override
   Set<DriverCapability> get capabilities => supported;
 
   static final _anyPrompt = RegExp(r'(?:^|\r)([^\r]*>)\r');
@@ -156,6 +165,7 @@ class BpqDriver implements MailDriver {
       if (greetsLikeXRouter(e.received)) throw BbsError(BbsErrorKind.wrongPort, choseWronglyXRouter);
       rethrow;
     }
+    final banner = _bannerCall.firstMatch(text)?.group(1);
     // A bad user name on an FBB port also gets `user:`, but never telnet negotiation.
     if (port == BpqPort.fbb && text.startsWith('\u00FF')) {
       throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);
@@ -177,6 +187,7 @@ class BpqDriver implements MailDriver {
       text = await _session.readUntil(_anyPrompt, timeout: timeout);
     }
     _prompt = '${_anyPrompt.allMatches(text).last.group(1)}\r';
+    _bbsCall = _promptCall.firstMatch(_prompt!)?.group(1) ?? banner;
   }
 
   /// Sends `BBS` unless the BBS has started by itself: an account whose

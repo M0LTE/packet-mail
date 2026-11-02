@@ -33,6 +33,7 @@ void defineXRouterScenarios(XRouterConnect connect) {
     final d = xrouterDriverFor(await connect('user-send'));
     await d.logIn(user: 'q0usr', password: 'user', name: 'Tom User');
     expect(d.sentAs, 'Q0USR'); // the node records the login call as sender
+    expect(d.bbsCall, 'Q0XR'); // the node says who it is, to tell two nodes apart
     expect(d.viaBbs, isFalse);
 
     final local = await d.sendPersonal(
@@ -296,6 +297,7 @@ void defineXRouterBbsScenarios(XRouterConnect connect) {
     final d = xrouterDriverFor(await connect('bbs-user-lists'));
     await d.logIn(user: 'Q0USR', password: 'user', name: 'Tom User');
     expect(d.viaBbs, isTrue);
+    expect(d.bbsCall, 'Q0XR');
     expect((await d.listPersonal()).map((h) => (h.number, h.subject)), [(3, 'Hello')]);
     expect((await d.listBulletins()).map((h) => (h.number, h.to, h.at, h.subject)), [
       (2, 'WX', 'GB', 'Local weather'),
