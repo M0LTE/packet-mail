@@ -1,12 +1,44 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
+
+import 'package:packetmail/connections.dart';
+import 'package:packetmail/passwords.dart';
 
 import 'helpers.dart';
 
 void main() {
+  test('whether the account starts the BBS is forgotten when the account or BBS changes', () async {
+    final store = MailStore(NativeDatabase.memory());
+    addTearDown(store.close);
+    final passwords = MemoryPasswordStore();
+    const draft = ConnectionDraft(name: 'GB7RDG', host: 'gb7rdg-node', port: 8011, portKind: PortKind.fbb, loginName: 'tf');
+    final id = await saveConnection(store, passwords, draft, password: 'x');
+    Future<bool?> starts() async =>
+        (await (store.select(store.connections)..where((c) => c.id.equals(id))).getSingle()).startsBbs;
+    Future<void> learn() => (store.update(store.connections)..where((c) => c.id.equals(id)))
+        .write(const ConnectionsCompanion(startsBbs: Value(true)));
+
+    await learn();
+    await saveConnection(store, passwords, const ConnectionDraft(name: 'Reading', host: 'gb7rdg-node', port: 8011, portKind: PortKind.fbb, loginName: 'tf'), id: id, password: null);
+    expect(await starts(), isTrue);
+    for (final changed in [
+      const ConnectionDraft(name: 'GB7RDG', host: 'other-node', port: 8011, portKind: PortKind.fbb, loginName: 'tf'),
+      const ConnectionDraft(name: 'GB7RDG', host: 'gb7rdg-node', port: 8012, portKind: PortKind.fbb, loginName: 'tf'),
+      const ConnectionDraft(name: 'GB7RDG', host: 'gb7rdg-node', port: 8011, portKind: PortKind.fbb, loginName: 'tom'),
+      const ConnectionDraft(
+          name: 'GB7RDG', host: 'gb7rdg-node', port: 8011, portKind: PortKind.fbb, loginName: 'tf', bbsType: 'xrouter'),
+    ]) {
+      await saveConnection(store, passwords, draft, id: id, password: null);
+      await learn();
+      await saveConnection(store, passwords, changed, id: id, password: null);
+      expect(await starts(), isNull);
+    }
+  });
+
   Future<TestApp> seeded(WidgetTester tester) async {
     // Hold the sync that runs on opening, so the seeded result stays.
     final app = TestApp()..gate = Completer();

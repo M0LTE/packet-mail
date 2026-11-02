@@ -38,9 +38,12 @@ void main() {
         ].map((l) => l.replaceAll('\r', r'\r')).join('\n'),
       ),
     );
-    final d = driverFor(t, BpqPort.fbb);
+    final learned = <bool>[];
+    final d = driverFor(t, BpqPort.fbb, onStartsBbs: learned.add);
     await d.logIn(user: 'user', password: 'user', name: 'x');
     expect(await d.lookUpHomeBbs('M0LTE'), 'GB7RDG.#42.GBR.EURO');
+    // Known not to start the BBS itself, but it did: remembered from now on.
+    expect([d.startsBbs, learned], [true, [true]]);
     expect(await d.listPersonal(), isEmpty);
     expect(t.finished, isTrue);
   });
@@ -95,6 +98,7 @@ void main() {
     final d = driverFor(t, BpqPort.fbb);
     await d.logIn(user: 'user', password: 'user', name: 'Tom User');
     expect(await d.lookUpHomeBbs('Q0USR'), isNull);
+    expect(d.startsBbs, isTrue);
     expect(t.finished, isTrue);
   });
 

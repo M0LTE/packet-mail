@@ -12,8 +12,42 @@ final fixedNow = DateTime.utc(2026, 10, 28, 12);
 /// time when live, since a live BBS stamps today's date on new mail.
 DateTime Function() scenarioClock = () => fixedNow;
 
-BpqDriver driverFor(Transport t, BpqPort port) =>
-    BpqDriver(t, port: port, timeout: const Duration(seconds: 10), clock: scenarioClock);
+/// Most scenarios use ordinary accounts, known not to start the BBS by
+/// themselves; pass null for an account not yet known.
+BpqDriver driverFor(Transport t, BpqPort port, {bool? startsBbs = false, void Function(bool)? onStartsBbs}) =>
+    BpqDriver(t,
+        port: port,
+        timeout: const Duration(seconds: 10),
+        clock: scenarioClock,
+        startsBbs: startsBbs,
+        onStartsBbs: onStartsBbs);
+
+/// Holds everything the BBS sends until [delay] after the first thing we
+/// send, as a BBS that is slow to start would.
+class SlowStart implements Transport {
+  SlowStart(this._inner, {this.delay = const Duration(milliseconds: 2500)});
+
+  final Transport _inner;
+  final Duration delay;
+  DateTime? _start;
+
+  @override
+  late final Stream<List<int>> incoming = _inner.incoming.asyncMap((d) async {
+    final until = (_start ??= DateTime.now()).add(delay);
+    final wait = until.difference(DateTime.now());
+    if (wait > Duration.zero) await Future<void>.delayed(wait);
+    return d;
+  });
+
+  @override
+  Future<void> write(List<int> bytes, {bool secret = false}) {
+    _start ??= DateTime.now();
+    return _inner.write(bytes, secret: secret);
+  }
+
+  @override
+  Future<void> close() => _inner.close();
+}
 
 const tricky = 'Line one\n'
     '\n'
@@ -220,13 +254,50 @@ void defineScenarios(Connect connect) {
   // An account whose USER line names the BBS lands in it by itself; `BBS`
   // sent as well came back as Invalid Command and put every later reply one
   // command late (#73).
+  // While it is not known, login waits for the BBS before sending `BBS`
+  // and learns which it is; once known, it no longer waits.
   for (final port in BpqPort.values) {
     test('an account that starts the BBS by itself, ${port.name} port', () async {
-      final d = driverFor(await connect('auto-start-${port.name}', port), port);
+      final learned = <bool>[];
+      final d = driverFor(await connect('auto-start-${port.name}', port), port, startsBbs: null, onStartsBbs: learned.add);
       await d.logIn(user: 'auto', password: 'auto', name: 'Auto User');
+      expect(learned, [true]);
       expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
       expect(await d.listSent('Q0AUT'), isEmpty);
       await d.disconnect();
+
+      final again = driverFor(await connect('auto-start-known-${port.name}', port), port, startsBbs: true);
+      await again.logIn(user: 'auto', password: 'auto', name: 'Auto User');
+      expect(await again.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
+      await again.disconnect();
+    });
+
+    test('an ordinary account, not yet known, ${port.name} port', () async {
+      final learned = <bool>[];
+      final d = driverFor(await connect('ordinary-unknown-${port.name}', port), port, startsBbs: null, onStartsBbs: learned.add);
+      await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+      expect(learned, [false]);
+      expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
+      await d.disconnect();
     });
   }
+
+  // A brand-new user on an account that starts the BBS by itself, on a BBS
+  // that takes 2.5 s to start: sending `BBS` as it starts crashes LinBPQ
+  // 6.0.26.1 on the FBB port, so login must wait and not send it.
+  test('a new user on a slow-starting account is not sent BBS', () async {
+    final learned = <bool>[];
+    final t = SlowStart(await connect('slow-start-new-user', BpqPort.fbb));
+    final d = driverFor(t, BpqPort.fbb, startsBbs: null, onStartsBbs: learned.add);
+    await d.logIn(user: 'slow', password: 'slow', name: 'Slow User');
+    expect(learned, [true]);
+    expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
+    await d.disconnect();
+
+    // The BBS is still up.
+    final after = driverFor(await connect('slow-start-after', BpqPort.fbb), BpqPort.fbb);
+    await after.logIn(user: 'user', password: 'user', name: 'Tom User');
+    expect(await after.lookUpHomeBbs('Q0SLO'), isNull);
+    await after.disconnect();
+  });
 }

@@ -31,6 +31,10 @@ class Connections extends Table {
 
   /// Plain words: "Fetched 3 new messages" or what went wrong.
   TextColumn get lastSyncResult => text().nullable()();
+
+  /// LinBPQ: whether the account starts the BBS by itself, learned at login;
+  /// null until known, and again after the host, port, login or BBS type changes.
+  BoolColumn get startsBbs => boolean().nullable()();
 }
 
 /// Personal mail received and bulletins, one row per message per connection.

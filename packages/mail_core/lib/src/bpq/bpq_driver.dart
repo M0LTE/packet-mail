@@ -28,8 +28,12 @@ class BpqDriver implements MailDriver {
     required this.port,
     this.timeout = const Duration(seconds: 30),
     DateTime Function()? clock,
+    bool? startsBbs,
+    this.onStartsBbs,
   })  : _session = LineSession(port == BpqPort.telnet ? TelnetFilter(transport) : transport),
-        _clock = clock ?? DateTime.now;
+        _clock = clock ?? DateTime.now,
+        // ignore: prefer_initializing_formals
+        _startsBbs = startsBbs;
 
   final BpqPort port;
   final Duration timeout;
@@ -38,6 +42,21 @@ class BpqDriver implements MailDriver {
 
   /// The BBS prompt line, learned at login, including its CR.
   String? _prompt;
+
+  /// Whether the account starts the BBS by itself (its USER line names it,
+  /// docs/bpq-protocol.md 1.3), or null while unknown. Learned at login and
+  /// kept with the connection, so later logins need not wait to find out.
+  bool? get startsBbs => _startsBbs;
+  bool? _startsBbs;
+
+  /// Told whenever [startsBbs] is learned or changes.
+  final void Function(bool startsBbs)? onStartsBbs;
+
+  void _learnStartsBbs(bool value) {
+    if (_startsBbs == value) return;
+    _startsBbs = value;
+    onStartsBbs?.call(value);
+  }
 
   /// True after we sent `BBS` until the first command's reply: an account
   /// that starts the BBS by itself, but too slowly for us to see, answers it
@@ -75,8 +94,17 @@ class BpqDriver implements MailDriver {
   /// nothing until we do. A telnet port or an XRouter node greets in that time.
   static const _greetingWait = Duration(seconds: 1);
 
-  /// How long to wait after the password for a BBS that starts by itself.
-  static const _bbsStartWait = Duration(seconds: 1);
+  /// How long to wait after the password, while it is unknown whether the
+  /// account starts the BBS by itself. Sending `BBS` to one that does, as it
+  /// starts, can crash LinBPQ (docs/bpq-protocol.md 1.3), so this is generous.
+  static const _bbsStartWait = Duration(seconds: 5);
+
+  /// How long to wait for a new user's name prompt to be answered by a `BBS`
+  /// line before giving our name.
+  static const _nameTakenWait = Duration(seconds: 1);
+
+  /// Signs that the BBS started by itself (not a login refusal).
+  static final _bbsBanner = RegExp(r'Connected to BBS|\[BPQ-|Please enter your Name');
 
   /// A new user's name prompt answered by a `BBS` line.
   static final _nameTaken = RegExp(r'(?:^|\r)Hello BBS\.');
@@ -135,11 +163,12 @@ class BpqDriver implements MailDriver {
     if (_loginRefused.hasMatch(text)) throw BbsError(BbsErrorKind.loginFailed, _refusedMessage);
     if (text.contains('Please enter your Name')) {
       final ours = _safeText(name.trim().isEmpty ? 'Packet Mail user' : name.trim());
-      if (_mayHaveStray && await _session.sees(_nameTaken, timeout: _atMost(timeout, _bbsStartWait))) {
+      if (_mayHaveStray && await _session.sees(_nameTaken, timeout: _atMost(timeout, _nameTakenWait))) {
         // An account that starts the BBS by itself, slowly: the second `BBS`
         // answered the name prompt. Set the right name with N, which keeps
         // its first word, as the prompt does not.
         _mayHaveStray = false;
+        _learnStartsBbs(true);
         text = await _session.readUntil(_anyPrompt, timeout: timeout);
         await _session.sendLine('N $ours');
       } else {
@@ -153,8 +182,21 @@ class BpqDriver implements MailDriver {
   /// Sends `BBS` unless the BBS has started by itself: an account whose
   /// USER line names the BBS lands there without asking, and `BBS` would
   /// then reach it as a command (docs/bpq-protocol.md 1.3).
+  /// Once [startsBbs] is known it decides at once; while unknown we wait
+  /// for the BBS to announce itself, then remember what happened.
   Future<void> _enterBbs() async {
-    if (await _session.sees(_bbsStarted, timeout: _atMost(timeout, _bbsStartWait))) return;
+    switch (_startsBbs) {
+      case true:
+        return;
+      case false:
+        break;
+      case null:
+        if (await _session.sees(_bbsStarted, timeout: _atMost(timeout, _bbsStartWait))) {
+          if (_bbsBanner.hasMatch(_session.pending)) _learnStartsBbs(true);
+          return;
+        }
+        _learnStartsBbs(false);
+    }
     await _session.sendLine('BBS');
     _mayHaveStray = true;
   }
@@ -180,7 +222,10 @@ class BpqDriver implements MailDriver {
   /// after all, and [stray] is returned.
   Future<String> _afterStray(Future<String> Function() next, String stray) async {
     try {
-      return await next();
+      final reply = await next();
+      // It was a stray, so the account starts the BBS by itself.
+      _learnStartsBbs(true);
+      return reply;
     } on SessionTimeout {
       return stray;
     }
@@ -191,6 +236,7 @@ class BpqDriver implements MailDriver {
     final m = RegExp('^\n*Invalid Command\r${RegExp.escape(_promptOrThrow)}').firstMatch(raw);
     final had = _mayHaveStray && m != null;
     _mayHaveStray = false;
+    if (had) _learnStartsBbs(true);
     return had ? raw.substring(m.end) : raw;
   }
 

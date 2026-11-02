@@ -1,0 +1,12 @@
+# Recorded by driver_live_test.dart against test-bbs; do not edit.
+{"t":0.009,"dir":"rx","data":"ÿû\u0003ÿû\u0001user:"}
+{"t":0.009,"dir":"tx","data":"auto\r"}
+{"t":0.019,"dir":"rx","data":"password:"}
+{"t":0.019,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":0.03,"dir":"rx","data":"\r\n"}
+{"t":0.07,"dir":"rx","data":"Connected to Q0TST's Telnet Server\r\n\r\nTEST:Q0TST} Connected to BBS\r\n"}
+{"t":0.11,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\r\nHello Auto User. Latest Message is 8, Last listed is -12\r\nPlease enter your Home BBS using the Home command.\r\nYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\r\nde Q0TST>\r\n"}
+{"t":0.111,"dir":"tx","data":"I Q0OTH\r"}
+{"t":0.211,"dir":"rx","data":"Q0OTH  Q0TST.#42.GBR.EURO Olive Other  Reading \r\nde Q0TST>\r\n"}
+{"t":0.212,"dir":"tx","data":"B\r"}
+{"t":1.312,"dir":"rx","data":"*** Disconnected from Stream 2\r\n"}

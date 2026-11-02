@@ -17,11 +17,17 @@ void main() {
         loginName: 'tf',
       ));
 
-  test('a version 3 database gains the blocked stations table and keeps its data', () async {
+  test('a version 3 database gains the blocked stations table and the starts-BBS column, and keeps its data', () async {
     final old = MailStore(NativeDatabase.memory(setup: (raw) {
       raw.execute('CREATE TABLE contacts (callsign TEXT NOT NULL PRIMARY KEY, name TEXT, home_bbs TEXT, '
           'notes TEXT, source TEXT NOT NULL, edited INTEGER NOT NULL DEFAULT 0)');
       raw.execute("INSERT INTO contacts (callsign, source) VALUES ('M9TWM', 'typed')");
+      raw.execute('CREATE TABLE connections (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, '
+          'bbs_type TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, port_kind TEXT NOT NULL, '
+          "login_name TEXT NOT NULL, personal_download TEXT NOT NULL DEFAULT 'onOpen', last_sync_at INTEGER, "
+          'last_sync_result TEXT)');
+      raw.execute("INSERT INTO connections (name, bbs_type, host, port, port_kind, login_name) "
+          "VALUES ('GB7RDG', 'bpq', 'gb7rdg-node', 8011, 'fbb', 'tf')");
       raw.execute('PRAGMA user_version = 3');
     }));
     await old.into(old.blockedStations).insert(BlockedStationsCompanion.insert(
@@ -30,6 +36,9 @@ void main() {
         ));
     expect((await old.select(old.blockedStations).get()).map((b) => b.callsign), ['G4APL']);
     expect((await old.select(old.contacts).get()).map((c) => c.callsign), ['M9TWM']); // what was there stays
+    // Version 5: whether the account starts the BBS by itself, unknown at first.
+    final c = await old.select(old.connections).getSingle();
+    expect([c.name, c.startsBbs], ['GB7RDG', null]);
     await old.close();
   });
 

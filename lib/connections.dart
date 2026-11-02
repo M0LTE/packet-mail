@@ -98,7 +98,14 @@ Future<int> saveConnection(
   if (id == null) {
     id = await store.into(store.connections).insert(draft.toCompanion());
   } else {
-    await (store.update(store.connections)..where((c) => c.id.equals(id!))).write(draft.toCompanion());
+    final old = await (store.select(store.connections)..where((c) => c.id.equals(id!))).getSingle();
+    // Another account or BBS may or may not start the BBS by itself.
+    final same = old.host == draft.host &&
+        old.port == draft.port &&
+        old.loginName == draft.loginName &&
+        old.bbsType == draft.bbsType;
+    await (store.update(store.connections)..where((c) => c.id.equals(id!)))
+        .write(same ? draft.toCompanion() : draft.toCompanion().copyWith(startsBbs: const Value(null)));
   }
   if (password != null) await passwords.write(id, password);
   return id;
@@ -163,12 +170,17 @@ String connectionKind(String bbsType, String portKind) {
 }
 
 /// The driver for [bbsType] over [transport]; [portKind] matters for LinBPQ only.
-MailDriver newDriver(String bbsType, PortKind portKind, Transport transport, {required Duration timeout}) =>
+/// For LinBPQ, [startsBbs] is what is known about the account starting the
+/// BBS by itself, and [onStartsBbs] hears what login learns.
+MailDriver newDriver(String bbsType, PortKind portKind, Transport transport,
+        {required Duration timeout, bool? startsBbs, void Function(bool startsBbs)? onStartsBbs}) =>
     switch (BbsType.byId(bbsType)) {
       BbsType.bpq => BpqDriver(
           transport,
           port: portKind == PortKind.telnet ? BpqPort.telnet : BpqPort.fbb,
           timeout: timeout,
+          startsBbs: startsBbs,
+          onStartsBbs: onStartsBbs,
         ),
       BbsType.xrouter => XRouterDriver(transport, timeout: timeout),
     };

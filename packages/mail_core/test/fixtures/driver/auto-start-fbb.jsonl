@@ -2,10 +2,12 @@
 {"t":1.0,"dir":"tx","data":"auto\r"}
 {"t":1.0,"dir":"tx","data":"PASSWORD\r","secret":true}
 {"t":1.026,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
-{"t":1.107,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rHello Auto User. Latest Message is 3, Last listed is -19\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
-{"t":1.107,"dir":"tx","data":"I Q0OTH\r"}
-{"t":1.208,"dir":"rx","data":"Q0OTH  Q0TST.#42.GBR.EURO Tom Other  Reading \rde Q0TST>\r"}
-{"t":1.208,"dir":"tx","data":"L< Q0AUT\r"}
-{"t":1.309,"dir":"rx","data":"de Q0TST>\r"}
-{"t":1.31,"dir":"tx","data":"B\r"}
-{"t":2.41,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":1.117,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rPlease enter your Name\r>\r"}
+{"t":1.117,"dir":"tx","data":"Auto User\r"}
+{"t":1.218,"dir":"rx","data":"Hello Auto User. Latest Message is 8, Last listed is -12\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":1.219,"dir":"tx","data":"I Q0OTH\r"}
+{"t":1.319,"dir":"rx","data":"Q0OTH  Q0TST.#42.GBR.EURO Olive Other  Reading \rde Q0TST>\r"}
+{"t":1.319,"dir":"tx","data":"L< Q0AUT\r"}
+{"t":1.42,"dir":"rx","data":"de Q0TST>\r"}
+{"t":1.42,"dir":"tx","data":"B\r"}
+{"t":2.521,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}

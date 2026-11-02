@@ -10,7 +10,7 @@ class MailStore extends _$MailStore {
   MailStore(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -19,6 +19,7 @@ class MailStore extends _$MailStore {
           if (from < 2) await m.createTable(sentListings);
           if (from < 3) await m.addColumn(outgoingRecipients, outgoingRecipients.knownTop);
           if (from < 4) await m.createTable(blockedStations);
+          if (from < 5) await m.addColumn(connections, connections.startsBbs);
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
       );

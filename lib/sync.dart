@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
@@ -17,6 +18,10 @@ Future<MailDriver> connectDriver(MailStore store, PasswordStore passwords, Conne
     PortKind.byId(connection.portKind),
     log?.record(tcp, '${connection.name}, ${connectionKind(connection.bbsType, connection.portKind)}') ?? tcp,
     timeout: const Duration(seconds: 30),
+    startsBbs: connection.startsBbs,
+    onStartsBbs: (value) => (store.update(store.connections)..where((c) => c.id.equals(connection.id)))
+        .write(ConnectionsCompanion(startsBbs: Value(value)))
+        .ignore(),
   );
   try {
     await driver.logIn(user: connection.loginName, password: password, name: identity?.name ?? '');
