@@ -191,6 +191,7 @@ class BpqDriver implements MailDriver {
       case false:
         break;
       case null:
+        // Never send a line straight after the password here: LinBPQ 6.0.26.1 can crash on it (https://github.com/M0LTE/linbpq/issues/86).
         if (await _session.sees(_bbsStarted, timeout: _atMost(timeout, _bbsStartWait))) {
           if (_bbsBanner.hasMatch(_session.pending)) _learnStartsBbs(true);
           return;
