@@ -523,6 +523,23 @@ void main() {
   });
 
   group('personal mail', () {
+    test('mail read elsewhere becomes read here, but not mail the app downloaded itself', () async {
+      bbs
+        ..addPersonal(30)
+        ..addPersonal(31);
+      await engine.sync(conn);
+      // 30 is read on a terminal; 31 the app downloaded (as at-sync mode does) and the user hasn't opened.
+      await (db.update(db.messages)..where((m) => m.bbsNumber.equals(31)))
+          .write(const MessagesCompanion(body: Value('Downloaded by the app')));
+      bbs
+        ..addPersonal(30, status: 'Y')
+        ..addPersonal(31, status: 'Y');
+      clock = now.add(const Duration(hours: 1));
+      await engine.sync(conn);
+      final m = {for (final x in await messages()) x.bbsNumber: x.read};
+      expect(m, {30: true, 31: false});
+    });
+
     test('mail already read on the BBS arrives read and is not counted as new', () async {
       bbs
         ..addPersonal(20, status: 'Y')

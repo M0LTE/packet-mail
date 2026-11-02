@@ -908,7 +908,8 @@ class SyncEngine {
 
   /// Inserts headers not yet stored and refreshes when the rest were listed.
   /// A number the BBS has reused for a different message replaces the old row.
-  /// Returns the ids of the new rows. New personal mail is unread here.
+  /// Returns the ids of the new rows. New personal mail is unread here unless
+  /// the BBS already counts it as read.
   Future<List<int>> _storeHeaders(int connectionId, List<MessageHeader> headers, MailDriver driver) async {
     final cut = !driver.capabilities.contains(DriverCapability.fullListedSubjects);
     final now = _clock();
@@ -924,6 +925,13 @@ class SyncEngine {
           await (store.update(store.messages)..where((m) => m.id.equals(old.id))).write(MessagesCompanion(
                 lastListedAt: Value(now),
                 date: old.body == null && _betterListedDate(old.date, h.date, now) ? Value(h.date) : const Value.absent(),
+                // Personal mail the app hasn't downloaded but the BBS lists as read was
+                // read somewhere else (a terminal, another app), so it is read here too.
+                // Mail the app downloaded itself is left alone: downloading marks it read
+                // on the BBS before the user has seen it.
+                read: !old.read && old.body == null && h.type != MessageType.bulletin && !h.isUnread
+                    ? const Value(true)
+                    : const Value.absent(),
               ));
           continue;
         }
