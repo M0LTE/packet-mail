@@ -435,4 +435,75 @@ void main() {
     expect(find.text('Copied G4XYZ.'), findsOneWidget);
     await app.dispose(tester);
   });
+  testWidgets('internet mail shows who sent it, with the T: lines folded away', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addMessage(
+      app,
+      tester,
+      c,
+      number: 31,
+      subject: 'From the internet',
+      body: 'T:From: Jo Bloggs <jo@example.org>\nT:To: m0lte%gb7rdg@example.org\n\nHello Tom.',
+    );
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('From the internet'));
+    await settleAll(app, tester);
+    expect(find.text('Via internet: Jo Bloggs <jo@example.org>'), findsOneWidget);
+    expect(find.textContaining('T:From:'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('gateway-headers')));
+    await settleAll(app, tester);
+    expect(find.textContaining('T:From: Jo Bloggs'), findsOneWidget);
+
+    // As sent: the body unchanged, and no line in the header.
+    await tester.tap(find.text('As sent'));
+    await settleAll(app, tester);
+    expect(find.text('Via internet: Jo Bloggs <jo@example.org>'), findsNothing);
+    expect(find.textContaining('T:From: Jo Bloggs <jo@example.org>\nT:To:'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
+  testWidgets('a route can be copied, and callsigns in a table can be tapped', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
+      return null;
+    });
+    await addMessage(
+      app,
+      tester,
+      c,
+      number: 32,
+      subject: 'Forwarding',
+      body: 'Mail for Italy goes via IW2OHX.ILOM.ITA.EU now.\n\n'
+          'BBS       Route\n'
+          'IW2OHX    IW2OHX.ILOM.ITA.EU\n'
+          'GB7RDG    GB7RDG.#42.GBR.EURO\n',
+    );
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Forwarding'));
+    await settleAll(app, tester);
+
+    Future<void> tapOn(String s) async {
+      await tester.tapOnText(find.textRange.ofSubstring(s).first);
+      await settleAll(app, tester);
+    }
+
+    // A route alone: Copy only.
+    await tapOn('IW2OHX.ILOM.ITA.EU now');
+    expect(find.byKey(const ValueKey('address-write')), findsNothing);
+    expect(find.byKey(const ValueKey('address-contact')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('address-copy')));
+    await settleAll(app, tester);
+    expect(copied, 'IW2OHX.ILOM.ITA.EU');
+
+    // A callsign in the laid-out table.
+    await tapOn('GB7RDG    ');
+    expect(find.text('Write to GB7RDG'), findsOneWidget);
+    await app.dispose(tester);
+  });
 }

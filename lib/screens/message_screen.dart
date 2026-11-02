@@ -200,6 +200,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     final hdr = text.bodySmall?.copyWith(fontSize: 12.5, height: 1.6, color: Logbook.inkSoft).calls;
     final strong = hdr?.copyWith(color: Logbook.ink, fontWeight: FontWeight.w600);
     final to = m.at == null ? m.toCall : '${m.toCall}@${m.at}';
+    final body = m.body;
+    final via = body != null && ref.watch(readableProvider) ? viaInternet(stripAnsi(body)) : null;
     return InkWell(
       key: const ValueKey('message-header'),
       onTap: () => setState(() => _details = !_details),
@@ -223,6 +225,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               ),
               style: hdr,
             ),
+            if (via != null)
+              Text('Via internet: $via', key: const ValueKey('via-internet'), style: hdr?.copyWith(fontSize: 11.5)),
             Text(fullWhen(m.date, ref.watch(clockProvider)()), style: hdr),
             if (_details) ...[
               const SizedBox(height: 8),
@@ -372,11 +376,7 @@ class ReadableBody extends StatelessWidget {
             ),
           ),
           PreformattedBlock(:final lines) => SideScroll(
-            child: Text.rich(
-              TextSpan(children: styledSpans(lines.join('\n'), track?.take(lines.join('\n')))),
-              softWrap: false,
-              style: Logbook.asSent,
-            ),
+            child: _Paragraph(lines.join('\n'), quoted: false, laidOut: true, colours: track?.take(lines.join('\n'))),
           ),
           GatewayHeadersBlock(:final lines) => _skip(_GatewayHeaders(lines), lines, track),
           GarbledBlock(:final lines) => _skip(
@@ -455,9 +455,13 @@ class _GatewayHeadersState extends State<_GatewayHeaders> {
 }
 
 class _Paragraph extends StatefulWidget {
-  const _Paragraph(this.text, {required this.quoted, this.colours});
+  const _Paragraph(this.text, {required this.quoted, this.laidOut = false, this.colours});
   final String text;
   final bool quoted;
+
+  /// Laid-out text: monospace, not wrapped, callsigns picked out by colour
+  /// alone so the columns stay lined up.
+  final bool laidOut;
 
   /// The message's colour for each character of [text], if it has any.
   final List<AnsiStyle>? colours;
@@ -489,9 +493,12 @@ class _ParagraphState extends State<_Paragraph> {
       t.dispose();
     }
     _taps.clear();
-    final base = widget.quoted
+    final base = widget.laidOut
+        ? Logbook.asSent
+        : widget.quoted
         ? Logbook.body.copyWith(fontStyle: FontStyle.italic, color: Logbook.inkSoft)
         : Logbook.body;
+    final address = TextStyle(color: Logbook.stampRed, fontWeight: widget.laidOut ? null : FontWeight.w600);
     final colours = widget.colours;
     final ink = base.color ?? Logbook.ink;
     var at = 0;
@@ -513,11 +520,11 @@ class _ParagraphState extends State<_Paragraph> {
                 extra: const TextStyle(color: Logbook.stampRed, decoration: TextDecoration.underline),
                 recognizer: _tap(() => launchUrl(p.uri, mode: LaunchMode.externalApplication)),
               ),
-              CallsignText() => styledSpans(
+              CallsignText() || RouteText() => styledSpans(
                 p.text,
                 next(p.text),
                 defaultText: ink,
-                extra: const TextStyle(color: Logbook.stampRed, fontWeight: FontWeight.w600),
+                extra: address,
                 recognizer: _tap(() => showAddressSheet(context, p)),
               ),
               PlainText() => styledSpans(p.text, next(p.text), defaultText: ink),
@@ -525,6 +532,7 @@ class _ParagraphState extends State<_Paragraph> {
         ],
       ),
       style: base,
+      softWrap: widget.laidOut ? false : null,
     );
   }
 }
@@ -595,8 +603,8 @@ class _Actions extends ConsumerWidget {
 }
 
 /// What can be done with a callsign or address tapped in a message: write
-/// to it, add it to contacts, or copy it.
-Future<void> showAddressSheet(BuildContext context, CallsignText address) => showModalBottomSheet<void>(
+/// to it, add it to contacts, or copy it. A route alone can only be copied.
+Future<void> showAddressSheet(BuildContext context, InlinePiece address) => showModalBottomSheet<void>(
   context: context,
   useRootNavigator: true,
   backgroundColor: Logbook.paper,
@@ -607,12 +615,15 @@ Future<void> showAddressSheet(BuildContext context, CallsignText address) => sho
 class _AddressSheet extends ConsumerWidget {
   const _AddressSheet(this.address);
 
-  final CallsignText address;
+  /// A [CallsignText] or a [RouteText].
+  final InlinePiece address;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
-    final call = address.call;
+    final target = address is CallsignText ? address as CallsignText : null;
+    final shown = target?.address ?? address.text;
+    final call = target?.call;
     final contact = (ref.watch(contactsProvider).value ?? const []).where((c) => c.callsign == call).firstOrNull;
     final nav = Navigator.of(context, rootNavigator: true);
     void then(Route<void> route) {
@@ -627,39 +638,43 @@ class _AddressSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text(address.address, style: text.titleMedium?.calls),
+            child: Text(shown, style: text.titleMedium?.calls),
           ),
-          ListTile(
-            key: const ValueKey('address-write'),
-            leading: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
-            title: Text('Write to $call'),
-            onTap: () => then(
-              MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: ComposeDraft(to: address.address))),
-            ),
-          ),
-          ListTile(
-            key: const ValueKey('address-contact'),
-            leading: Icon(contact == null ? Icons.person_add_alt : Icons.person_outline, color: Logbook.stampRed),
-            title: Text(contact == null ? 'Add to contacts' : 'Open contact'),
-            onTap: () => then(
-              MaterialPageRoute<void>(
-                builder: (_) => contact != null
-                    ? ContactScreen(contact: contact)
-                    : ContactScreen(callsign: call, homeBbs: address.at),
+          if (target != null && call != null) ...[
+            ListTile(
+              key: const ValueKey('address-write'),
+              leading: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+              title: Text('Write to $call'),
+              onTap: () => then(
+                MaterialPageRoute<bool>(
+                  builder: (_) => ComposeScreen(draft: ComposeDraft(to: target.address)),
+                ),
               ),
             ),
-          ),
+            ListTile(
+              key: const ValueKey('address-contact'),
+              leading: Icon(contact == null ? Icons.person_add_alt : Icons.person_outline, color: Logbook.stampRed),
+              title: Text(contact == null ? 'Add to contacts' : 'Open contact'),
+              onTap: () => then(
+                MaterialPageRoute<void>(
+                  builder: (_) => contact != null
+                      ? ContactScreen(contact: contact)
+                      : ContactScreen(callsign: call, homeBbs: target.at),
+                ),
+              ),
+            ),
+          ],
           ListTile(
             key: const ValueKey('address-copy'),
             leading: const Icon(Icons.copy, color: Logbook.stampRed),
             title: const Text('Copy'),
             onTap: () {
               final messenger = ScaffoldMessenger.maybeOf(context);
-              Clipboard.setData(ClipboardData(text: address.address));
+              Clipboard.setData(ClipboardData(text: shown));
               Navigator.of(context).pop();
               messenger
                 ?..hideCurrentSnackBar()
-                ..showSnackBar(SnackBar(content: Text('Copied ${address.address}.')));
+                ..showSnackBar(SnackBar(content: Text('Copied $shown.')));
             },
           ),
         ],

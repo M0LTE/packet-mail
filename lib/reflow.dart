@@ -54,7 +54,8 @@ final class PreformattedBlock extends BodyBlock {
 }
 
 /// Mail-gateway headers at the top of a message (`>From`, `Received:`,
-/// `Message-Id:` and the like), kept exactly as sent and folded away.
+/// `Message-Id:` and the like, or an internet gateway's `T:From:` lines),
+/// kept exactly as sent and folded away.
 final class GatewayHeadersBlock extends BodyBlock {
   const GatewayHeadersBlock(this.lines);
   final List<String> lines;
@@ -92,18 +93,57 @@ bool _allEqual(List<Object> a, List<Object> b) {
 
 String _show(String s) => '"${s.replaceAll('\n', r'\n')}"';
 
-/// Splits [body] into blocks for the readable view.
-List<BodyBlock> readableBlocks(String body) {
-  final lines = [
-    for (final l in body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n')) l.trimRight(),
-  ];
+List<String> _lines(String body) => [
+  for (final l in body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n')) l.trimRight(),
+];
+
+int _firstNonBlank(List<String> lines) {
   var start = 0;
   while (start < lines.length && lines[start].isEmpty) {
     start++;
   }
-  final headers = _gatewayHeaders(lines, start);
-  if (headers == 0) return _blocks(lines);
-  return [GatewayHeadersBlock(lines.sublist(start, start + headers)), ..._blocks(lines.sublist(start + headers))];
+  return start;
+}
+
+/// Splits [body] into blocks for the readable view.
+List<BodyBlock> readableBlocks(String body) {
+  final lines = _lines(body);
+  final start = _firstNonBlank(lines);
+  final internet = _internetLines(lines, start);
+  final folded = internet + _gatewayHeaders(lines, start + internet);
+  if (folded == 0) return _blocks(lines);
+  return [GatewayHeadersBlock(lines.sublist(start, start + folded)), ..._blocks(lines.sublist(start + folded))];
+}
+
+final _tLine = RegExp(r'^T:[A-Za-z][\w-]*:');
+final _tFrom = RegExp(r'^T:From:\s*(.*)$', caseSensitive: false);
+
+/// How many lines from [start] are the T: lines an FBB or BPQ internet mail
+/// gateway puts at the top (`T:From:`, `T:To:`, `T:Message-Id:`), with any
+/// R: lines before them. Zero when there are no T: lines.
+int _internetLines(List<String> lines, int start) {
+  var i = start;
+  while (i < lines.length && lines[i].startsWith('R:')) {
+    i++;
+  }
+  final first = i;
+  while (i < lines.length && _tLine.hasMatch(lines[i])) {
+    i++;
+  }
+  return i == first ? 0 : i - start;
+}
+
+/// Who sent [body] from the internet, as its gateway's `T:From:` line gives
+/// it (`Paul Lewis <g4apl@gb7cip.ampr.org>`), or null if it has none.
+String? viaInternet(String body) {
+  final lines = _lines(body);
+  final start = _firstNonBlank(lines);
+  final end = start + _internetLines(lines, start);
+  for (var i = start; i < end; i++) {
+    final from = _tFrom.firstMatch(lines[i])?[1]?.trim();
+    if (from != null && from.isNotEmpty) return from;
+  }
+  return null;
 }
 
 final _header = RegExp(
@@ -257,7 +297,7 @@ String _join(List<String> run, int width) {
   return out.toString();
 }
 
-/// A piece of running text: plain, a link, or a callsign.
+/// A piece of running text: plain, a link, a callsign or a route.
 sealed class InlinePiece {
   const InlinePiece(this.text);
   final String text;
@@ -287,15 +327,16 @@ final class LinkText extends InlinePiece {
   String toString() => 'Link($text)';
 }
 
-/// A callsign, or a full address such as `G8BPQ@GB7BPQ.#23.GBR.EURO`.
+/// A callsign, or a full address such as `G8BPQ@GB7BPQ.#23.GBR.EURO`, also
+/// when written with spaces round the `@`.
 final class CallsignText extends InlinePiece {
   const CallsignText(super.text);
 
   /// The callsign alone, without SSID or route.
-  String get call => text.split('@').first.split('-').first;
+  String get call => text.split('@').first.trim().split('-').first;
 
   /// The home BBS and route after `@`, or null for a bare callsign.
-  String? get at => text.contains('@') ? text.substring(text.indexOf('@') + 1) : null;
+  String? get at => text.contains('@') ? text.substring(text.indexOf('@') + 1).trim() : null;
 
   /// What to write to: the full address when given, else the callsign.
   String get address => at == null ? call : '$call@$at';
@@ -307,18 +348,42 @@ final class CallsignText extends InlinePiece {
   String toString() => 'Call($text)';
 }
 
+/// A BBS and its route, such as `GB7RDG.#42.GBR.EURO`.
+final class RouteText extends InlinePiece {
+  const RouteText(super.text);
+  @override
+  bool operator ==(Object other) => other is RouteText && other.text == text;
+  @override
+  int get hashCode => text.hashCode;
+  @override
+  String toString() => 'Route($text)';
+}
+
 final _link = RegExp(r'(?:https?://|www\.)[^\s<>"]+', caseSensitive: false);
 
 /// Amateur callsigns: a prefix of one or two letters, a digit and a letter,
-/// or a letter and a digit; then a digit and one to four letters; then an
-/// optional SSID or `@` and a route. Upper case only, so ordinary words
-/// never match. A route the address parser rejects is left as plain text.
+/// or a letter and a digit; then a digit and one to four letters. Then an
+/// optional SSID, `@` and a route (with a space either side or not), or the
+/// rest of a route straight after a BBS callsign. Upper case only, so
+/// ordinary words never match. Not followed by a dot and more, so a file
+/// name like `GB7RDG.TXT` is left whole for checking.
 final _call = RegExp(
   r'(?<![A-Za-z0-9_./#@-])(?:[A-Z]{1,2}|[0-9][A-Z]|[A-Z][0-9])[0-9][A-Z]{1,4}'
-  r'(?:-\d{1,2}|@[A-Z0-9]+(?:\.#?[A-Z0-9]+)*)?(?![A-Za-z0-9_@])',
+  r'(?:-\d{1,2}| ?@ ?[A-Z0-9]+(?:\.#?[A-Z0-9]+)*|(?:\.#?[A-Z0-9]+)+)?(?![A-Za-z0-9_@]|\.[A-Za-z0-9#])',
 );
 
-/// Splits [text] into plain text, links and callsigns.
+/// True for a route that reads as one: a single BBS, or one that ends in a
+/// continent or flood area, or has a #region. `GB7CIP.AMPR.ORG` (an internet
+/// name) and `GB7RDG.TXT` (a file) don't.
+bool _plausibleRoute(String route) {
+  final parts = route.split('.');
+  if (parts.length == 1) return true;
+  return knownContinents.contains(parts.last) ||
+      knownFloodAreas.contains(parts.last) ||
+      parts.skip(1).any((p) => p.startsWith('#'));
+}
+
+/// Splits [text] into plain text, links, callsigns and routes.
 List<InlinePiece> inlinePieces(String text) {
   final pieces = <InlinePiece>[];
   final plain = StringBuffer();
@@ -347,14 +412,29 @@ List<InlinePiece> inlinePieces(String text) {
 void _addCalls(String text, StringBuffer plain, List<InlinePiece> pieces, void Function() flush) {
   var at = 0;
   for (final m in _call.allMatches(text)) {
-    var call = m[0]!;
-    if (call.contains('@') && MailAddress.parse(call).problems.any((p) => p.blocking)) {
-      call = call.substring(0, call.indexOf('@'));
+    final found = m[0]!;
+    final InlinePiece? piece;
+    final sign = found.indexOf('@');
+    if (sign >= 0) {
+      final call = found.substring(0, sign).trim();
+      final route = found.substring(sign + 1).trim();
+      if (MailAddress.parse('$call@$route').problems.any((p) => p.blocking)) {
+        // Not at a BBS: the callsign alone.
+        piece = CallsignText(call);
+      } else {
+        // An internet address in capitals is not a BBS address.
+        piece = _plausibleRoute(route) ? CallsignText(found) : null;
+      }
+    } else if (found.contains('.')) {
+      piece = _plausibleRoute(found) ? RouteText(found) : null;
+    } else {
+      piece = CallsignText(found);
     }
+    if (piece == null) continue;
     plain.write(text.substring(at, m.start));
     flush();
-    pieces.add(CallsignText(call));
-    at = m.start + call.length;
+    pieces.add(piece);
+    at = m.start + piece.text.length;
   }
   plain.write(text.substring(at));
 }

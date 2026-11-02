@@ -50,6 +50,56 @@ void main() {
     });
   });
 
+  group('internet gateway T: lines', () {
+    // Mail 4485 from GB7RDG, sent from the internet through an FBB-style
+    // gateway: R: lines, then T:From:, T:To: and T:Message-Id:.
+    final body = recordedBody(4485, fixture: 'read-unread');
+
+    test('fold away with the gateway headers, out of the text', () {
+      expect(body, startsWith('T:From: '));
+      final blocks = readableBlocks(body);
+      final headers = blocks.first as GatewayHeadersBlock;
+      expect(headers.lines, hasLength(3));
+      expect(headers.lines[0], 'T:From: Paul Lewis <g4apl@gb7cip.ampr.org>');
+      expect(headers.lines[1], startsWith('T:To: m0lte%gb7rdg'));
+      expect(headers.lines[2], startsWith('T:Message-Id: <'));
+      expect(blocks[1], const ParagraphBlock('Thanks Tom, good to hear from you.'));
+      expect(blocks.skip(1).whereType<GatewayHeadersBlock>(), isEmpty);
+      expect(blocks.whereType<ParagraphBlock>().any((p) => p.text.contains('T:')), isFalse);
+    });
+
+    test('give the sender on the internet', () {
+      expect(viaInternet(body), 'Paul Lewis <g4apl@gb7cip.ampr.org>');
+    });
+
+    test('are found after R: lines left in the text, which fold with them', () {
+      const withRouting =
+          'R:261028/0520Z @:GB7CIP.#32.GBR.EURO\n'
+          'T:From: someone@example.org\n'
+          'T:Date: Wed, 28 Oct 2026 05:19:00 +0000\n'
+          '\n'
+          'Hello.';
+      final blocks = readableBlocks(withRouting);
+      expect(blocks, [
+        const GatewayHeadersBlock([
+          'R:261028/0520Z @:GB7CIP.#32.GBR.EURO',
+          'T:From: someone@example.org',
+          'T:Date: Wed, 28 Oct 2026 05:19:00 +0000',
+        ]),
+        const ParagraphBlock('Hello.'),
+      ]);
+      expect(viaInternet(withRouting), 'someone@example.org');
+    });
+
+    test('only at the top, and R: lines alone stay as they are', () {
+      const later = 'Hello.\n\nT:From: someone@example.org';
+      expect(readableBlocks(later).first, const ParagraphBlock('Hello.'));
+      expect(viaInternet(later), isNull);
+      expect(readableBlocks('R:261028/0520Z @:GB7CIP\n\nHello.').first, isA<ParagraphBlock>());
+      expect(viaInternet('Hello.'), isNull);
+    });
+  });
+
   group('readableBlocks', () {
     test('rejoins hard-wrapped lines into one paragraph', () {
       const body =
@@ -251,6 +301,85 @@ void main() {
       for (final s in ['ARLK081', 'SK81', 'MFSK16', '07530U', 'LinBPQ6.0.26', 'AO-7', 'm0lte', 'ISS', '2026']) {
         expect(inlinePieces(s), [PlainText(s)], reason: s);
       }
+    });
+
+    test('a BBS and its route is one piece', () {
+      expect(inlinePieces('Forwards to IW2OHX.ILOM.ITA.EU and GB7RDG.#42.GBR.EURO.'), const [
+        PlainText('Forwards to '),
+        RouteText('IW2OHX.ILOM.ITA.EU'),
+        PlainText(' and '),
+        RouteText('GB7RDG.#42.GBR.EURO'),
+        PlainText('.'),
+      ]);
+      expect(inlinePieces('via GB7RDG.GBR'), const [PlainText('via '), RouteText('GB7RDG.GBR')]);
+    });
+
+    test('an address with spaces round the @ is one piece', () {
+      final pieces = inlinePieces('SP IZ5ABC @ IW2OHX.ILOM.ITA.EU please');
+      expect(pieces, const [
+        PlainText('SP '),
+        CallsignText('IZ5ABC @ IW2OHX.ILOM.ITA.EU'),
+        PlainText(' please'),
+      ]);
+      final a = pieces[1] as CallsignText;
+      expect(a.call, 'IZ5ABC');
+      expect(a.at, 'IW2OHX.ILOM.ITA.EU');
+      expect(a.address, 'IZ5ABC@IW2OHX.ILOM.ITA.EU');
+      expect(inlinePieces('G8BPQ @HOME'), const [CallsignText('G8BPQ'), PlainText(' @HOME')]);
+    });
+
+    test('leaves version numbers, file names and internet addresses', () {
+      for (final s in [
+        '6.0.26.1',
+        'LinBPQ 6.0.26.1',
+        'GB7RDG.TXT',
+        'M0LTE.7PL',
+        'G4APL.TAR.GZ',
+        'G4APL@GB7CIP.AMPR.ORG',
+        'g4apl@gb7cip.ampr.org',
+        'm0lte%gb7rdg.#42.gbr.euro@gb7cip.ampr.org',
+        'Version 2.1.0 is out.',
+      ]) {
+        expect(inlinePieces(s), [PlainText(s)], reason: s);
+      }
+    });
+
+    test('a forwarding bulletin', () {
+      // Made up, in the shape of a BBS forwarding announcement.
+      const bulletin =
+          'From 1 November IW2OHX.ILOM.ITA.EU forwards for northern Italy, and\n'
+          'GB7RDG.#42.GBR.EURO takes mail for the south of England. To reach a\n'
+          'station there, address it like SP IZ2XYZ @ IW2OHX.ILOM.ITA.EU or\n'
+          'SP G4XYZ@GB7RDG.#42.GBR.EURO. Running LinBPQ 6.0.26.1; the list is in\n'
+          'FWDLIST.TXT and at https://example.org/fwd.\n'
+          '\n'
+          'Area     BBS       Route\n'
+          'ILOM     IW2OHX    IW2OHX.ILOM.ITA.EU\n'
+          'LAZ      IK0ABC    IK0ABC.LAZ.ITA.EU\n'
+          '#42      GB7RDG    GB7RDG.#42.GBR.EURO\n'
+          '\n'
+          '73 de IW2OHX';
+      final blocks = readableBlocks(bulletin);
+      final paragraph = blocks.first as ParagraphBlock;
+      final table = blocks[1] as PreformattedBlock;
+      final found = [
+        for (final p in [...inlinePieces(paragraph.text), ...inlinePieces(table.lines.join('\n'))])
+          if (p is! PlainText) p,
+      ];
+      expect(found, const [
+        RouteText('IW2OHX.ILOM.ITA.EU'),
+        RouteText('GB7RDG.#42.GBR.EURO'),
+        CallsignText('IZ2XYZ @ IW2OHX.ILOM.ITA.EU'),
+        CallsignText('G4XYZ@GB7RDG.#42.GBR.EURO'),
+        LinkText('https://example.org/fwd'),
+        CallsignText('IW2OHX'),
+        RouteText('IW2OHX.ILOM.ITA.EU'),
+        CallsignText('IK0ABC'),
+        RouteText('IK0ABC.LAZ.ITA.EU'),
+        CallsignText('GB7RDG'),
+        RouteText('GB7RDG.#42.GBR.EURO'),
+      ]);
+      expect(blocks.last, const ParagraphBlock('73 de IW2OHX'));
     });
 
     test('a callsign inside a link stays part of the link', () {
