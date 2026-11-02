@@ -1,0 +1,1 @@
+Mail you have already read elsewhere, for example on a terminal, now shows as read in the app instead of new, including older copies from earlier versions. Only unread mail counts as new after a sync.
