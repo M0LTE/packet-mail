@@ -342,24 +342,6 @@ class $ConnectionsTable extends Connections
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _hostMeta = const VerificationMeta('host');
-  @override
-  late final GeneratedColumn<String> host = GeneratedColumn<String>(
-    'host',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _portMeta = const VerificationMeta('port');
-  @override
-  late final GeneratedColumn<int> port = GeneratedColumn<int>(
-    'port',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _portKindMeta = const VerificationMeta(
     'portKind',
   );
@@ -430,19 +412,29 @@ class $ConnectionsTable extends Connections
       'CHECK ("starts_bbs" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _lastViaMeta = const VerificationMeta(
+    'lastVia',
+  );
+  @override
+  late final GeneratedColumn<String> lastVia = GeneratedColumn<String>(
+    'last_via',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     name,
     bbsType,
-    host,
-    port,
     portKind,
     loginName,
     personalDownload,
     lastSyncAt,
     lastSyncResult,
     startsBbs,
+    lastVia,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -474,22 +466,6 @@ class $ConnectionsTable extends Connections
       );
     } else if (isInserting) {
       context.missing(_bbsTypeMeta);
-    }
-    if (data.containsKey('host')) {
-      context.handle(
-        _hostMeta,
-        host.isAcceptableOrUnknown(data['host']!, _hostMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_hostMeta);
-    }
-    if (data.containsKey('port')) {
-      context.handle(
-        _portMeta,
-        port.isAcceptableOrUnknown(data['port']!, _portMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_portMeta);
     }
     if (data.containsKey('port_kind')) {
       context.handle(
@@ -540,6 +516,12 @@ class $ConnectionsTable extends Connections
         startsBbs.isAcceptableOrUnknown(data['starts_bbs']!, _startsBbsMeta),
       );
     }
+    if (data.containsKey('last_via')) {
+      context.handle(
+        _lastViaMeta,
+        lastVia.isAcceptableOrUnknown(data['last_via']!, _lastViaMeta),
+      );
+    }
     return context;
   }
 
@@ -560,14 +542,6 @@ class $ConnectionsTable extends Connections
       bbsType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}bbs_type'],
-      )!,
-      host: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}host'],
-      )!,
-      port: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}port'],
       )!,
       portKind: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -593,6 +567,10 @@ class $ConnectionsTable extends Connections
         DriftSqlType.bool,
         data['${effectivePrefix}starts_bbs'],
       ),
+      lastVia: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_via'],
+      ),
     );
   }
 
@@ -608,8 +586,6 @@ class Connection extends DataClass implements Insertable<Connection> {
 
   /// Which driver: 'bpq' or 'xrouter'.
   final String bbsType;
-  final String host;
-  final int port;
 
   /// For bpq: 'fbb' or 'telnet'. Always 'telnet' for xrouter.
   final String portKind;
@@ -624,20 +600,23 @@ class Connection extends DataClass implements Insertable<Connection> {
   final String? lastSyncResult;
 
   /// LinBPQ: whether the account starts the BBS by itself, learned at login;
-  /// null until known, and again after the host, port, login or BBS type changes.
+  /// null until known, and again after the addresses, login or BBS type change.
   final bool? startsBbs;
+
+  /// The address the last connection used, as shown in the sync status
+  /// ("via 192.168.1.87"): the host, with the port if the host is listed twice.
+  final String? lastVia;
   const Connection({
     required this.id,
     required this.name,
     required this.bbsType,
-    required this.host,
-    required this.port,
     required this.portKind,
     required this.loginName,
     required this.personalDownload,
     this.lastSyncAt,
     this.lastSyncResult,
     this.startsBbs,
+    this.lastVia,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -645,8 +624,6 @@ class Connection extends DataClass implements Insertable<Connection> {
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['bbs_type'] = Variable<String>(bbsType);
-    map['host'] = Variable<String>(host);
-    map['port'] = Variable<int>(port);
     map['port_kind'] = Variable<String>(portKind);
     map['login_name'] = Variable<String>(loginName);
     map['personal_download'] = Variable<String>(personalDownload);
@@ -659,6 +636,9 @@ class Connection extends DataClass implements Insertable<Connection> {
     if (!nullToAbsent || startsBbs != null) {
       map['starts_bbs'] = Variable<bool>(startsBbs);
     }
+    if (!nullToAbsent || lastVia != null) {
+      map['last_via'] = Variable<String>(lastVia);
+    }
     return map;
   }
 
@@ -667,8 +647,6 @@ class Connection extends DataClass implements Insertable<Connection> {
       id: Value(id),
       name: Value(name),
       bbsType: Value(bbsType),
-      host: Value(host),
-      port: Value(port),
       portKind: Value(portKind),
       loginName: Value(loginName),
       personalDownload: Value(personalDownload),
@@ -681,6 +659,9 @@ class Connection extends DataClass implements Insertable<Connection> {
       startsBbs: startsBbs == null && nullToAbsent
           ? const Value.absent()
           : Value(startsBbs),
+      lastVia: lastVia == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastVia),
     );
   }
 
@@ -693,14 +674,13 @@ class Connection extends DataClass implements Insertable<Connection> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       bbsType: serializer.fromJson<String>(json['bbsType']),
-      host: serializer.fromJson<String>(json['host']),
-      port: serializer.fromJson<int>(json['port']),
       portKind: serializer.fromJson<String>(json['portKind']),
       loginName: serializer.fromJson<String>(json['loginName']),
       personalDownload: serializer.fromJson<String>(json['personalDownload']),
       lastSyncAt: serializer.fromJson<DateTime?>(json['lastSyncAt']),
       lastSyncResult: serializer.fromJson<String?>(json['lastSyncResult']),
       startsBbs: serializer.fromJson<bool?>(json['startsBbs']),
+      lastVia: serializer.fromJson<String?>(json['lastVia']),
     );
   }
   @override
@@ -710,14 +690,13 @@ class Connection extends DataClass implements Insertable<Connection> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'bbsType': serializer.toJson<String>(bbsType),
-      'host': serializer.toJson<String>(host),
-      'port': serializer.toJson<int>(port),
       'portKind': serializer.toJson<String>(portKind),
       'loginName': serializer.toJson<String>(loginName),
       'personalDownload': serializer.toJson<String>(personalDownload),
       'lastSyncAt': serializer.toJson<DateTime?>(lastSyncAt),
       'lastSyncResult': serializer.toJson<String?>(lastSyncResult),
       'startsBbs': serializer.toJson<bool?>(startsBbs),
+      'lastVia': serializer.toJson<String?>(lastVia),
     };
   }
 
@@ -725,20 +704,17 @@ class Connection extends DataClass implements Insertable<Connection> {
     int? id,
     String? name,
     String? bbsType,
-    String? host,
-    int? port,
     String? portKind,
     String? loginName,
     String? personalDownload,
     Value<DateTime?> lastSyncAt = const Value.absent(),
     Value<String?> lastSyncResult = const Value.absent(),
     Value<bool?> startsBbs = const Value.absent(),
+    Value<String?> lastVia = const Value.absent(),
   }) => Connection(
     id: id ?? this.id,
     name: name ?? this.name,
     bbsType: bbsType ?? this.bbsType,
-    host: host ?? this.host,
-    port: port ?? this.port,
     portKind: portKind ?? this.portKind,
     loginName: loginName ?? this.loginName,
     personalDownload: personalDownload ?? this.personalDownload,
@@ -747,14 +723,13 @@ class Connection extends DataClass implements Insertable<Connection> {
         ? lastSyncResult.value
         : this.lastSyncResult,
     startsBbs: startsBbs.present ? startsBbs.value : this.startsBbs,
+    lastVia: lastVia.present ? lastVia.value : this.lastVia,
   );
   Connection copyWithCompanion(ConnectionsCompanion data) {
     return Connection(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       bbsType: data.bbsType.present ? data.bbsType.value : this.bbsType,
-      host: data.host.present ? data.host.value : this.host,
-      port: data.port.present ? data.port.value : this.port,
       portKind: data.portKind.present ? data.portKind.value : this.portKind,
       loginName: data.loginName.present ? data.loginName.value : this.loginName,
       personalDownload: data.personalDownload.present
@@ -767,6 +742,7 @@ class Connection extends DataClass implements Insertable<Connection> {
           ? data.lastSyncResult.value
           : this.lastSyncResult,
       startsBbs: data.startsBbs.present ? data.startsBbs.value : this.startsBbs,
+      lastVia: data.lastVia.present ? data.lastVia.value : this.lastVia,
     );
   }
 
@@ -776,14 +752,13 @@ class Connection extends DataClass implements Insertable<Connection> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('bbsType: $bbsType, ')
-          ..write('host: $host, ')
-          ..write('port: $port, ')
           ..write('portKind: $portKind, ')
           ..write('loginName: $loginName, ')
           ..write('personalDownload: $personalDownload, ')
           ..write('lastSyncAt: $lastSyncAt, ')
           ..write('lastSyncResult: $lastSyncResult, ')
-          ..write('startsBbs: $startsBbs')
+          ..write('startsBbs: $startsBbs, ')
+          ..write('lastVia: $lastVia')
           ..write(')'))
         .toString();
   }
@@ -793,14 +768,13 @@ class Connection extends DataClass implements Insertable<Connection> {
     id,
     name,
     bbsType,
-    host,
-    port,
     portKind,
     loginName,
     personalDownload,
     lastSyncAt,
     lastSyncResult,
     startsBbs,
+    lastVia,
   );
   @override
   bool operator ==(Object other) =>
@@ -809,84 +783,76 @@ class Connection extends DataClass implements Insertable<Connection> {
           other.id == this.id &&
           other.name == this.name &&
           other.bbsType == this.bbsType &&
-          other.host == this.host &&
-          other.port == this.port &&
           other.portKind == this.portKind &&
           other.loginName == this.loginName &&
           other.personalDownload == this.personalDownload &&
           other.lastSyncAt == this.lastSyncAt &&
           other.lastSyncResult == this.lastSyncResult &&
-          other.startsBbs == this.startsBbs);
+          other.startsBbs == this.startsBbs &&
+          other.lastVia == this.lastVia);
 }
 
 class ConnectionsCompanion extends UpdateCompanion<Connection> {
   final Value<int> id;
   final Value<String> name;
   final Value<String> bbsType;
-  final Value<String> host;
-  final Value<int> port;
   final Value<String> portKind;
   final Value<String> loginName;
   final Value<String> personalDownload;
   final Value<DateTime?> lastSyncAt;
   final Value<String?> lastSyncResult;
   final Value<bool?> startsBbs;
+  final Value<String?> lastVia;
   const ConnectionsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.bbsType = const Value.absent(),
-    this.host = const Value.absent(),
-    this.port = const Value.absent(),
     this.portKind = const Value.absent(),
     this.loginName = const Value.absent(),
     this.personalDownload = const Value.absent(),
     this.lastSyncAt = const Value.absent(),
     this.lastSyncResult = const Value.absent(),
     this.startsBbs = const Value.absent(),
+    this.lastVia = const Value.absent(),
   });
   ConnectionsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required String bbsType,
-    required String host,
-    required int port,
     required String portKind,
     required String loginName,
     this.personalDownload = const Value.absent(),
     this.lastSyncAt = const Value.absent(),
     this.lastSyncResult = const Value.absent(),
     this.startsBbs = const Value.absent(),
+    this.lastVia = const Value.absent(),
   }) : name = Value(name),
        bbsType = Value(bbsType),
-       host = Value(host),
-       port = Value(port),
        portKind = Value(portKind),
        loginName = Value(loginName);
   static Insertable<Connection> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? bbsType,
-    Expression<String>? host,
-    Expression<int>? port,
     Expression<String>? portKind,
     Expression<String>? loginName,
     Expression<String>? personalDownload,
     Expression<DateTime>? lastSyncAt,
     Expression<String>? lastSyncResult,
     Expression<bool>? startsBbs,
+    Expression<String>? lastVia,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (bbsType != null) 'bbs_type': bbsType,
-      if (host != null) 'host': host,
-      if (port != null) 'port': port,
       if (portKind != null) 'port_kind': portKind,
       if (loginName != null) 'login_name': loginName,
       if (personalDownload != null) 'personal_download': personalDownload,
       if (lastSyncAt != null) 'last_sync_at': lastSyncAt,
       if (lastSyncResult != null) 'last_sync_result': lastSyncResult,
       if (startsBbs != null) 'starts_bbs': startsBbs,
+      if (lastVia != null) 'last_via': lastVia,
     });
   }
 
@@ -894,27 +860,25 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     Value<int>? id,
     Value<String>? name,
     Value<String>? bbsType,
-    Value<String>? host,
-    Value<int>? port,
     Value<String>? portKind,
     Value<String>? loginName,
     Value<String>? personalDownload,
     Value<DateTime?>? lastSyncAt,
     Value<String?>? lastSyncResult,
     Value<bool?>? startsBbs,
+    Value<String?>? lastVia,
   }) {
     return ConnectionsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       bbsType: bbsType ?? this.bbsType,
-      host: host ?? this.host,
-      port: port ?? this.port,
       portKind: portKind ?? this.portKind,
       loginName: loginName ?? this.loginName,
       personalDownload: personalDownload ?? this.personalDownload,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       lastSyncResult: lastSyncResult ?? this.lastSyncResult,
       startsBbs: startsBbs ?? this.startsBbs,
+      lastVia: lastVia ?? this.lastVia,
     );
   }
 
@@ -929,12 +893,6 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     }
     if (bbsType.present) {
       map['bbs_type'] = Variable<String>(bbsType.value);
-    }
-    if (host.present) {
-      map['host'] = Variable<String>(host.value);
-    }
-    if (port.present) {
-      map['port'] = Variable<int>(port.value);
     }
     if (portKind.present) {
       map['port_kind'] = Variable<String>(portKind.value);
@@ -954,6 +912,9 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
     if (startsBbs.present) {
       map['starts_bbs'] = Variable<bool>(startsBbs.value);
     }
+    if (lastVia.present) {
+      map['last_via'] = Variable<String>(lastVia.value);
+    }
     return map;
   }
 
@@ -963,14 +924,370 @@ class ConnectionsCompanion extends UpdateCompanion<Connection> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('bbsType: $bbsType, ')
-          ..write('host: $host, ')
-          ..write('port: $port, ')
           ..write('portKind: $portKind, ')
           ..write('loginName: $loginName, ')
           ..write('personalDownload: $personalDownload, ')
           ..write('lastSyncAt: $lastSyncAt, ')
           ..write('lastSyncResult: $lastSyncResult, ')
-          ..write('startsBbs: $startsBbs')
+          ..write('startsBbs: $startsBbs, ')
+          ..write('lastVia: $lastVia')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ConnectionAddressesTable extends ConnectionAddresses
+    with TableInfo<$ConnectionAddressesTable, ConnectionAddress> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ConnectionAddressesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _connectionIdMeta = const VerificationMeta(
+    'connectionId',
+  );
+  @override
+  late final GeneratedColumn<int> connectionId = GeneratedColumn<int>(
+    'connection_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES connections (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hostMeta = const VerificationMeta('host');
+  @override
+  late final GeneratedColumn<String> host = GeneratedColumn<String>(
+    'host',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _portMeta = const VerificationMeta('port');
+  @override
+  late final GeneratedColumn<int> port = GeneratedColumn<int>(
+    'port',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    connectionId,
+    position,
+    host,
+    port,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'connection_addresses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ConnectionAddress> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('connection_id')) {
+      context.handle(
+        _connectionIdMeta,
+        connectionId.isAcceptableOrUnknown(
+          data['connection_id']!,
+          _connectionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_connectionIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('host')) {
+      context.handle(
+        _hostMeta,
+        host.isAcceptableOrUnknown(data['host']!, _hostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hostMeta);
+    }
+    if (data.containsKey('port')) {
+      context.handle(
+        _portMeta,
+        port.isAcceptableOrUnknown(data['port']!, _portMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_portMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ConnectionAddress map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ConnectionAddress(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      connectionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}connection_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      host: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}host'],
+      )!,
+      port: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}port'],
+      )!,
+    );
+  }
+
+  @override
+  $ConnectionAddressesTable createAlias(String alias) {
+    return $ConnectionAddressesTable(attachedDatabase, alias);
+  }
+}
+
+class ConnectionAddress extends DataClass
+    implements Insertable<ConnectionAddress> {
+  final int id;
+  final int connectionId;
+  final int position;
+  final String host;
+  final int port;
+  const ConnectionAddress({
+    required this.id,
+    required this.connectionId,
+    required this.position,
+    required this.host,
+    required this.port,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['connection_id'] = Variable<int>(connectionId);
+    map['position'] = Variable<int>(position);
+    map['host'] = Variable<String>(host);
+    map['port'] = Variable<int>(port);
+    return map;
+  }
+
+  ConnectionAddressesCompanion toCompanion(bool nullToAbsent) {
+    return ConnectionAddressesCompanion(
+      id: Value(id),
+      connectionId: Value(connectionId),
+      position: Value(position),
+      host: Value(host),
+      port: Value(port),
+    );
+  }
+
+  factory ConnectionAddress.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ConnectionAddress(
+      id: serializer.fromJson<int>(json['id']),
+      connectionId: serializer.fromJson<int>(json['connectionId']),
+      position: serializer.fromJson<int>(json['position']),
+      host: serializer.fromJson<String>(json['host']),
+      port: serializer.fromJson<int>(json['port']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'connectionId': serializer.toJson<int>(connectionId),
+      'position': serializer.toJson<int>(position),
+      'host': serializer.toJson<String>(host),
+      'port': serializer.toJson<int>(port),
+    };
+  }
+
+  ConnectionAddress copyWith({
+    int? id,
+    int? connectionId,
+    int? position,
+    String? host,
+    int? port,
+  }) => ConnectionAddress(
+    id: id ?? this.id,
+    connectionId: connectionId ?? this.connectionId,
+    position: position ?? this.position,
+    host: host ?? this.host,
+    port: port ?? this.port,
+  );
+  ConnectionAddress copyWithCompanion(ConnectionAddressesCompanion data) {
+    return ConnectionAddress(
+      id: data.id.present ? data.id.value : this.id,
+      connectionId: data.connectionId.present
+          ? data.connectionId.value
+          : this.connectionId,
+      position: data.position.present ? data.position.value : this.position,
+      host: data.host.present ? data.host.value : this.host,
+      port: data.port.present ? data.port.value : this.port,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectionAddress(')
+          ..write('id: $id, ')
+          ..write('connectionId: $connectionId, ')
+          ..write('position: $position, ')
+          ..write('host: $host, ')
+          ..write('port: $port')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, connectionId, position, host, port);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConnectionAddress &&
+          other.id == this.id &&
+          other.connectionId == this.connectionId &&
+          other.position == this.position &&
+          other.host == this.host &&
+          other.port == this.port);
+}
+
+class ConnectionAddressesCompanion extends UpdateCompanion<ConnectionAddress> {
+  final Value<int> id;
+  final Value<int> connectionId;
+  final Value<int> position;
+  final Value<String> host;
+  final Value<int> port;
+  const ConnectionAddressesCompanion({
+    this.id = const Value.absent(),
+    this.connectionId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.host = const Value.absent(),
+    this.port = const Value.absent(),
+  });
+  ConnectionAddressesCompanion.insert({
+    this.id = const Value.absent(),
+    required int connectionId,
+    required int position,
+    required String host,
+    required int port,
+  }) : connectionId = Value(connectionId),
+       position = Value(position),
+       host = Value(host),
+       port = Value(port);
+  static Insertable<ConnectionAddress> custom({
+    Expression<int>? id,
+    Expression<int>? connectionId,
+    Expression<int>? position,
+    Expression<String>? host,
+    Expression<int>? port,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (connectionId != null) 'connection_id': connectionId,
+      if (position != null) 'position': position,
+      if (host != null) 'host': host,
+      if (port != null) 'port': port,
+    });
+  }
+
+  ConnectionAddressesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? connectionId,
+    Value<int>? position,
+    Value<String>? host,
+    Value<int>? port,
+  }) {
+    return ConnectionAddressesCompanion(
+      id: id ?? this.id,
+      connectionId: connectionId ?? this.connectionId,
+      position: position ?? this.position,
+      host: host ?? this.host,
+      port: port ?? this.port,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (connectionId.present) {
+      map['connection_id'] = Variable<int>(connectionId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (host.present) {
+      map['host'] = Variable<String>(host.value);
+    }
+    if (port.present) {
+      map['port'] = Variable<int>(port.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectionAddressesCompanion(')
+          ..write('id: $id, ')
+          ..write('connectionId: $connectionId, ')
+          ..write('position: $position, ')
+          ..write('host: $host, ')
+          ..write('port: $port')
           ..write(')'))
         .toString();
   }
@@ -4626,6 +4943,8 @@ abstract class _$MailStore extends GeneratedDatabase {
   $MailStoreManager get managers => $MailStoreManager(this);
   late final $IdentitiesTable identities = $IdentitiesTable(this);
   late final $ConnectionsTable connections = $ConnectionsTable(this);
+  late final $ConnectionAddressesTable connectionAddresses =
+      $ConnectionAddressesTable(this);
   late final $MessagesTable messages = $MessagesTable(this);
   late final $SentListingsTable sentListings = $SentListingsTable(this);
   late final $OutgoingTable outgoing = $OutgoingTable(this);
@@ -4647,6 +4966,7 @@ abstract class _$MailStore extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     identities,
     connections,
+    connectionAddresses,
     messages,
     sentListings,
     outgoing,
@@ -4658,6 +4978,13 @@ abstract class _$MailStore extends GeneratedDatabase {
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'connections',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('connection_addresses', kind: UpdateKind.delete)],
+    ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'connections',
@@ -4870,33 +5197,52 @@ typedef $$ConnectionsTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       required String bbsType,
-      required String host,
-      required int port,
       required String portKind,
       required String loginName,
       Value<String> personalDownload,
       Value<DateTime?> lastSyncAt,
       Value<String?> lastSyncResult,
       Value<bool?> startsBbs,
+      Value<String?> lastVia,
     });
 typedef $$ConnectionsTableUpdateCompanionBuilder =
     ConnectionsCompanion Function({
       Value<int> id,
       Value<String> name,
       Value<String> bbsType,
-      Value<String> host,
-      Value<int> port,
       Value<String> portKind,
       Value<String> loginName,
       Value<String> personalDownload,
       Value<DateTime?> lastSyncAt,
       Value<String?> lastSyncResult,
       Value<bool?> startsBbs,
+      Value<String?> lastVia,
     });
 
 final class $$ConnectionsTableReferences
     extends BaseReferences<_$MailStore, $ConnectionsTable, Connection> {
   $$ConnectionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$ConnectionAddressesTable, List<ConnectionAddress>>
+  _connectionAddressesRefsTable(_$MailStore db) =>
+      MultiTypedResultKey.fromTable(
+        db.connectionAddresses,
+        aliasName: 'connections__id__connection_addresses__connection_id',
+      );
+
+  $$ConnectionAddressesTableProcessedTableManager get connectionAddressesRefs {
+    final manager = $$ConnectionAddressesTableTableManager(
+      $_db,
+      $_db.connectionAddresses,
+    ).filter((f) => f.connectionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _connectionAddressesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 
   static MultiTypedResultKey<$MessagesTable, List<Message>> _messagesRefsTable(
     _$MailStore db,
@@ -4978,16 +5324,6 @@ class $$ConnectionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get host => $composableBuilder(
-    column: $table.host,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get port => $composableBuilder(
-    column: $table.port,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get portKind => $composableBuilder(
     column: $table.portKind,
     builder: (column) => ColumnFilters(column),
@@ -5017,6 +5353,36 @@ class $$ConnectionsTableFilterComposer
     column: $table.startsBbs,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get lastVia => $composableBuilder(
+    column: $table.lastVia,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> connectionAddressesRefs(
+    Expression<bool> Function($$ConnectionAddressesTableFilterComposer f) f,
+  ) {
+    final $$ConnectionAddressesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.connectionAddresses,
+      getReferencedColumn: (t) => t.connectionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ConnectionAddressesTableFilterComposer(
+            $db: $db,
+            $table: $db.connectionAddresses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 
   Expression<bool> messagesRefs(
     Expression<bool> Function($$MessagesTableFilterComposer f) f,
@@ -5118,16 +5484,6 @@ class $$ConnectionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get host => $composableBuilder(
-    column: $table.host,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get port => $composableBuilder(
-    column: $table.port,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get portKind => $composableBuilder(
     column: $table.portKind,
     builder: (column) => ColumnOrderings(column),
@@ -5157,6 +5513,11 @@ class $$ConnectionsTableOrderingComposer
     column: $table.startsBbs,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get lastVia => $composableBuilder(
+    column: $table.lastVia,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ConnectionsTableAnnotationComposer
@@ -5176,12 +5537,6 @@ class $$ConnectionsTableAnnotationComposer
 
   GeneratedColumn<String> get bbsType =>
       $composableBuilder(column: $table.bbsType, builder: (column) => column);
-
-  GeneratedColumn<String> get host =>
-      $composableBuilder(column: $table.host, builder: (column) => column);
-
-  GeneratedColumn<int> get port =>
-      $composableBuilder(column: $table.port, builder: (column) => column);
 
   GeneratedColumn<String> get portKind =>
       $composableBuilder(column: $table.portKind, builder: (column) => column);
@@ -5206,6 +5561,35 @@ class $$ConnectionsTableAnnotationComposer
 
   GeneratedColumn<bool> get startsBbs =>
       $composableBuilder(column: $table.startsBbs, builder: (column) => column);
+
+  GeneratedColumn<String> get lastVia =>
+      $composableBuilder(column: $table.lastVia, builder: (column) => column);
+
+  Expression<T> connectionAddressesRefs<T extends Object>(
+    Expression<T> Function($$ConnectionAddressesTableAnnotationComposer a) f,
+  ) {
+    final $$ConnectionAddressesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.connectionAddresses,
+          getReferencedColumn: (t) => t.connectionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ConnectionAddressesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.connectionAddresses,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 
   Expression<T> messagesRefs<T extends Object>(
     Expression<T> Function($$MessagesTableAnnotationComposer a) f,
@@ -5297,6 +5681,7 @@ class $$ConnectionsTableTableManager
           (Connection, $$ConnectionsTableReferences),
           Connection,
           PrefetchHooks Function({
+            bool connectionAddressesRefs,
             bool messagesRefs,
             bool sentListingsRefs,
             bool outgoingRefs,
@@ -5318,52 +5703,48 @@ class $$ConnectionsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> bbsType = const Value.absent(),
-                Value<String> host = const Value.absent(),
-                Value<int> port = const Value.absent(),
                 Value<String> portKind = const Value.absent(),
                 Value<String> loginName = const Value.absent(),
                 Value<String> personalDownload = const Value.absent(),
                 Value<DateTime?> lastSyncAt = const Value.absent(),
                 Value<String?> lastSyncResult = const Value.absent(),
                 Value<bool?> startsBbs = const Value.absent(),
+                Value<String?> lastVia = const Value.absent(),
               }) => ConnectionsCompanion(
                 id: id,
                 name: name,
                 bbsType: bbsType,
-                host: host,
-                port: port,
                 portKind: portKind,
                 loginName: loginName,
                 personalDownload: personalDownload,
                 lastSyncAt: lastSyncAt,
                 lastSyncResult: lastSyncResult,
                 startsBbs: startsBbs,
+                lastVia: lastVia,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
                 required String bbsType,
-                required String host,
-                required int port,
                 required String portKind,
                 required String loginName,
                 Value<String> personalDownload = const Value.absent(),
                 Value<DateTime?> lastSyncAt = const Value.absent(),
                 Value<String?> lastSyncResult = const Value.absent(),
                 Value<bool?> startsBbs = const Value.absent(),
+                Value<String?> lastVia = const Value.absent(),
               }) => ConnectionsCompanion.insert(
                 id: id,
                 name: name,
                 bbsType: bbsType,
-                host: host,
-                port: port,
                 portKind: portKind,
                 loginName: loginName,
                 personalDownload: personalDownload,
                 lastSyncAt: lastSyncAt,
                 lastSyncResult: lastSyncResult,
                 startsBbs: startsBbs,
+                lastVia: lastVia,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -5375,6 +5756,7 @@ class $$ConnectionsTableTableManager
               .toList(),
           prefetchHooksCallback:
               ({
+                connectionAddressesRefs = false,
                 messagesRefs = false,
                 sentListingsRefs = false,
                 outgoingRefs = false,
@@ -5382,6 +5764,7 @@ class $$ConnectionsTableTableManager
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
+                    if (connectionAddressesRefs) db.connectionAddresses,
                     if (messagesRefs) db.messages,
                     if (sentListingsRefs) db.sentListings,
                     if (outgoingRefs) db.outgoing,
@@ -5389,6 +5772,26 @@ class $$ConnectionsTableTableManager
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
                     return [
+                      if (connectionAddressesRefs)
+                        await $_getPrefetchedDataByColumns<
+                          Connection,
+                          $ConnectionsTable,
+                          ConnectionAddress,
+                          $ConnectionAddressesTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ConnectionsTableReferences
+                              ._connectionAddressesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ConnectionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).connectionAddressesRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'connection_id',
+                          typedResults: items,
+                        ),
                       if (messagesRefs)
                         await $_getPrefetchedDataByColumns<
                           Connection,
@@ -5470,10 +5873,339 @@ typedef $$ConnectionsTableProcessedTableManager =
       (Connection, $$ConnectionsTableReferences),
       Connection,
       PrefetchHooks Function({
+        bool connectionAddressesRefs,
         bool messagesRefs,
         bool sentListingsRefs,
         bool outgoingRefs,
       })
+    >;
+typedef $$ConnectionAddressesTableCreateCompanionBuilder =
+    ConnectionAddressesCompanion Function({
+      Value<int> id,
+      required int connectionId,
+      required int position,
+      required String host,
+      required int port,
+    });
+typedef $$ConnectionAddressesTableUpdateCompanionBuilder =
+    ConnectionAddressesCompanion Function({
+      Value<int> id,
+      Value<int> connectionId,
+      Value<int> position,
+      Value<String> host,
+      Value<int> port,
+    });
+
+final class $$ConnectionAddressesTableReferences
+    extends
+        BaseReferences<
+          _$MailStore,
+          $ConnectionAddressesTable,
+          ConnectionAddress
+        > {
+  $$ConnectionAddressesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ConnectionsTable _connectionIdTable(_$MailStore db) => db.connections
+      .createAlias('connection_addresses__connection_id__connections__id');
+
+  $$ConnectionsTableProcessedTableManager get connectionId {
+    final $_column = $_itemColumn<int>('connection_id')!;
+
+    final manager = $$ConnectionsTableTableManager(
+      $_db,
+      $_db.connections,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_connectionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ConnectionAddressesTableFilterComposer
+    extends Composer<_$MailStore, $ConnectionAddressesTable> {
+  $$ConnectionAddressesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get port => $composableBuilder(
+    column: $table.port,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ConnectionsTableFilterComposer get connectionId {
+    final $$ConnectionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.connectionId,
+      referencedTable: $db.connections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ConnectionsTableFilterComposer(
+            $db: $db,
+            $table: $db.connections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ConnectionAddressesTableOrderingComposer
+    extends Composer<_$MailStore, $ConnectionAddressesTable> {
+  $$ConnectionAddressesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get port => $composableBuilder(
+    column: $table.port,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ConnectionsTableOrderingComposer get connectionId {
+    final $$ConnectionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.connectionId,
+      referencedTable: $db.connections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ConnectionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.connections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ConnectionAddressesTableAnnotationComposer
+    extends Composer<_$MailStore, $ConnectionAddressesTable> {
+  $$ConnectionAddressesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get host =>
+      $composableBuilder(column: $table.host, builder: (column) => column);
+
+  GeneratedColumn<int> get port =>
+      $composableBuilder(column: $table.port, builder: (column) => column);
+
+  $$ConnectionsTableAnnotationComposer get connectionId {
+    final $$ConnectionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.connectionId,
+      referencedTable: $db.connections,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ConnectionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.connections,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ConnectionAddressesTableTableManager
+    extends
+        RootTableManager<
+          _$MailStore,
+          $ConnectionAddressesTable,
+          ConnectionAddress,
+          $$ConnectionAddressesTableFilterComposer,
+          $$ConnectionAddressesTableOrderingComposer,
+          $$ConnectionAddressesTableAnnotationComposer,
+          $$ConnectionAddressesTableCreateCompanionBuilder,
+          $$ConnectionAddressesTableUpdateCompanionBuilder,
+          (ConnectionAddress, $$ConnectionAddressesTableReferences),
+          ConnectionAddress,
+          PrefetchHooks Function({bool connectionId})
+        > {
+  $$ConnectionAddressesTableTableManager(
+    _$MailStore db,
+    $ConnectionAddressesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ConnectionAddressesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ConnectionAddressesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ConnectionAddressesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> connectionId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> host = const Value.absent(),
+                Value<int> port = const Value.absent(),
+              }) => ConnectionAddressesCompanion(
+                id: id,
+                connectionId: connectionId,
+                position: position,
+                host: host,
+                port: port,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int connectionId,
+                required int position,
+                required String host,
+                required int port,
+              }) => ConnectionAddressesCompanion.insert(
+                id: id,
+                connectionId: connectionId,
+                position: position,
+                host: host,
+                port: port,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ConnectionAddressesTable, ConnectionAddress>(
+                    table,
+                  ),
+                  $$ConnectionAddressesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({connectionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (connectionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.connectionId,
+                        referencedTable: $$ConnectionAddressesTableReferences
+                            ._connectionIdTable(db),
+                        referencedColumn: $$ConnectionAddressesTableReferences
+                            ._connectionIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ConnectionAddressesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$MailStore,
+      $ConnectionAddressesTable,
+      ConnectionAddress,
+      $$ConnectionAddressesTableFilterComposer,
+      $$ConnectionAddressesTableOrderingComposer,
+      $$ConnectionAddressesTableAnnotationComposer,
+      $$ConnectionAddressesTableCreateCompanionBuilder,
+      $$ConnectionAddressesTableUpdateCompanionBuilder,
+      (ConnectionAddress, $$ConnectionAddressesTableReferences),
+      ConnectionAddress,
+      PrefetchHooks Function({bool connectionId})
     >;
 typedef $$MessagesTableCreateCompanionBuilder = MessagesCompanion Function({
   Value<int> id,
@@ -7882,6 +8614,8 @@ class $MailStoreManager {
       $$IdentitiesTableTableManager(_db, _db.identities);
   $$ConnectionsTableTableManager get connections =>
       $$ConnectionsTableTableManager(_db, _db.connections);
+  $$ConnectionAddressesTableTableManager get connectionAddresses =>
+      $$ConnectionAddressesTableTableManager(_db, _db.connectionAddresses);
   $$MessagesTableTableManager get messages =>
       $$MessagesTableTableManager(_db, _db.messages);
   $$SentListingsTableTableManager get sentListings =>

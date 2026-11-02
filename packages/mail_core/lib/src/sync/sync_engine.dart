@@ -114,6 +114,9 @@ class HomeBbsAnswer {
 /// Each step stores its changes as it goes, so a session that fails part way
 /// keeps what it had already done. Only one session runs per connection at a
 /// time; opening a message waits for a sync on its connection to finish.
+/// Connections with the same BBS type and login name may be one account
+/// reached two ways, and a BBS refuses a second login, so their sessions
+/// take turns too.
 class SyncEngine {
   SyncEngine(
     this.store,
@@ -132,6 +135,9 @@ class SyncEngine {
 
   final _running = <int, Future<SyncResult>>{};
   final _queues = <int, Future<void>>{};
+
+  /// The last session queued per account, keyed by BBS type and login name.
+  final _accounts = <String, Future<void>>{};
 
   /// Connections whose running session has already read its outbox.
   final _outboxRead = <int>{};
@@ -157,8 +163,17 @@ class SyncEngine {
     });
   }
 
+  /// Runs [work], such as merging two connections, when no session is
+  /// running on either connection or their account.
+  Future<T> whileIdle<T>(int first, int second, Future<T> Function() work) =>
+      _queued(second, () => _exclusive(first, work));
+
+  /// Runs [work] after anything already queued on the connection and its account.
+  Future<T> _exclusive<T>(int connectionId, Future<T> Function() work) =>
+      _queued(connectionId, () => _asAccount(connectionId, work));
+
   /// Runs [work] after anything already queued on the connection.
-  Future<T> _exclusive<T>(int connectionId, Future<T> Function() work) {
+  Future<T> _queued<T>(int connectionId, Future<T> Function() work) {
     final result = (_queues[connectionId] ?? Future<void>.value()).then((_) => work());
     final done = result.then<void>((_) {}, onError: (Object _) {});
     _queues[connectionId] = done;
@@ -166,6 +181,23 @@ class SyncEngine {
       if (identical(_queues[connectionId], done)) _queues.remove(connectionId);
     });
     return result;
+  }
+
+  /// Runs [work] after any session on the same account has finished.
+  Future<T> _asAccount<T>(int connectionId, Future<T> Function() work) async {
+    final c = await (store.select(store.connections)..where((c) => c.id.equals(connectionId))).getSingleOrNull();
+    if (c == null) return work();
+    final key = '${c.bbsType} ${c.loginName.trim().toUpperCase()}';
+    final before = _accounts[key] ?? Future<void>.value();
+    final done = Completer<void>();
+    _accounts[key] = done.future;
+    try {
+      await before;
+      return await work();
+    } finally {
+      done.complete();
+      if (identical(_accounts[key], done.future)) _accounts.remove(key);
+    }
   }
 
   Future<SyncResult> _sync(int connectionId) async {
@@ -187,8 +219,9 @@ class SyncEngine {
         await _downloadSubscribed(driver, connection, s);
       }
     } catch (e) {
+      final first = connection == null ? null : (await store.addressesOf(connection.id)).firstOrNull;
       s.error = connection != null && !s.connected
-          ? describeConnectionProblem(e, host: connection.host, port: connection.port)
+          ? describeConnectionProblem(e, host: first?.host ?? connection.name, port: first?.port ?? 0)
           : describeError(e);
     } finally {
       _outboxRead.remove(connectionId);
@@ -198,6 +231,8 @@ class SyncEngine {
     await (store.update(store.connections)..where((c) => c.id.equals(connectionId))).write(ConnectionsCompanion(
       lastSyncAt: Value(_clock()),
       lastSyncResult: Value(result.summary),
+      // Which address answered is only known when one did.
+      lastVia: s.connected ? const Value.absent() : const Value(null),
     ));
     return result;
   }

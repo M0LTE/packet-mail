@@ -57,8 +57,7 @@ enum PersonalDownload {
 class ConnectionDraft {
   const ConnectionDraft({
     required this.name,
-    required this.host,
-    required this.port,
+    required this.addresses,
     required this.portKind,
     required this.loginName,
     this.personalDownload = PersonalDownload.onOpen,
@@ -69,8 +68,9 @@ class ConnectionDraft {
 
   /// A [BbsType] id.
   final String bbsType;
-  final String host;
-  final int port;
+
+  /// Where the BBS is reached, tried in this order. At least one.
+  final List<HostPort> addresses;
   final PortKind portKind;
   final String loginName;
   final PersonalDownload personalDownload;
@@ -78,8 +78,6 @@ class ConnectionDraft {
   ConnectionsCompanion toCompanion() => ConnectionsCompanion(
         name: Value(name),
         bbsType: Value(bbsType),
-        host: Value(host),
-        port: Value(port),
         portKind: Value(portKind.id),
         loginName: Value(loginName),
         personalDownload: Value(personalDownload.id),
@@ -95,20 +93,26 @@ Future<int> saveConnection(
   int? id,
   required String? password,
 }) async {
-  if (id == null) {
-    id = await store.into(store.connections).insert(draft.toCompanion());
-  } else {
-    final old = await (store.select(store.connections)..where((c) => c.id.equals(id!))).getSingle();
+  final saved = await store.transaction(() async {
+    if (id == null) {
+      final id = await store.into(store.connections).insert(draft.toCompanion());
+      await store.setAddresses(id, draft.addresses);
+      return id;
+    }
+    final old = await (store.select(store.connections)..where((c) => c.id.equals(id))).getSingle();
+    final oldAddresses = [for (final a in await store.addressesOf(id)) a.hostPort];
     // Another account or BBS may or may not start the BBS by itself.
-    final same = old.host == draft.host &&
-        old.port == draft.port &&
+    final same = _sameList(oldAddresses, draft.addresses) &&
         old.loginName == draft.loginName &&
         old.bbsType == draft.bbsType;
-    await (store.update(store.connections)..where((c) => c.id.equals(id!)))
-        .write(same ? draft.toCompanion() : draft.toCompanion().copyWith(startsBbs: const Value(null)));
-  }
-  if (password != null) await passwords.write(id, password);
-  return id;
+    await (store.update(store.connections)..where((c) => c.id.equals(id))).write(same
+        ? draft.toCompanion()
+        : draft.toCompanion().copyWith(startsBbs: const Value(null), lastVia: const Value(null)));
+    await store.setAddresses(id, draft.addresses);
+    return id;
+  });
+  if (password != null) await passwords.write(saved, password);
+  return saved;
 }
 
 /// What deleting a connection removes from this phone with it.
@@ -155,6 +159,27 @@ class ConnectionContents {
       items.length == 1 ? items.single : '${items.sublist(0, items.length - 1).join(', ')} and ${items.last}';
 }
 
+bool _sameList(List<HostPort> a, List<HostPort> b) =>
+    a.length == b.length && a.indexed.every((e) => e.$2 == b[e.$1]);
+
+/// Merges [pair] into its older connection, which keeps its settings and
+/// gains the newer one's addresses and mail. The newer one's password goes
+/// with it, unless the older one has none.
+/// Waits for any session on either to finish first.
+Future<void> mergeDuplicate(MailStore store, PasswordStore passwords, SyncEngine engine, DuplicatePair pair) async {
+  await engine.whileIdle(
+      pair.older.id, pair.newer.id, () => mergeConnections(store, keepId: pair.older.id, dropId: pair.newer.id));
+  try {
+    final newer = await passwords.read(pair.newer.id);
+    if (newer != null && (await passwords.read(pair.older.id) ?? '').isEmpty) {
+      await passwords.write(pair.older.id, newer);
+    }
+  } on Exception {
+    // A locked keychain keeps the older password as it is.
+  }
+  await passwords.delete(pair.newer.id);
+}
+
 Future<void> deleteConnection(MailStore store, PasswordStore passwords, int id) async {
   await (store.delete(store.connections)..where((c) => c.id.equals(id))).go();
   await passwords.delete(id);
@@ -185,23 +210,30 @@ MailDriver newDriver(String bbsType, PortKind portKind, Transport transport,
       BbsType.xrouter => XRouterDriver(transport, timeout: timeout),
     };
 
-/// Connects, logs in, lists personal mail and disconnects, keeping the traffic in [log].
+/// Connects, logs in, lists personal mail and disconnects, keeping the
+/// traffic in [log]. With several addresses, says which one answered.
 Future<String> testConnection(ConnectionDraft draft,
-    {required String password, required String name, TrafficLog? log}) async {
+    {required String password, required String name, TrafficLog? log, TransportOpener open = openTcp}) async {
   MailDriver? driver;
   try {
-    final tcp = await TcpTransport.connect(draft.host, draft.port, timeout: const Duration(seconds: 10));
-    driver = newDriver(
-      draft.bbsType,
-      draft.portKind,
-      log?.record(tcp, '${draft.name}, ${connectionKind(draft.bbsType, draft.portKind.id)}, connection test') ?? tcp,
-      timeout: const Duration(seconds: 15),
+    final (connected, address) = await connectAndLogIn(
+      draft.addresses,
+      open: open,
+      driverFor: (tcp, address) => newDriver(
+        draft.bbsType,
+        draft.portKind,
+        log?.record(tcp, '${draft.name}, ${connectionKind(draft.bbsType, draft.portKind.id)}, connection test') ?? tcp,
+        timeout: const Duration(seconds: 15),
+      ),
+      logIn: (d) => d.logIn(user: draft.loginName, password: password, name: name),
     );
-    await driver.logIn(user: draft.loginName, password: password, name: name);
-    final count = (await driver.listPersonal()).length;
-    return 'Connected. $count ${count == 1 ? 'message' : 'messages'} in your inbox.';
+    driver = connected;
+    final count = (await connected.listPersonal()).length;
+    final via = draft.addresses.length > 1 ? ' through ${viaName(address, draft.addresses)}' : '';
+    return 'Connected$via. $count ${count == 1 ? 'message' : 'messages'} in your inbox.';
   } on Exception catch (e) {
-    return describeConnectionProblem(e, host: draft.host, port: draft.port);
+    final first = draft.addresses.first;
+    return describeConnectionProblem(e, host: first.host, port: first.port);
   } finally {
     await driver?.disconnect();
   }

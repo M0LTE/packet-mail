@@ -157,8 +157,6 @@ void main() {
               ConnectionsCompanion.insert(
                 name: 'Demo BBS',
                 bbsType: 'bpq',
-                host: '127.0.0.1',
-                port: _port,
                 portKind: 'fbb',
                 loginName: 'demo',
                 personalDownload: Value(download),

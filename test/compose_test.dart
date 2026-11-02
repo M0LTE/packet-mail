@@ -397,7 +397,7 @@ void main() {
     final port = server.port;
     await server.close();
     final result = await testConnection(
-      ConnectionDraft(name: 'x', host: '127.0.0.1', port: port, portKind: PortKind.fbb, loginName: 'u'),
+      ConnectionDraft(name: 'x', addresses: [HostPort('127.0.0.1', port)], portKind: PortKind.fbb, loginName: 'u'),
       password: 'p',
       name: 'n',
     );

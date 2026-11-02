@@ -32,6 +32,16 @@ final connectionsProvider = StreamProvider<List<Connection>>((ref) {
   return (store.select(store.connections)..orderBy([(c) => OrderingTerm(expression: c.name)])).watch();
 });
 
+/// Every connection's addresses, in the order they are tried, by connection id.
+final addressesProvider = StreamProvider<Map<int, List<ConnectionAddress>>>(
+    (ref) => ref.watch(storeProvider).watchAddresses());
+
+/// Connections set up twice for the same account, for the offer to merge them.
+final duplicatesProvider = FutureProvider<List<DuplicatePair>>((ref) async {
+  ref.watch(connectionsProvider);
+  return findDuplicateConnections(ref.watch(storeProvider));
+});
+
 /// What a connection's driver can do, from its BBS type, without connecting.
 /// Tests swap in other answers.
 final bbsCapabilitiesProvider =

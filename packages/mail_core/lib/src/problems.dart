@@ -6,11 +6,16 @@ import 'dart:async';
 import 'dart:io';
 
 import 'driver.dart';
+import 'transport/addresses.dart';
 import 'transport/line_session.dart';
 
 /// Says why connecting to and logging in at [host] on [port] failed, in one
 /// or two plain sentences that suggest what to check.
 String describeConnectionProblem(Object e, {required String host, required int port}) => switch (e) {
+      NoAddressAnswered(tries: []) => 'This connection has no address. Add one.',
+      NoAddressAnswered(tries: [(final a, final only)]) => describeConnectionProblem(only, host: a.host, port: a.port),
+      NoAddressAnswered(:final tries) =>
+        'None of its addresses answered (${tries.map((t) => t.$1.host).join(', ')}). Check you are on the right network.',
       SocketException() => _socketProblem(e, host, port),
       TimeoutException() => _noReply(host),
       BbsError(kind: BbsErrorKind.loginFailed) =>

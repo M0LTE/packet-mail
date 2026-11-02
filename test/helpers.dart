@@ -199,15 +199,15 @@ Future<int> seedStation(TestApp app, WidgetTester tester, {String personalDownlo
   return (await tester.runAsync(() async {
     await store.into(store.identities).insert(
         IdentitiesCompanion.insert(callsign: 'M0LTE', name: 'Tom', homeBbs: 'GB7RDG.#42.GBR.EURO'));
-    return store.into(store.connections).insert(ConnectionsCompanion.insert(
+    final id = await store.into(store.connections).insert(ConnectionsCompanion.insert(
           name: 'GB7RDG',
           bbsType: 'bpq',
-          host: '192.168.1.20',
-          port: 8011,
           portKind: 'fbb',
           loginName: 'm0lte',
           personalDownload: Value(personalDownload),
         ));
+    await store.setAddresses(id, const [HostPort('192.168.1.20', 8011)]);
+    return id;
   }))!;
 }
 

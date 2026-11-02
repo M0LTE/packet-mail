@@ -13,6 +13,7 @@ class ConnectionForm extends ConsumerStatefulWidget {
   const ConnectionForm({
     super.key,
     this.initial,
+    this.initialAddresses = const [],
     this.initialPassword,
     required this.loginNameForTest,
     required this.saveLabel,
@@ -20,6 +21,9 @@ class ConnectionForm extends ConsumerStatefulWidget {
   });
 
   final Connection? initial;
+
+  /// [initial]'s addresses, in order.
+  final List<HostPort> initialAddresses;
   final String? initialPassword;
 
   /// The identity's name, answering a first-time name prompt during a test.
@@ -36,8 +40,10 @@ class ConnectionForm extends ConsumerStatefulWidget {
 class _ConnectionFormState extends ConsumerState<ConnectionForm> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.initial?.name);
-  late final _host = TextEditingController(text: widget.initial?.host);
-  late final _port = TextEditingController(text: '${widget.initial?.port ?? PortKind.fbb.defaultPort}');
+  late final _addresses = [
+    for (final a in widget.initialAddresses) _AddressFields(a.host, '${a.port}'),
+    if (widget.initialAddresses.isEmpty) _AddressFields('', '${PortKind.fbb.defaultPort}'),
+  ];
   late final _login = TextEditingController(text: widget.initial?.loginName);
   late final _password = TextEditingController(text: widget.initialPassword);
   var _showPassword = false;
@@ -54,21 +60,41 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
   @override
   void initState() {
     super.initState();
-    _host.addListener(() => setState(() {}));
+    _addresses.forEach(_listen);
   }
+
+  /// The internet note follows the host as it is typed.
+  void _listen(_AddressFields a) => a.host.addListener(() => setState(() {}));
 
   @override
   void dispose() {
-    for (final c in [_name, _host, _port, _login, _password]) {
+    for (final c in [_name, _login, _password]) {
       c.dispose();
+    }
+    for (final a in _addresses) {
+      a.dispose();
     }
     super.dispose();
   }
 
+  void _addAddress() => setState(() {
+        final a = _AddressFields('', _addresses.last.port.text.trim());
+        _listen(a);
+        _addresses.add(a);
+      });
+
+  void _removeAddress(int i) {
+    final gone = _addresses[i];
+    setState(() => _addresses.removeAt(i));
+    // Its fields are still on screen until the next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => gone.dispose());
+  }
+
+  void _moveAddress(int i, int to) => setState(() => _addresses.insert(to, _addresses.removeAt(i)));
+
   ConnectionDraft get _draft => ConnectionDraft(
         name: _name.text.trim(),
-        host: _host.text.trim(),
-        port: int.parse(_port.text.trim()),
+        addresses: [for (final a in _addresses) HostPort(a.host.text.trim(), int.parse(a.port.text.trim()))],
         portKind: _type.hasPortKinds ? _portKind : PortKind.telnet,
         loginName: _login.text.trim(),
         personalDownload: _download,
@@ -85,7 +111,9 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
   /// Follows the default port unless the user typed their own.
   void _setKind(BbsType type, PortKind kind) {
     setState(() {
-      if (_port.text.trim() == '${_defaultPort(_type, _portKind)}') _port.text = '${_defaultPort(type, kind)}';
+      for (final a in _addresses) {
+        if (a.port.text.trim() == '${_defaultPort(_type, _portKind)}') a.port.text = '${_defaultPort(type, kind)}';
+      }
       _type = type;
       _portKind = kind;
     });
@@ -150,19 +178,6 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
             ],
             onChanged: (t) => _setKind(t ?? _type, _portKind),
           ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _host,
-            decoration: InputDecoration(
-              labelText: 'Host',
-              hintText: '192.168.1.20',
-              helperText: hostMayBeOnInternet(_host.text) ? internetHostWarning : null,
-              helperMaxLines: 2,
-            ),
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-            validator: (s) => checkRequired(s, 'the BBS host name or address'),
-          ),
           if (_type.hasPortKinds) ...[
             const SizedBox(height: 20),
             Text('Port kind', style: text.labelMedium),
@@ -176,12 +191,81 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
               onSelectionChanged: (s) => _setKind(_type, s.single),
             ),
           ],
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _port,
-            decoration: const InputDecoration(labelText: 'Port'),
-            keyboardType: TextInputType.number,
-            validator: checkPort,
+          const SizedBox(height: 20),
+          Text(_addresses.length == 1 ? 'Address' : 'Addresses, tried in order', style: text.labelMedium),
+          for (final (i, a) in _addresses.indexed) ...[
+            if (_addresses.length > 1)
+              Row(
+                key: ValueKey('address-$i'),
+                children: [
+                  Text('${i + 1}', style: text.labelMedium),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Move up',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.arrow_upward, size: 20),
+                    onPressed: i == 0 ? null : () => _moveAddress(i, i - 1),
+                  ),
+                  IconButton(
+                    tooltip: 'Move down',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.arrow_downward, size: 20),
+                    onPressed: i == _addresses.length - 1 ? null : () => _moveAddress(i, i + 1),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove address',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => _removeAddress(i),
+                  ),
+                ],
+              ),
+            Row(
+              key: a.key,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: a.host,
+                    decoration: InputDecoration(
+                      labelText: 'Host',
+                      hintText: '192.168.1.20',
+                      helperText: hostMayBeOnInternet(a.host.text) ? internetHostWarning : null,
+                      helperMaxLines: 2,
+                    ),
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    validator: (s) =>
+                        checkRequired(s, 'the BBS host name or address') ??
+                        (_addresses.take(i).any((b) =>
+                                b.host.text.trim().toLowerCase() == a.host.text.trim().toLowerCase() &&
+                                b.port.text.trim() == a.port.text.trim())
+                            ? 'This address is already in the list.'
+                            : null),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 88,
+                  child: TextFormField(
+                    controller: a.port,
+                    decoration: const InputDecoration(labelText: 'Port'),
+                    keyboardType: TextInputType.number,
+                    validator: checkPort,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add another address'),
+              onPressed: _addAddress,
+            ),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -244,5 +328,21 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
         ],
       ),
     );
+  }
+}
+
+/// One address's fields. The key keeps them with their address when reordered.
+class _AddressFields {
+  _AddressFields(String host, String port)
+      : host = TextEditingController(text: host),
+        port = TextEditingController(text: port);
+
+  final TextEditingController host;
+  final TextEditingController port;
+  final key = UniqueKey();
+
+  void dispose() {
+    host.dispose();
+    port.dispose();
   }
 }

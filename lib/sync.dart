@@ -7,29 +7,31 @@ import 'passwords.dart';
 import 'providers.dart';
 import 'report.dart';
 
-/// Connects and logs in to [connection] over TCP, keeping the traffic in [log].
+/// Connects to the first of [connection]'s addresses that answers and logs
+/// in, keeping the traffic in [log]. Remembers which address answered.
 Future<MailDriver> connectDriver(MailStore store, PasswordStore passwords, Connection connection,
-    {TrafficLog? log}) async {
+    {TrafficLog? log, TransportOpener open = openTcp}) async {
   final password = await passwords.read(connection.id) ?? '';
   final identity = await (store.select(store.identities)..limit(1)).getSingleOrNull();
-  final tcp = await TcpTransport.connect(connection.host, connection.port, timeout: const Duration(seconds: 10));
-  final driver = newDriver(
-    connection.bbsType,
-    PortKind.byId(connection.portKind),
-    log?.record(tcp, '${connection.name}, ${connectionKind(connection.bbsType, connection.portKind)}') ?? tcp,
-    timeout: const Duration(seconds: 30),
-    startsBbs: connection.startsBbs,
-    onStartsBbs: (value) => (store.update(store.connections)..where((c) => c.id.equals(connection.id)))
-        .write(ConnectionsCompanion(startsBbs: Value(value)))
-        .ignore(),
+  final addresses = [for (final a in await store.addressesOf(connection.id)) a.hostPort];
+  final (driver, address) = await connectAndLogIn(
+    addresses,
+    open: open,
+    driverFor: (tcp, address) => newDriver(
+      connection.bbsType,
+      PortKind.byId(connection.portKind),
+      log?.record(tcp, '${connection.name}, ${connectionKind(connection.bbsType, connection.portKind)}') ?? tcp,
+      timeout: const Duration(seconds: 30),
+      startsBbs: connection.startsBbs,
+      onStartsBbs: (value) => (store.update(store.connections)..where((c) => c.id.equals(connection.id)))
+          .write(ConnectionsCompanion(startsBbs: Value(value)))
+          .ignore(),
+    ),
+    logIn: (driver) => driver.logIn(user: connection.loginName, password: password, name: identity?.name ?? ''),
   );
-  try {
-    await driver.logIn(user: connection.loginName, password: password, name: identity?.name ?? '');
-    return driver;
-  } on Object {
-    await driver.disconnect().catchError((_) {});
-    rethrow;
-  }
+  await (store.update(store.connections)..where((c) => c.id.equals(connection.id))).write(ConnectionsCompanion(
+      lastVia: Value(addresses.length > 1 ? viaName(address, addresses) : null)));
+  return driver;
 }
 
 /// How the sync engine reaches a BBS. Tests swap in a fake.

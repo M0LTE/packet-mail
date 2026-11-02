@@ -5,12 +5,12 @@ import 'tables.dart';
 part 'mail_store.g.dart';
 
 /// The app's local database. Everything the screens show comes from here.
-@DriftDatabase(tables: [Identities, Connections, Messages, SentListings, Outgoing, OutgoingRecipients, Contacts, Subscriptions, BlockedStations])
+@DriftDatabase(tables: [Identities, Connections, ConnectionAddresses, Messages, SentListings, Outgoing, OutgoingRecipients, Contacts, Subscriptions, BlockedStations])
 class MailStore extends _$MailStore {
   MailStore(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -20,7 +20,66 @@ class MailStore extends _$MailStore {
           if (from < 3) await m.addColumn(outgoingRecipients, outgoingRecipients.knownTop);
           if (from < 4) await m.createTable(blockedStations);
           if (from < 5) await m.addColumn(connections, connections.startsBbs);
+          if (from < 6) {
+            // Each connection's host and port become its one address.
+            // Safe to run again if the app stopped part way.
+            await customStatement('DROP TABLE IF EXISTS connection_addresses');
+            await m.createTable(connectionAddresses);
+            await customStatement('INSERT INTO connection_addresses (connection_id, position, host, port) '
+                'SELECT id, 0, host, port FROM connections');
+            // Rebuilding the table must not cascade into the mail that refers to it.
+            await customStatement('PRAGMA foreign_keys = OFF');
+            await m.alterTable(TableMigration(connections, newColumns: [connections.lastVia]));
+          }
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
       );
+
+  /// A connection's addresses, in the order they are tried.
+  Future<List<ConnectionAddress>> addressesOf(int connectionId) => (select(connectionAddresses)
+        ..where((a) => a.connectionId.equals(connectionId))
+        ..orderBy([(a) => OrderingTerm(expression: a.position), (a) => OrderingTerm(expression: a.id)]))
+      .get();
+
+  /// Every connection's addresses, in order, by connection id.
+  Stream<Map<int, List<ConnectionAddress>>> watchAddresses() => (select(connectionAddresses)
+        ..orderBy([(a) => OrderingTerm(expression: a.position), (a) => OrderingTerm(expression: a.id)]))
+      .watch()
+      .map((rows) {
+        final byConnection = <int, List<ConnectionAddress>>{};
+        for (final a in rows) {
+          (byConnection[a.connectionId] ??= []).add(a);
+        }
+        return byConnection;
+      });
+
+  /// Replaces a connection's addresses with [addresses], in that order.
+  Future<void> setAddresses(int connectionId, List<HostPort> addresses) => transaction(() async {
+        await (delete(connectionAddresses)..where((a) => a.connectionId.equals(connectionId))).go();
+        for (final (i, a) in addresses.indexed) {
+          await into(connectionAddresses).insert(ConnectionAddressesCompanion.insert(
+              connectionId: connectionId, position: i, host: a.host, port: a.port));
+        }
+      });
+}
+
+/// A host and port a BBS can be reached on.
+class HostPort {
+  const HostPort(this.host, this.port);
+
+  final String host;
+  final int port;
+
+  @override
+  bool operator ==(Object other) => other is HostPort && other.host.toLowerCase() == host.toLowerCase() && other.port == port;
+
+  @override
+  int get hashCode => Object.hash(host.toLowerCase(), port);
+
+  @override
+  String toString() => '$host:$port';
+}
+
+extension ConnectionAddressHostPort on ConnectionAddress {
+  HostPort get hostPort => HostPort(host, port);
 }

@@ -10,15 +10,14 @@ class Identities extends Table {
   TextColumn get homeBbs => text()();
 }
 
-/// A way to reach a BBS. Passwords live in the phone's secure storage, keyed by id.
+/// A way to reach a BBS. Passwords live in the phone's secure storage, keyed
+/// by id. Where it is reached is in [ConnectionAddresses].
 class Connections extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
 
   /// Which driver: 'bpq' or 'xrouter'.
   TextColumn get bbsType => text()();
-  TextColumn get host => text()();
-  IntColumn get port => integer()();
 
   /// For bpq: 'fbb' or 'telnet'. Always 'telnet' for xrouter.
   TextColumn get portKind => text()();
@@ -33,8 +32,23 @@ class Connections extends Table {
   TextColumn get lastSyncResult => text().nullable()();
 
   /// LinBPQ: whether the account starts the BBS by itself, learned at login;
-  /// null until known, and again after the host, port, login or BBS type changes.
+  /// null until known, and again after the addresses, login or BBS type change.
   BoolColumn get startsBbs => boolean().nullable()();
+
+  /// The address the last connection used, as shown in the sync status
+  /// ("via 192.168.1.87"): the host, with the port if the host is listed twice.
+  TextColumn get lastVia => text().nullable()();
+}
+
+/// Where a connection's BBS can be reached, tried in [position] order
+/// (for example the home network first, then Tailscale).
+@DataClassName('ConnectionAddress')
+class ConnectionAddresses extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get connectionId => integer().references(Connections, #id, onDelete: KeyAction.cascade)();
+  IntColumn get position => integer()();
+  TextColumn get host => text()();
+  IntColumn get port => integer()();
 }
 
 /// Personal mail received and bulletins, one row per message per connection.

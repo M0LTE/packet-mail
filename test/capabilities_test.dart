@@ -57,7 +57,8 @@ void main() {
     await app.settle(tester);
     expect(find.text('192.168.1.30:23, XRouter'), findsOneWidget);
     final c = (await tester.runAsync(() => app.store.select(app.store.connections).getSingle()))!;
-    expect([c.bbsType, c.portKind, c.port], ['xrouter', 'telnet', 23]);
+    final a = (await tester.runAsync(() => app.store.addressesOf(c.id)))!.single;
+    expect([c.bbsType, c.portKind, a.port], ['xrouter', 'telnet', 23]);
 
     // Editing it and switching to LinBPQ offers the FBB port, not telnet.
     await tapText(tester, 'Club node');

@@ -83,8 +83,6 @@ void main() {
         ConnectionsCompanion.insert(
           name: 'Q0BBS',
           bbsType: 'bpq',
-          host: '192.168.1.20',
-          port: 8011,
           portKind: 'fbb',
           loginName: 'q0sam',
         ),

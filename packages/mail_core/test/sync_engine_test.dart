@@ -217,8 +217,6 @@ void main() {
       db.into(db.connections).insert(ConnectionsCompanion.insert(
             name: name,
             bbsType: 'bpq',
-            host: 'gb7rdg-node',
-            port: 8011,
             portKind: 'fbb',
             loginName: 'tf',
             personalDownload: Value(download),
@@ -327,6 +325,42 @@ void main() {
       expect(bbs.disconnects, 2);
       expect(await sentAt(), isNotNull);
     });
+  });
+
+  test('two connections to one account never sync at once, so the BBS sees one login; other accounts go ahead', () async {
+    final twin = await addConnection(name: 'GB7RDG Tailscale');
+    final other = await db.into(db.connections).insert(
+        ConnectionsCompanion.insert(name: 'Club', bbsType: 'bpq', portKind: 'fbb', loginName: 'm0lte'));
+    final gate = Completer<void>();
+    final connected = <int>[];
+    engine = SyncEngine(db, (c) async {
+      connected.add(c.id);
+      return _Gated(bbs, gate.future, () {});
+    }, clock: () => clock);
+    final syncs = [engine.sync(conn), engine.sync(twin), engine.sync(other)];
+    await pumpEventQueue();
+    expect(connected, unorderedEquals([conn, other]));
+    gate.complete();
+    await Future.wait(syncs);
+    expect(connected.last, twin);
+  });
+
+  test('merging waits for a running sync on either connection', () async {
+    final twin = await addConnection(name: 'GB7RDG Tailscale');
+    final gate = Completer<void>();
+    engine = SyncEngine(db, (c) async => _Gated(bbs, gate.future, () {}), clock: () => clock);
+    final sync = engine.sync(twin);
+    var merged = false;
+    final merge = engine.whileIdle(conn, twin, () async {
+      await mergeConnections(db, keepId: conn, dropId: twin);
+      merged = true;
+    });
+    await pumpEventQueue();
+    expect(merged, isFalse);
+    gate.complete();
+    expect((await sync).ok, isTrue);
+    await merge;
+    expect(merged, isTrue);
   });
 
   group('address book', () {

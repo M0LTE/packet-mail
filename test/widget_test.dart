@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mail_core/mail_core.dart' show HostPort, ConnectionAddressHostPort;
 import 'package:packetmail/host_warning.dart';
 
 import 'helpers.dart';
@@ -61,7 +62,7 @@ void main() {
     await tapText(tester, 'Test connection');
     await app.settle(tester);
     expect(find.text('Connected. 6 messages in your inbox.'), findsOneWidget);
-    expect(app.tested.single.host, '192.168.1.20');
+    expect(app.tested.single.addresses, [const HostPort('192.168.1.20', 8011)]);
 
     await tapText(tester, 'Save and finish');
     await app.settle(tester);
@@ -71,8 +72,9 @@ void main() {
     expect(identity!.callsign, 'M0LTE');
     expect(identity.homeBbs, 'GB7RDG.#42.GBR.EURO');
     final c = (await tester.runAsync(() => app.store.select(app.store.connections).getSingle()))!;
-    expect((c.name, c.host, c.port, c.portKind, c.loginName, c.personalDownload),
-        ('Home BBS', '192.168.1.20', 8011, 'fbb', 'm0lte', 'atSync'));
+    expect((c.name, c.portKind, c.loginName, c.personalDownload), ('Home BBS', 'fbb', 'm0lte', 'atSync'));
+    expect((await tester.runAsync(() => app.store.addressesOf(c.id)))!.map((a) => a.hostPort),
+        [const HostPort('192.168.1.20', 8011)]);
     expect(app.passwords.passwords[c.id], 'secret');
     await app.dispose(tester);
   });
