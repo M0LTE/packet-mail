@@ -39,6 +39,11 @@ class BpqDriver implements MailDriver {
   /// The BBS prompt line, learned at login, including its CR.
   String? _prompt;
 
+  /// True after we sent `BBS` until the first command's reply: an account
+  /// that starts the BBS by itself, but too slowly for us to see, answers it
+  /// with a stray `Invalid Command` that must not be taken as that reply.
+  var _mayHaveStray = false;
+
   /// What BPQMail can do: everything.
   static const supported = {
     DriverCapability.whitePagesLookup,
@@ -70,6 +75,12 @@ class BpqDriver implements MailDriver {
   /// nothing until we do. A telnet port or an XRouter node greets in that time.
   static const _greetingWait = Duration(seconds: 1);
 
+  /// How long to wait after the password for a BBS that starts by itself.
+  static const _bbsStartWait = Duration(seconds: 1);
+
+  /// Signs that the BBS (or a login refusal) is already talking.
+  static final _bbsStarted = RegExp(r'Connected to BBS|\[BPQ-|Please enter your Name|user:|password:');
+
   /// A telnet port opens with telnet negotiation (IAC, byte 255) and a
   /// `user:` prompt; an FBB port sends nothing until we do.
   static bool _telnetGreeting(String received) => received.startsWith('\u00FF') || received.startsWith('user:');
@@ -91,6 +102,7 @@ class BpqDriver implements MailDriver {
       await _session.sendSecretLine(password);
       final r = await _session.readUntil(RegExp(r'Telnet Server\r|password:|user:'), timeout: timeout);
       if (_loginRefused.hasMatch(r)) throw BbsError(BbsErrorKind.loginFailed, _refusedMessage);
+      await _enterBbs();
     } else {
       // Anything that greets before we speak is not an FBB port.
       await _session.sees(RegExp('Callsign: |\u00FF|^user:'), timeout: _atMost(timeout, _greetingWait));
@@ -99,8 +111,8 @@ class BpqDriver implements MailDriver {
       if (_telnetGreeting(early)) throw BbsError(BbsErrorKind.wrongPort, _telnetPortMessage);
       await _session.sendLine(user);
       await _session.sendSecretLine(password);
+      await _enterBbs();
     }
-    await _session.sendLine('BBS');
 
     String text;
     try {
@@ -125,11 +137,42 @@ class BpqDriver implements MailDriver {
     _prompt = '${_anyPrompt.allMatches(text).last.group(1)}\r';
   }
 
+  /// Sends `BBS` unless the BBS has started by itself: an account whose
+  /// USER line names the BBS lands there without asking, and `BBS` would
+  /// then reach it as a command (docs/bpq-protocol.md 1.3).
+  Future<void> _enterBbs() async {
+    if (await _session.sees(_bbsStarted, timeout: _atMost(timeout, _bbsStartWait))) return;
+    await _session.sendLine('BBS');
+    _mayHaveStray = true;
+  }
+
   String get _promptOrThrow => _prompt ?? (throw StateError('Not logged in'));
 
   /// Sends a line and returns what came back before the prompt.
   Future<String> _exchange(String line) async {
     await _session.sendLine(line);
+    var text = await _reply();
+    if (_isStray(text)) text = await _reply();
+    return text;
+  }
+
+  /// True if [reply] (up to and without the prompt) is the stray answer to
+  /// a late `BBS`, the first reply only: none of our commands is invalid.
+  bool _isStray(String reply) {
+    final stray = _mayHaveStray && reply == 'Invalid Command\r';
+    _mayHaveStray = false;
+    return stray;
+  }
+
+  /// [raw] without a stray answer to a late `BBS` at its start.
+  String _withoutStray(String raw) {
+    final stray = 'Invalid Command\r$_promptOrThrow';
+    final had = _mayHaveStray && raw.startsWith(stray);
+    _mayHaveStray = false;
+    return had ? raw.substring(stray.length) : raw;
+  }
+
+  Future<String> _reply() async {
     final text = await _session.readUntil(_promptOrThrow, timeout: timeout);
     return text.substring(0, text.length - _promptOrThrow.length);
   }
@@ -172,7 +215,7 @@ class BpqDriver implements MailDriver {
         '|(?:^|\\r)Message $number not (?:found|for you)\\r'
         '|(?:^|\\r)File for Message $number not found\\r');
     // The body may carry escape codes of its own, so they come too.
-    final raw = await _session.readUntil(end, timeout: timeout, keepCodes: true);
+    final raw = _withoutStray(await _session.readUntil(end, timeout: timeout, keepCodes: true));
     final text = stripAnsi(raw);
     await _session.readUntil(_promptOrThrow, timeout: timeout);
     if (text.contains('Message $number not found')) {
@@ -214,9 +257,13 @@ class BpqDriver implements MailDriver {
     if (title.length > maxTitleLength) throw ArgumentError.value(subject, 'subject', 'longer than $maxTitleLength');
 
     await _session.sendLine(command);
-    final first = await _session.readUntil(
+    Future<String> firstReply() => _session.readUntil(
         RegExp('Enter Title \\(only\\):\\r|${RegExp.escape(_promptOrThrow)}'),
         timeout: timeout);
+    var first = await firstReply();
+    if (_isStray(first.endsWith(_promptOrThrow) ? first.substring(0, first.length - _promptOrThrow.length) : '')) {
+      first = await firstReply();
+    }
     final said = _lines(first).where((l) => l.isNotEmpty && '$l\r' != _prompt).toList();
     if (!first.endsWith('Enter Title (only):\r')) {
       if (said.any((l) => l.contains('Duplicate BID'))) {
@@ -262,10 +309,18 @@ class BpqDriver implements MailDriver {
   Future<String?> lookUpHomeBbs(String callsign) async {
     final call = callsign.toUpperCase();
     if (!isCallsign(call)) throw ArgumentError.value(callsign, 'callsign', 'not a callsign');
-    final entry = RegExp('^${RegExp.escape(call)}\\s+(\\S+)');
-    for (final line in await _command('I $call')) {
-      final m = entry.firstMatch(line);
-      if (m != null) return m[1];
+    return parseWhitePages(call, await _command('I $call'));
+  }
+
+  /// The home BBS in BPQ's reply to `I CALL`, or null. Each entry is
+  /// `CALL  HOMEBBS NAME ZIP QTH` (WPRoutines.c), with exactly two spaces
+  /// after the callsign, so an entry with no home BBS has three and the name
+  /// is not mistaken for one.
+  static String? parseWhitePages(String call, List<String> lines) {
+    final entry = RegExp('^${RegExp.escape(call.toUpperCase())} {2}(\\S+)');
+    for (final line in lines) {
+      final m = entry.firstMatch(line.replaceFirst(RegExp(r'^[\n\s]+'), ''));
+      if (m != null) return m[1]!.toUpperCase();
     }
     return null;
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme.dart';
 import '../validation.dart';
 
 /// Callsign, name and home BBS, for first run and for editing the identity.
@@ -40,11 +41,13 @@ class _IdentityFieldsState extends State<IdentityFields> {
 
   @override
   Widget build(BuildContext context) {
+    final calls = Theme.of(context).textTheme.bodyLarge?.calls;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextFormField(
           controller: widget.callsign,
+          style: calls,
           decoration: const InputDecoration(labelText: 'Callsign', hintText: 'M0ABC'),
           textCapitalization: TextCapitalization.characters,
           autocorrect: false,
@@ -60,6 +63,7 @@ class _IdentityFieldsState extends State<IdentityFields> {
         const SizedBox(height: 16),
         TextFormField(
           controller: widget.homeBbs,
+          style: calls,
           decoration: InputDecoration(
             labelText: 'Home BBS',
             hintText: widget.example,

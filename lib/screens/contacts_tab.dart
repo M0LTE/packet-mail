@@ -124,13 +124,13 @@ class _ContactRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name.isEmpty ? c.callsign : '$name, ${c.callsign}', style: text.titleSmall),
+                  Text(name.isEmpty ? c.callsign : '$name, ${c.callsign}', style: text.titleSmall?.calls),
                   const SizedBox(height: 2),
                   Text(
                     c.homeBbs == null ? 'No home BBS yet' : '@${c.homeBbs}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: text.titleMedium?.copyWith(color: c.homeBbs == null ? Logbook.inkFaint : Logbook.ink),
+                    style: text.titleMedium?.copyWith(color: c.homeBbs == null ? Logbook.inkFaint : Logbook.ink).calls,
                   ),
                   Text(contactSource(c), style: text.labelSmall),
                 ],

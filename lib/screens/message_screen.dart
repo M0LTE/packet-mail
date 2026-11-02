@@ -197,7 +197,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     final call = bareCall(m.fromCall);
     final name = ref.watch(contactNamesProvider).value?[call];
     final origin = routeOrigin(m.routing);
-    final hdr = text.bodySmall?.copyWith(fontSize: 12.5, height: 1.6, color: Logbook.inkSoft);
+    final hdr = text.bodySmall?.copyWith(fontSize: 12.5, height: 1.6, color: Logbook.inkSoft).calls;
     final strong = hdr?.copyWith(color: Logbook.ink, fontWeight: FontWeight.w600);
     final to = m.at == null ? m.toCall : '${m.toCall}@${m.at}';
     return InkWell(
@@ -236,7 +236,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                   child: Text(
                     m.routing!,
                     softWrap: false,
-                    style: Logbook.asSent.copyWith(fontSize: 11, color: Logbook.inkSoft),
+                    style: Logbook.asSent.copyWith(fontSize: 11, color: Logbook.inkSoft).calls,
                   ),
                 ),
               ],
@@ -446,7 +446,7 @@ class _GatewayHeadersState extends State<_GatewayHeaders> {
             child: Text(
               widget.lines.join('\n'),
               softWrap: false,
-              style: Logbook.asSent.copyWith(fontSize: 11, color: Logbook.inkSoft),
+              style: Logbook.asSent.copyWith(fontSize: 11, color: Logbook.inkSoft).calls,
             ),
           ),
       ],
@@ -627,7 +627,7 @@ class _AddressSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text(address.address, style: text.titleMedium),
+            child: Text(address.address, style: text.titleMedium?.calls),
           ),
           ListTile(
             key: const ValueKey('address-write'),

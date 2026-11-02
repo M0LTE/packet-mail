@@ -95,33 +95,15 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
 
   Future<void> _lookUp() async {
     final messenger = ScaffoldMessenger.of(context);
-    void say(String s) => messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(s)));
-    final call = _callsign.text.trim().toUpperCase();
-    if (!isCallsign(call)) return say('Enter a callsign first, such as M0ABC.');
-    final connection = ref.read(connectionsWithProvider(DriverCapability.whitePagesLookup)).firstOrNull;
-    if (connection == null) return say('None of your connections has White Pages to ask.');
     setState(() => _looking = true);
-    String message;
-    String? home;
-    try {
-      home = await ref.read(syncEngineProvider).lookUpHomeBbs(connection.id, call);
-      message = home == null
-          ? "${connection.name}'s White Pages doesn't know $call."
-          : 'Found $call@$home. Save to keep it.';
-    } on UnsupportedError {
-      message = '${connection.name} has no White Pages to ask.';
-    } on BbsError catch (e) {
-      message = '${connection.name} said: ${e.message}';
-    } on Exception {
-      message = "Can't reach ${connection.name}. Try again when you're connected.";
-    }
+    final r = await lookUpEverywhere(ref.read(syncEngineProvider), _callsign.text);
     // The screen may have closed while it waited, taking the field with it.
     if (!mounted) return;
-    if (home != null) _homeBbs.text = home;
+    if (r.home case final home?) _homeBbs.text = home;
     setState(() => _looking = false);
-    say(message);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(r.home == null ? r.message : '${r.message} Save to keep it.')));
   }
 
   @override
@@ -136,7 +118,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isNew ? 'New contact' : c!.callsign),
+        title: Text(_isNew ? 'New contact' : c!.callsign, style: text.headlineSmall?.calls),
         actions: [
           if (!_isNew) IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline), onPressed: _delete),
         ],
@@ -157,6 +139,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
               children: [
                 TextFormField(
                   controller: _callsign,
+                  style: text.bodyLarge?.calls,
                   enabled: _isNew,
                   decoration: const InputDecoration(labelText: 'Callsign', hintText: 'M0ABC'),
                   textCapitalization: TextCapitalization.characters,
@@ -172,6 +155,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _homeBbs,
+                  style: text.bodyLarge?.calls,
                   decoration: InputDecoration(
                     labelText: 'Home BBS',
                     helperText: homeBbsWarning(_homeBbs.text) ?? 'Their home BBS, like $exampleHomeBbs',

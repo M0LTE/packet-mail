@@ -111,10 +111,10 @@ void main() {
     final app = await station(tester);
     await tester.tap(find.text('Bulletins').last);
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/bulletins.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/bulletins.png'));
     await tester.tap(find.byKey(const ValueKey('category-ALL')));
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/bulletins-group.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/bulletins-group.png'));
     await app.dispose(tester);
   });
 
@@ -122,7 +122,7 @@ void main() {
     final app = await station(tester);
     await tester.tap(find.text('Contacts'));
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/contacts.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/contacts.png'));
     await app.dispose(tester);
   });
 }

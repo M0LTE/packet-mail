@@ -8,6 +8,7 @@ import '../message_format.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import 'held_screen.dart';
 import 'message_screen.dart';
 
 /// Something we wrote: each recipient's state, then the text as sent. A
@@ -78,16 +79,38 @@ class OutgoingScreen extends ConsumerWidget {
                             children: [
                               Text(
                                 item.message.type == 'bulletin' ? 'Bulletin to ${r.address}' : r.address,
-                                style: text.titleSmall,
+                                style: text.titleSmall?.calls,
                               ),
                               Text(
                                 recipientState(r),
-                                style: hdr?.copyWith(
-                                  color: r.state == 'failed' || r.state == 'held' ? Logbook.stampRed : Logbook.inkSoft,
-                                ),
+                                style: hdr
+                                    ?.copyWith(
+                                      color: r.state == 'failed' || r.state == 'held'
+                                          ? Logbook.stampRed
+                                          : Logbook.inkSoft,
+                                    )
+                                    .calls,
                               ),
                               if (listings[r.id] case final l?)
                                 if (bbsSentState(l, homeBbs: home) case final s?) Text(s, style: hdr),
+                              if (r.state == 'held' && item.message.sentAt == null)
+                                TextButton.icon(
+                                  key: ValueKey('fix-held-${r.id}'),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  onPressed: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => HeldScreen(recipient: r, connectionId: item.message.connectionId),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                                  label: Text(
+                                    "Add ${r.address.split('@').first}'s home BBS",
+                                    style: text.labelLarge?.calls,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -204,7 +227,7 @@ class _SentListingScreenState extends ConsumerState<SentListingScreen> {
                           if (l.type == 'bulletin') 'Bulletin to',
                           l.at == null ? l.toCall : '${l.toCall}@${l.at}',
                         ].join(' '),
-                        style: text.titleSmall,
+                        style: text.titleSmall?.calls,
                       ),
                       Text(
                         [

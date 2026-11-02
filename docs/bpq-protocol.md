@@ -45,7 +45,7 @@ Notes:
 
 Order matters: any bytes the client pipelined after the password line are sent to the node **before** the `appl` command. **[C]** (TelnetV6.c:5029-5069)
 
-Client consequence **[I]**: if the account auto-starts the BBS and the client also sends `BBS\r`, that line reaches the BBS as a command and gets `Invalid Command` (and counts towards the 5-error limit, section 14). Safer: after the password, wait about 2 s; if a BBS SID or `Connected to` line has arrived, do not send `BBS`.
+Client consequence **[R]**: if the account auto-starts the BBS and the client also sends `BBS\r`, that line reaches the BBS as a command and gets `Invalid Command` plus a prompt (and counts towards the 5-error limit, section 14). A client that then reads up to the next prompt gets every reply one command late: a real user's `I M0LTE` got `Invalid Command`, and its White Pages line arrived as the start of the `LM` listing (#73). The driver waits up to 1 s after the password (on the telnet port, after `Telnet Server`) for `Connected to BBS`, a SID or the name prompt, and sends `BBS` only if none came; if it did send `BBS`, an `Invalid Command` as the first reply is skipped. Recorded in `test/fixtures/driver/auto-start-*.jsonl` (test-bbs user `auto`).
 
 ### 1.4 Secure accounts
 

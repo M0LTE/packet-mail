@@ -187,4 +187,46 @@ void defineScenarios(Connect connect) {
     expect((listed.to, listed.at, listed.status), ('SYSOP', null, 'N'));
     await d.disconnect();
   });
+
+  test('White Pages: an entry with name and QTH, and one with no home BBS', () async {
+    // As a terminal user would: give Q0OTH a home BBS and QTH, as GB7IOW's
+    // entry for M0LTE has (#73).
+    final t = await connect('white-pages', BpqPort.fbb);
+    final raw = LineSession(t);
+    final prompt = RegExp(r'(?:^|\r)[^\r]*>\r');
+    await raw.sendLine('other');
+    await raw.sendSecretLine('other');
+    await raw.sendLine('BBS');
+    if ((await raw.readUntil(prompt, timeout: const Duration(seconds: 10))).contains('Please enter your Name')) {
+      await raw.sendLine('Tom Other');
+      await raw.readUntil(prompt, timeout: const Duration(seconds: 10));
+    }
+    await raw.sendLine('HOME Q0TST.#42.GBR.EURO');
+    await raw.readUntil(prompt, timeout: const Duration(seconds: 10));
+    await raw.sendLine('QTH Reading');
+    await raw.readUntil(prompt, timeout: const Duration(seconds: 10));
+    await raw.sendLine('B');
+    await raw.readUntil('Disconnected', timeout: const Duration(seconds: 10));
+    await raw.close();
+
+    final d = driverFor(await connect('white-pages-lookup', BpqPort.fbb), BpqPort.fbb);
+    await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+    expect(await d.lookUpHomeBbs('q0oth'), 'Q0TST.#42.GBR.EURO');
+    // Q0USR's entry has a name but no home BBS: the name is not one.
+    expect(await d.lookUpHomeBbs('Q0USR'), isNull);
+    await d.disconnect();
+  });
+
+  // An account whose USER line names the BBS lands in it by itself; `BBS`
+  // sent as well came back as Invalid Command and put every later reply one
+  // command late (#73).
+  for (final port in BpqPort.values) {
+    test('an account that starts the BBS by itself, ${port.name} port', () async {
+      final d = driverFor(await connect('auto-start-${port.name}', port), port);
+      await d.logIn(user: 'auto', password: 'auto', name: 'Auto User');
+      expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
+      expect(await d.listSent('Q0AUT'), isEmpty);
+      await d.disconnect();
+    });
+  }
 }

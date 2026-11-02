@@ -91,6 +91,23 @@ class SyncResult {
   }
 }
 
+/// What asking White Pages everywhere found.
+class HomeBbsAnswer {
+  const HomeBbsAnswer({this.home, this.from, this.asked = const [], this.failed = const {}});
+
+  /// The home BBS, such as GB7XYZ.#42.GBR.EURO, or null if nobody knew.
+  final String? home;
+
+  /// The name of the connection that knew it.
+  final String? from;
+
+  /// The names of the connections asked.
+  final List<String> asked;
+
+  /// What went wrong asking, by connection name.
+  final Map<String, Object> failed;
+}
+
 /// Runs sync sessions: one login per session, everything done, then
 /// disconnect. The same logic serves every driver. See docs/plan.md, Sync rules.
 ///
@@ -98,11 +115,20 @@ class SyncResult {
 /// keeps what it had already done. Only one session runs per connection at a
 /// time; opening a message waits for a sync on its connection to finish.
 class SyncEngine {
-  SyncEngine(this.store, this.connect, {DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
+  SyncEngine(
+    this.store,
+    this.connect, {
+    DateTime Function()? clock,
+    Set<DriverCapability> Function(String bbsType)? capabilitiesOf,
+  }) : _clock = clock ?? DateTime.now,
+       _capabilitiesOf = capabilitiesOf ?? ((_) => DriverCapability.values.toSet());
 
   final MailStore store;
   final DriverFactory connect;
   final DateTime Function() _clock;
+
+  /// What a connection's BBS can do, known without connecting.
+  final Set<DriverCapability> Function(String bbsType) _capabilitiesOf;
 
   final _running = <int, Future<SyncResult>>{};
   final _queues = <int, Future<void>>{};
@@ -241,6 +267,103 @@ class SyncEngine {
         }
       });
 
+  /// Asks White Pages on every connection that has it, all at once, for
+  /// [callsign]'s home BBS. The first answer wins. Connections in [skip] are
+  /// left out, and with [skipBusy] so is any connection already in use, so a
+  /// sync asking never waits on another sync asking it.
+  Future<HomeBbsAnswer> lookUpHomeBbsEverywhere(
+    String callsign, {
+    Set<int> skip = const {},
+    bool skipBusy = false,
+  }) async {
+    final call = callsign.trim().toUpperCase();
+    final all = await (store.select(store.connections)..orderBy([(c) => OrderingTerm(expression: c.name)])).get();
+    // No awaits from here until every lookup is queued, so the busy check holds.
+    final ask = [
+      for (final c in all)
+        if (!skip.contains(c.id) &&
+            _capabilitiesOf(c.bbsType).contains(DriverCapability.whitePagesLookup) &&
+            !(skipBusy && _queues.containsKey(c.id)))
+          c,
+    ];
+    final asked = [for (final c in ask) c.name];
+    if (ask.isEmpty) return HomeBbsAnswer(asked: asked);
+    final done = Completer<HomeBbsAnswer>();
+    final failed = <String, Object>{};
+    var left = ask.length;
+    for (final c in ask) {
+      lookUpHomeBbs(c.id, call)
+          .then<String?>(
+            (home) => home,
+            onError: (Object e) {
+              failed[c.name] = e;
+              return null;
+            },
+          )
+          .then((home) {
+            left--;
+            if (done.isCompleted) return;
+            if (home != null) {
+              done.complete(HomeBbsAnswer(home: home, from: c.name, asked: asked, failed: failed));
+            } else if (left == 0) {
+              done.complete(HomeBbsAnswer(asked: asked, failed: failed));
+            }
+          });
+    }
+    return done.future;
+  }
+
+  /// Gives a held copy the home BBS [homeBbs]: puts it back in the queue
+  /// with the full address, and saves the home BBS in the address book
+  /// unless the user's own entry already has one. Other copies held for the
+  /// same callsign go back in the queue too. Returns what is wrong with
+  /// [homeBbs] in plain words, or null when done; the caller then syncs.
+  Future<String?> fixHeld(int recipientId, String homeBbs) async {
+    final r = await (store.select(store.outgoingRecipients)..where((t) => t.id.equals(recipientId))).getSingleOrNull();
+    if (r == null || r.state != 'held') return 'This message is no longer waiting.';
+    final call = r.address.split('@').first.trim().toUpperCase();
+    final home = homeBbs.trim().toUpperCase();
+    if (home.isEmpty) return 'Enter their home BBS.';
+    if (home.contains('@')) return 'Just the part after @.';
+    final parsed = MailAddress.parse('$call@$home');
+    final problems = parsed.problems.where((p) => p.blocking).toList();
+    final to = parsed.address;
+    final at = to?.at;
+    if (to == null || at == null || problems.isNotEmpty) {
+      return problems.isEmpty ? 'That does not look like a home BBS.' : problems.first.message;
+    }
+    await store.transaction(() async {
+      await (store.update(store.outgoingRecipients)..where((t) => t.id.equals(recipientId))).write(
+        OutgoingRecipientsCompanion(
+          address: Value(to.toString()),
+          state: const Value('queued'),
+          note: const Value(null),
+        ),
+      );
+      final existing = await (store.select(store.contacts)..where((c) => c.callsign.equals(call))).getSingleOrNull();
+      if (existing == null) {
+        if (isCallsign(call)) {
+          await store
+              .into(store.contacts)
+              .insert(
+                ContactsCompanion.insert(
+                  callsign: call,
+                  homeBbs: Value(at.toString()),
+                  source: 'typed',
+                  edited: const Value(true),
+                ),
+              );
+        }
+      } else if (!(existing.edited || existing.source == 'typed') || (existing.homeBbs?.trim() ?? '').isEmpty) {
+        await (store.update(store.contacts)..where((c) => c.callsign.equals(call))).write(
+          ContactsCompanion(homeBbs: Value(at.toString()), edited: const Value(true)),
+        );
+      }
+    });
+    await releaseHeld(call);
+    return null;
+  }
+
   /// Puts copies held for a bare [callsign] back in the queue, so the next
   /// sync tries again, for example once the address book knows its home BBS.
   /// Returns how many were released.
@@ -265,8 +388,9 @@ class SyncEngine {
       final recipients =
           await (store.select(store.outgoingRecipients)..where((r) => r.outgoingId.equals(message.id))).get();
       // 'sending' means an earlier session may or may not have got it through.
-      for (final r in recipients.where((r) => r.state == 'queued' || r.state == 'sending')) {
-        final update = await _sendOne(driver, message, r, only: recipients.length == 1);
+      // Held copies are tried again too, in case the home BBS is known now.
+      for (final r in recipients.where((r) => r.state == 'queued' || r.state == 'sending' || r.state == 'held')) {
+        final update = await _sendOne(driver, connection, s, message, r, only: recipients.length == 1);
         switch (update.state.value) {
           case 'sent':
             s.sent++;
@@ -290,7 +414,8 @@ class SyncEngine {
   /// Sends one copy under its own ID, recorded before sending so a retry
   /// reuses it and the BBS refuses a second copy. A bulletin's chosen ID is
   /// used when it has only one recipient.
-  Future<OutgoingRecipientsCompanion> _sendOne(MailDriver driver, OutgoingData m, OutgoingRecipient r,
+  Future<OutgoingRecipientsCompanion> _sendOne(
+      MailDriver driver, Connection connection, _Session s, OutgoingData m, OutgoingRecipient r,
       {required bool only}) async {
     final bid = r.bbsBid ?? (m.type == 'bulletin' && only ? m.bid : null) ?? newBid();
     final Future<SendReceipt> Function() send;
@@ -309,7 +434,7 @@ class SyncEngine {
       var to = parsed.address!;
       // Mail to SYSOP stays on this BBS, for its sysop.
       if (to.isBare && !to.isSysop) {
-        final home = await _homeBbs(driver, to.call);
+        final home = await _homeBbs(driver, connection, s, to.call);
         final full = home == null ? null : MailAddress.parse('${to.call}@${home.address}').address;
         if (home == null || full == null) {
           return OutgoingRecipientsCompanion(
@@ -407,19 +532,33 @@ class SyncEngine {
     return isCallsign(call) ? call : null;
   }
 
-  /// The address book first, then White Pages.
-  Future<({String address, String source})?> _homeBbs(MailDriver driver, String call) async {
+  /// The address book first, then this BBS's White Pages, then White Pages
+  /// on every other connection that has it and isn't busy. Each callsign is
+  /// looked up once a session.
+  Future<({String address, String source})?> _homeBbs(
+    MailDriver driver,
+    Connection connection,
+    _Session s,
+    String call,
+  ) async {
     final contact = await (store.select(store.contacts)..where((c) => c.callsign.equals(call))).getSingleOrNull();
     final known = contact?.homeBbs?.trim();
     if (known != null && known.isNotEmpty) return (address: known, source: 'your address book');
-    if (!driver.capabilities.contains(DriverCapability.whitePagesLookup)) return null;
-    final wp = await driver.lookUpHomeBbs(call);
-    if (wp == null) return null;
+    if (s.lookedUp.containsKey(call)) return s.lookedUp[call];
+    String? wp;
+    var source = 'White Pages';
+    if (driver.capabilities.contains(DriverCapability.whitePagesLookup)) wp = await driver.lookUpHomeBbs(call);
+    if (wp == null) {
+      final elsewhere = await lookUpHomeBbsEverywhere(call, skip: {connection.id}, skipBusy: true);
+      wp = elsewhere.home;
+      source = 'White Pages on ${elsewhere.from}';
+    }
+    if (wp == null) return s.lookedUp[call] = null;
     final found = MailAddress.parse('$call@$wp');
     if (found.address?.at case final at? when !found.problems.any((p) => p.blocking)) {
       await _learnHomeBbs(call, at, 'whitepages');
     }
-    return (address: wp, source: 'White Pages');
+    return s.lookedUp[call] = (address: wp, source: source);
   }
 
   // Address book
@@ -847,6 +986,9 @@ class _Session {
   int newMessages = 0, sent = 0, failed = 0, held = 0, deleted = 0;
   final newBulletinIds = <int>{};
   final notes = <String>[];
+
+  /// Home BBSes White Pages gave this session, or null for none, by callsign.
+  final lookedUp = <String, ({String address, String source})?>{};
   String? error;
 
   SyncResult result() => SyncResult(

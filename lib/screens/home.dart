@@ -144,8 +144,8 @@ class SettingsTab extends ConsumerWidget {
           if (identity != null)
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-              title: Text('${identity.callsign}, ${identity.name}', style: text.titleMedium),
-              subtitle: Text('@${identity.homeBbs}', style: text.labelMedium),
+              title: Text('${identity.callsign}, ${identity.name}', style: text.titleMedium?.calls),
+              subtitle: Text('@${identity.homeBbs}', style: text.labelMedium?.calls),
               trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
               onTap: () =>
                   Navigator.of(context)

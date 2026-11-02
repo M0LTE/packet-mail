@@ -199,7 +199,8 @@ class Choices extends StatelessWidget {
                 backgroundColor: Logbook.paper,
                 side: BorderSide(color: o == current ? Logbook.stampRed : Logbook.rule),
                 labelStyle: Theme.of(context).textTheme.labelMedium
-                    ?.copyWith(color: o == current ? Logbook.stampRed : Logbook.inkSoft),
+                    ?.copyWith(color: o == current ? Logbook.stampRed : Logbook.inkSoft)
+                    .calls,
                 visualDensity: VisualDensity.compact,
                 onSelected: (_) {
                   controller.text = o;
@@ -270,7 +271,7 @@ class CompactRow extends StatelessWidget {
                 call,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: text.titleSmall?.copyWith(color: colour, fontWeight: weight, fontVariations: wght),
+                style: text.titleSmall?.copyWith(color: colour, fontWeight: weight, fontVariations: wght).calls,
               ),
             ),
             const SizedBox(width: 8),

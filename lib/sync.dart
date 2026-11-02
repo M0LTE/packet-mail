@@ -36,7 +36,11 @@ final driverFactoryProvider = Provider<DriverFactory>((ref) {
 });
 
 final syncEngineProvider = Provider<SyncEngine>(
-  (ref) => SyncEngine(ref.watch(storeProvider), ref.watch(driverFactoryProvider)),
+  (ref) => SyncEngine(
+    ref.watch(storeProvider),
+    ref.watch(driverFactoryProvider),
+    capabilitiesOf: ref.watch(bbsCapabilitiesProvider),
+  ),
 );
 
 /// The connections syncing right now, by id.

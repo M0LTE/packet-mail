@@ -127,7 +127,7 @@ void main() {
 
   testWidgets('inbox', skip: !_wanted, (tester) async {
     final app = await station(tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/inbox.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/inbox.png'));
     await app.dispose(tester);
   });
 
@@ -135,12 +135,12 @@ void main() {
     final app = await station(tester);
     await tester.tap(find.text('Re: FBB port behaviour on 6.0.25'));
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/message-readable.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/message-readable.png'));
 
     await tester.tap(find.byKey(const ValueKey('message-header')));
     await tester.tap(find.text('As sent'));
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/message-as-sent.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/message-as-sent.png'));
     await tester.tap(find.text('Readable'));
     await _settle(app, tester);
     await app.dispose(tester);
@@ -150,7 +150,7 @@ void main() {
     final app = await station(tester);
     await tester.tap(find.text('Saturday net and the new node'));
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/message-table.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/message-table.png'));
     await app.dispose(tester);
   });
 
@@ -166,7 +166,7 @@ void main() {
       'Yagi and the spare battery.\n\n73, Tom',
     );
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/compose.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/compose.png'));
     await app.dispose(tester);
   });
 
@@ -220,7 +220,45 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('mailbox-sent')));
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/sent.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/sent.png'));
+    await app.dispose(tester);
+  });
+
+  testWidgets('held: add the home BBS', skip: !_wanted, (tester) async {
+    final app = await station(
+      tester,
+      extra: (store, c) async {
+        final id = await store
+            .into(store.outgoing)
+            .insert(
+              OutgoingCompanion.insert(
+                connectionId: c,
+                type: 'personal',
+                subject: 'Test from Packet Mail',
+                body: 'Hello.',
+                createdAt: DateTime(2026, 10, 28, 10, 21),
+              ),
+            );
+        await store
+            .into(store.outgoingRecipients)
+            .insert(
+              OutgoingRecipientsCompanion.insert(
+                outgoingId: id,
+                address: 'M0LTE',
+                state: const Value('held'),
+                note: const Value('No home BBS known for M0LTE; add one to the address and send again.'),
+              ),
+            );
+      },
+    );
+    await tester.tap(find.byKey(const ValueKey('mailbox-outbox')));
+    await _settle(app, tester);
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/outbox-held.png'));
+    await tester.tap(find.text('Test from Packet Mail'));
+    await _settle(app, tester);
+    await tester.enterText(find.byKey(const ValueKey('held-home-bbs')), 'GB7RDG.#42.GBR.EURO');
+    await _settle(app, tester);
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/held.png'));
     await app.dispose(tester);
   });
 
@@ -232,7 +270,7 @@ void main() {
     app.offline = 'No reply';
     await tester.tap(find.text('Club meeting moved'));
     await _settle(app, tester);
-    await expectLater(find.byType(Navigator), matchesGoldenFile('../../docs/screenshots/message-offline.png'));
+    await expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/screenshots/message-offline.png'));
     await app.dispose(tester);
   });
 }

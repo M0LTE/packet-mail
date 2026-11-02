@@ -106,3 +106,37 @@ final mailOriginsProvider = StreamProvider.autoDispose<List<(String, String)>>((
     ..sort((a, b) => counts[b] != counts[a] ? counts[b]!.compareTo(counts[a]!) : seen.indexOf(a) - seen.indexOf(b));
   return (best: best, others: others.take(max).toList());
 }
+
+/// Asks White Pages on every connection that has it for [callsign]'s home
+/// BBS. Returns what it found, if anything, and one plain line to show.
+Future<({String? home, String message})> lookUpEverywhere(SyncEngine engine, String callsign) async {
+  final call = callsign.trim().toUpperCase();
+  if (call.isEmpty) return (home: null, message: 'Enter a callsign first, such as M0ABC.');
+  if (!isCallsign(call)) {
+    final hint = RegExp(r'\d').hasMatch(call) ? '' : ' Callsigns have a digit; is an O meant to be a zero?';
+    return (home: null, message: "$call doesn't look like a callsign.$hint");
+  }
+  final a = await engine.lookUpHomeBbsEverywhere(call);
+  if (a.home case final home?) {
+    return (home: home, message: a.asked.length > 1 ? 'Found $call@$home on ${a.from}.' : 'Found $call@$home.');
+  }
+  if (a.asked.isEmpty) return (home: null, message: 'None of your connections has White Pages to ask.');
+  String problem(String name, Object e) => switch (e) {
+    UnsupportedError() => '$name has no White Pages to ask.',
+    BbsError(:final message) => '$name said: $message',
+    _ => "Can't reach $name. Try again when you're connected.",
+  };
+  final answered = [
+    for (final n in a.asked)
+      if (!a.failed.containsKey(n)) n,
+  ];
+  final unknown = switch (answered.length) {
+    0 => null,
+    1 => "${answered.single}'s White Pages doesn't know $call.",
+    _ => "No White Pages knows $call (asked ${_orList(answered)}).",
+  };
+  return (home: null, message: [?unknown, for (final e in a.failed.entries) problem(e.key, e.value)].join(' '));
+}
+
+String _orList(List<String> names) =>
+    names.length < 2 ? names.join() : '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';

@@ -223,6 +223,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
               fieldViewBuilder: (context, controller, focus, onSubmitted) => TextField(
                 key: const ValueKey('to'),
                 controller: controller,
+                style: text.bodyLarge?.calls,
                 focusNode: focus,
                 textCapitalization: TextCapitalization.characters,
                 autocorrect: false,
@@ -247,9 +248,9 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                             dense: true,
                             title: Text(
                               c.name == null || c.name!.trim().isEmpty ? c.callsign : '${c.name}, ${c.callsign}',
-                              style: text.titleSmall,
+                              style: text.titleSmall?.calls,
                             ),
-                            subtitle: c.homeBbs == null ? null : Text('@${c.homeBbs}', style: text.labelMedium),
+                            subtitle: c.homeBbs == null ? null : Text('@${c.homeBbs}', style: text.labelMedium?.calls),
                             onTap: () => onSelected(c),
                           ),
                       ],
@@ -372,7 +373,7 @@ class SendPreviewScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('To', style: label),
-                Text(to.trim().toUpperCase(), style: Logbook.asSent),
+                Text(to.trim().toUpperCase(), style: Logbook.asSent.calls),
                 const SizedBox(height: 6),
                 Text('Subject', style: label),
                 Text(text.subject, key: const ValueKey('preview-subject'), style: Logbook.asSent),

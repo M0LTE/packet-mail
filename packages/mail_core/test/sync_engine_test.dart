@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -1030,9 +1031,205 @@ void main() {
       expect(held.note, 'No home BBS known for G8BPQ; add one to the address and send again.');
       expect(await sentAt(), isNull);
 
+      // Asked again at the next sync, still unknown: the note stays.
       bbs.calls.clear();
       await engine.sync(conn);
-      expect(bbs.calls.where((c) => c.startsWith('send') || c.startsWith('lookUp')), isEmpty);
+      expect(bbs.calls.where((c) => c.startsWith('send') || c.startsWith('lookUp')), ['lookUpHomeBbs G8BPQ']);
+      final still = (await recipients()).first;
+      expect(
+        [still.state, still.note],
+        ['held', 'No home BBS known for G8BPQ; add one to the address and send again.'],
+      );
+
+      // Once White Pages knows, it goes by itself.
+      bbs.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+      final r3 = await engine.sync(conn);
+      expect([r3.sent, r3.held], [1, 0]);
+      expect((await recipients()).first.address, 'G8BPQ@GB7BPQ.#76.GBR.EU');
+      expect(await sentAt(), now);
+    });
+
+    test('a held copy goes by itself once the address book knows', () async {
+      await queue(['G8BPQ']);
+      await engine.sync(conn);
+      await db
+          .into(db.contacts)
+          .insert(
+            ContactsCompanion.insert(callsign: 'G8BPQ', source: 'typed', homeBbs: const Value('GB7BPQ.#23.GBR.EURO')),
+          );
+      bbs.calls.clear();
+      await engine.sync(conn);
+      expect(bbs.calls, isNot(contains('lookUpHomeBbs G8BPQ')));
+      final r = (await recipients()).single;
+      expect([r.state, r.address], ['sent', 'G8BPQ@GB7BPQ.#23.GBR.EURO']);
+    });
+
+    group('White Pages on other connections', () {
+      late FakeBbs second;
+      late int conn2;
+      setUp(() async {
+        second = FakeBbs();
+        conn2 = await addConnection(name: 'GB7XYZ');
+        engine = SyncEngine(db, (c) async => c.id == conn ? bbs : second, clock: () => clock);
+      });
+
+      test('a held copy is sent once another BBS knows the address', () async {
+        await queue(['G8BPQ']);
+        await engine.sync(conn);
+        expect((await recipients()).single.state, 'held');
+        expect(second.calls, contains('lookUpHomeBbs G8BPQ'));
+
+        second.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+        await engine.sync(conn);
+        final r = (await recipients()).single;
+        expect([r.state, r.address], ['sent', 'G8BPQ@GB7BPQ.#76.GBR.EU']);
+        expect(r.note, 'Home BBS for G8BPQ from White Pages on GB7XYZ: GB7BPQ.#76.GBR.EU.');
+        expect(bbs.sent, ['P G8BPQ@GB7BPQ.#76.GBR.EU Test']);
+        expect(second.sent, isEmpty);
+        final c = await (db.select(db.contacts)..where((c) => c.callsign.equals('G8BPQ'))).getSingle();
+        expect([c.homeBbs, c.source], ['GB7BPQ.#76.GBR.EU', 'whitepages']);
+      });
+
+      test('its own BBS is asked first, and each callsign once a session', () async {
+        bbs.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+        await queue(['G8BPQ', 'G4APL']);
+        await queue(['G4APL']);
+        await engine.sync(conn);
+        expect(second.calls.where((c) => c.startsWith('lookUp')), ['lookUpHomeBbs G4APL']);
+        expect(bbs.calls.where((c) => c == 'lookUpHomeBbs G4APL'), hasLength(1));
+      });
+
+      test('a connection without White Pages is not asked', () async {
+        engine = SyncEngine(
+          db,
+          (c) async => c.id == conn ? bbs : second,
+          clock: () => clock,
+          capabilitiesOf: (t) => t == 'bpq' ? {} : DriverCapability.values.toSet(),
+        );
+        await queue(['G8BPQ']);
+        await engine.sync(conn);
+        expect(second.calls, isEmpty);
+      });
+
+      test('a connection that cannot be reached leaves the copy held', () async {
+        engine = SyncEngine(
+          db,
+          (c) async => c.id == conn ? bbs : throw const SocketException('down'),
+          clock: () => clock,
+        );
+        await queue(['G8BPQ']);
+        final r = await engine.sync(conn);
+        expect([r.ok, r.held], [true, 1]);
+      });
+
+      test('two connections syncing at once never wait on each other', () async {
+        await queue(['G8BPQ']);
+        final id = await db
+            .into(db.outgoing)
+            .insert(
+              OutgoingCompanion.insert(
+                connectionId: conn2,
+                type: 'personal',
+                subject: 'Other',
+                body: 'Hi',
+                createdAt: now,
+              ),
+            );
+        await db
+            .into(db.outgoingRecipients)
+            .insert(OutgoingRecipientsCompanion.insert(outgoingId: id, address: 'G4APL'));
+        final both = await Future.wait([engine.sync(conn), engine.sync(conn2)]).timeout(const Duration(seconds: 5));
+        expect(both.map((r) => r.held), [1, 1]);
+      });
+
+      test('everywhere: the first answer wins, and failures are named', () async {
+        second.whitePages['G8BPQ'] = 'GB7BPQ.#76.GBR.EU';
+        final a = await engine.lookUpHomeBbsEverywhere('g8bpq');
+        expect(
+          [a.home, a.from, a.asked],
+          [
+            'GB7BPQ.#76.GBR.EU',
+            'GB7XYZ',
+            ['GB7RDG', 'GB7XYZ'],
+          ],
+        );
+
+        bbs.caps = {DriverCapability.kill};
+        final b = await engine.lookUpHomeBbsEverywhere('G4APL');
+        expect(b.home, isNull);
+        expect(b.failed.keys, ['GB7RDG']);
+        expect(b.failed['GB7RDG'], isA<UnsupportedError>());
+      });
+    });
+
+    group('fixing a held copy', () {
+      Future<OutgoingRecipient> heldOne() async {
+        await queue(['G8BPQ']);
+        await engine.sync(conn);
+        return (await recipients()).single;
+      }
+
+      Future<Contact?> contact() =>
+          (db.select(db.contacts)..where((c) => c.callsign.equals('G8BPQ'))).getSingleOrNull();
+
+      test('queues it with the full address and saves the home BBS', () async {
+        final r = await heldOne();
+        expect(await engine.fixHeld(r.id, ' gb7bpq.#23.gbr.euro '), isNull);
+        final fixed = (await recipients()).single;
+        expect([fixed.state, fixed.address, fixed.note], ['queued', 'G8BPQ@GB7BPQ.#23.GBR.EURO', null]);
+        final c = (await contact())!;
+        expect([c.homeBbs, c.source, c.edited], ['GB7BPQ.#23.GBR.EURO', 'typed', true]);
+        await engine.sync(conn);
+        expect(bbs.sent, ['P G8BPQ@GB7BPQ.#23.GBR.EURO Test']);
+      });
+
+      test('a bad home BBS is refused in plain words and nothing changes', () async {
+        final r = await heldOne();
+        expect(await engine.fixHeld(r.id, ''), 'Enter their home BBS.');
+        expect(await engine.fixHeld(r.id, 'G8BPQ@GB7BPQ'), 'Just the part after @.');
+        expect(await engine.fixHeld(r.id, 'GB7BPQ..GBR'), isNotNull);
+        expect((await recipients()).single.state, 'held');
+        expect(await contact(), isNull);
+      });
+
+      test("an edited contact's home BBS is never overwritten", () async {
+        final r = await heldOne();
+        await db
+            .into(db.contacts)
+            .insert(
+              ContactsCompanion.insert(
+                callsign: 'G8BPQ',
+                source: 'mail',
+                edited: const Value(true),
+                homeBbs: const Value('GB7OLD.GBR.EURO'),
+              ),
+            );
+        expect(await engine.fixHeld(r.id, 'GB7BPQ.#23.GBR.EURO'), isNull);
+        expect((await contact())!.homeBbs, 'GB7OLD.GBR.EURO');
+        expect((await recipients()).single.address, 'G8BPQ@GB7BPQ.#23.GBR.EURO');
+      });
+
+      test('a contact sync learned is updated, and other held copies go too', () async {
+        final r = await heldOne();
+        await queue(['G8BPQ']);
+        await engine.sync(conn);
+        await db
+            .into(db.contacts)
+            .insert(
+              ContactsCompanion.insert(callsign: 'G8BPQ', source: 'mail', homeBbs: const Value('GB7OLD.GBR.EURO')),
+            );
+        // The contact above would have been used, so put them back on hold.
+        await (db.update(db.outgoingRecipients)).write(const OutgoingRecipientsCompanion(state: Value('held')));
+        expect(await engine.fixHeld(r.id, 'GB7BPQ.#23.GBR.EURO'), isNull);
+        expect((await contact())!.homeBbs, 'GB7BPQ.#23.GBR.EURO');
+        expect((await recipients()).map((r) => r.state), everyElement('queued'));
+      });
+
+      test('a copy no longer held is left alone', () async {
+        await queue(['G8BPQ@GB7BPQ.#76.GBR.EU']);
+        final r = (await recipients()).single;
+        expect(await engine.fixHeld(r.id, 'GB7BPQ.#23.GBR.EURO'), 'This message is no longer waiting.');
+      });
     });
 
     test('a held copy goes once released, using the address book', () async {

@@ -36,7 +36,7 @@ abstract final class Logbook {
   static TextStyle get asSent => _style(mono, 12.5, 400, ink, height: 1.45);
 
   /// Callsign stamps.
-  static TextStyle get stamp => _style(sans, 10, 700, stampRed);
+  static TextStyle get stamp => _style(sans, 10, 700, stampRed).calls;
 
   /// Small section labels (NEW, EARLIER).
   static TextStyle get sectionLabel =>
@@ -92,4 +92,12 @@ abstract final class Logbook {
       ),
     );
   }
+}
+
+/// Callsigns and addresses use the font's slashed zero (Inter, JetBrains Mono
+/// and Source Serif all have one), so M0LTE never reads as MOLTE.
+extension CallsignStyle on TextStyle {
+  TextStyle get calls => (fontFeatures ?? const []).any((f) => f.feature == 'zero')
+      ? this
+      : copyWith(fontFeatures: [...?fontFeatures, const FontFeature.slashedZero()]);
 }

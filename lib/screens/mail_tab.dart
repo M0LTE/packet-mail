@@ -11,6 +11,7 @@ import '../compose.dart';
 import '../view_choice.dart';
 import 'compose_screen.dart';
 import 'mail_widgets.dart';
+import 'held_screen.dart';
 import 'message_screen.dart';
 import 'outgoing_screen.dart';
 
@@ -61,7 +62,7 @@ class _MailTabState extends ConsumerState<MailTab> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
               child: Text(
                 via.isEmpty ? identity.callsign : '${identity.callsign} via $via',
-                style: text.bodySmall?.copyWith(letterSpacing: 0.3),
+                style: text.bodySmall?.copyWith(letterSpacing: 0.3).calls,
               ),
             ),
           _MailboxSwitcher(selected: _box, onSelected: (b) => setState(() => _box = b)),
@@ -176,7 +177,12 @@ class _MailTabState extends ConsumerState<MailTab> {
           item: item,
           sent: sent,
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => OutgoingScreen(outgoingId: item.message.id, from: _box.label)),
+            MaterialPageRoute<void>(
+              builder: (_) => switch (heldRecipient(item)) {
+                final held? => HeldScreen(recipient: held, connectionId: item.message.connectionId, from: _box.label),
+                null => OutgoingScreen(outgoingId: item.message.id, from: _box.label),
+              },
+            ),
           ),
         ),
     ]);
@@ -335,7 +341,7 @@ class MessageRow extends ConsumerWidget {
                           name ?? call,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: text.titleSmall?.copyWith(color: unread ? Logbook.ink : Logbook.inkSoft),
+                          style: text.titleSmall?.copyWith(color: unread ? Logbook.ink : Logbook.inkSoft).calls,
                         ),
                       ),
                       if (message.starred) ...[
@@ -442,7 +448,7 @@ class OutgoingRow extends ConsumerWidget {
                               : 'To ${to.join(', ')}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: text.titleSmall,
+                          style: text.titleSmall?.calls,
                         ),
                       ),
                       Text(listTime(when.toLocal(), ref.watch(clockProvider)()), style: text.bodySmall),
@@ -455,7 +461,7 @@ class OutgoingRow extends ConsumerWidget {
                       l.text,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall?.copyWith(color: l.problem ? Logbook.stampRed : null),
+                      style: text.bodySmall?.copyWith(color: l.problem ? Logbook.stampRed : null).calls,
                     ),
                 ],
               ),
@@ -515,7 +521,7 @@ class SentListingRow extends ConsumerWidget {
                           ].join(' '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: text.titleSmall,
+                          style: text.titleSmall?.calls,
                         ),
                       ),
                       Text(listWhen(listing.date, ref.watch(clockProvider)()), style: text.bodySmall),
