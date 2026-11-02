@@ -151,25 +151,34 @@ class BpqDriver implements MailDriver {
   /// Sends a line and returns what came back before the prompt.
   Future<String> _exchange(String line) async {
     await _session.sendLine(line);
-    var text = await _reply();
-    if (_isStray(text)) text = await _reply();
-    return text;
+    final text = await _reply();
+    return _isStray(text) ? await _afterStray(_reply, text) : text;
   }
 
   /// True if [reply] (up to and without the prompt) is the stray answer to
   /// a late `BBS`, the first reply only: none of our commands is invalid.
   bool _isStray(String reply) {
-    final stray = _mayHaveStray && reply == 'Invalid Command\r';
+    final stray = _mayHaveStray && reply.replaceFirst(RegExp(r'^\n+'), '') == 'Invalid Command\r';
     _mayHaveStray = false;
     return stray;
   }
 
+  /// The real reply after a stray. If none comes, the stray was the reply
+  /// after all, and [stray] is returned.
+  Future<String> _afterStray(Future<String> Function() next, String stray) async {
+    try {
+      return await next();
+    } on SessionTimeout {
+      return stray;
+    }
+  }
+
   /// [raw] without a stray answer to a late `BBS` at its start.
   String _withoutStray(String raw) {
-    final stray = 'Invalid Command\r$_promptOrThrow';
-    final had = _mayHaveStray && raw.startsWith(stray);
+    final m = RegExp('^\n*Invalid Command\r${RegExp.escape(_promptOrThrow)}').firstMatch(raw);
+    final had = _mayHaveStray && m != null;
     _mayHaveStray = false;
-    return had ? raw.substring(stray.length) : raw;
+    return had ? raw.substring(m.end) : raw;
   }
 
   Future<String> _reply() async {
@@ -262,7 +271,7 @@ class BpqDriver implements MailDriver {
         timeout: timeout);
     var first = await firstReply();
     if (_isStray(first.endsWith(_promptOrThrow) ? first.substring(0, first.length - _promptOrThrow.length) : '')) {
-      first = await firstReply();
+      first = await _afterStray(firstReply, first);
     }
     final said = _lines(first).where((l) => l.isNotEmpty && '$l\r' != _prompt).toList();
     if (!first.endsWith('Enter Title (only):\r')) {
