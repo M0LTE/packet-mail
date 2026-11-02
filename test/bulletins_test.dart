@@ -235,6 +235,40 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('a category list and an area list can mark just their own bulletins read', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addBulletin(app, tester, c, number: 1, subject: 'Gales tonight');
+    await addBulletin(app, tester, c, number: 2, area: 'EURO', subject: 'Heat across Europe');
+    await addBulletin(app, tester, c, number: 3, category: 'ALL', area: 'WW', subject: 'Contest this weekend');
+    await app.pump(tester);
+    await tester.tap(find.text('Bulletins').last);
+    await settleAll(app, tester);
+
+    // An area list marks only its own.
+    await tester.tap(find.byKey(const ValueKey('area-WX-GBR')));
+    await settleAll(app, tester);
+    await tester.tap(find.byKey(const ValueKey('list-mark-all-read')));
+    await settleAll(app, tester);
+    expect(find.text('1 bulletin marked read.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('list-mark-all-read')), findsNothing);
+    expect(await unreadCount(app, tester), 2);
+    await tester.tap(find.text('Undo'));
+    await settleAll(app, tester);
+    expect(await unreadCount(app, tester), 3);
+
+    // A category list marks all of the category.
+    await tester.tap(find.text('Bulletins').first);
+    await settleAll(app, tester);
+    await tester.tap(find.byKey(const ValueKey('category-WX')));
+    await settleAll(app, tester);
+    await tester.tap(find.byKey(const ValueKey('list-mark-all-read')));
+    await settleAll(app, tester);
+    expect(find.text('2 bulletins marked read.'), findsOneWidget);
+    expect(await unreadCount(app, tester), 1);
+    await app.dispose(tester);
+  });
+
   testWidgets('Fetch downloads a bulletin and leaves it unread', (tester) async {
     final app = TestApp();
     final c = await seedStation(app, tester);

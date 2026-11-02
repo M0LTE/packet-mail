@@ -319,6 +319,13 @@ class BulletinListScreen extends ConsumerWidget {
           style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
         ),
         actions: [
+          if (list.any((m) => !m.read))
+            IconButton(
+              key: const ValueKey('list-mark-all-read'),
+              tooltip: 'Mark all read',
+              icon: const Icon(Icons.done_all, color: Logbook.inkSoft),
+              onPressed: () => markAllRead(context, ref, list),
+            ),
           IconButton(
             tooltip: 'New bulletin',
             icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
