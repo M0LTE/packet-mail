@@ -78,6 +78,9 @@ class BpqDriver implements MailDriver {
   /// How long to wait after the password for a BBS that starts by itself.
   static const _bbsStartWait = Duration(seconds: 1);
 
+  /// A new user's name prompt answered by a `BBS` line.
+  static final _nameTaken = RegExp(r'(?:^|\r)Hello BBS\.');
+
   /// Signs that the BBS (or a login refusal) is already talking.
   static final _bbsStarted = RegExp(r'Connected to BBS|\[BPQ-|Please enter your Name|user:|password:');
 
@@ -131,7 +134,17 @@ class BpqDriver implements MailDriver {
     }
     if (_loginRefused.hasMatch(text)) throw BbsError(BbsErrorKind.loginFailed, _refusedMessage);
     if (text.contains('Please enter your Name')) {
-      await _session.sendLine(_safeText(name.trim().isEmpty ? 'Packet Mail user' : name.trim()));
+      final ours = _safeText(name.trim().isEmpty ? 'Packet Mail user' : name.trim());
+      if (_mayHaveStray && await _session.sees(_nameTaken, timeout: _atMost(timeout, _bbsStartWait))) {
+        // An account that starts the BBS by itself, slowly: the second `BBS`
+        // answered the name prompt. Set the right name with N, which keeps
+        // its first word, as the prompt does not.
+        _mayHaveStray = false;
+        text = await _session.readUntil(_anyPrompt, timeout: timeout);
+        await _session.sendLine('N $ours');
+      } else {
+        await _session.sendLine(ours);
+      }
       text = await _session.readUntil(_anyPrompt, timeout: timeout);
     }
     _prompt = '${_anyPrompt.allMatches(text).last.group(1)}\r';

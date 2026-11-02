@@ -177,6 +177,7 @@ class SyncEngine {
       driver = await connect(connection);
       s.connected = true;
       await _sendOutbox(driver, connection, s);
+      await _resolveHeldElsewhere(driver, connection, s);
       await _applyKills(driver, connection, s);
       await _listPersonal(driver, connection, s);
       if (connection.personalDownload == 'atSync') await _downloadPersonal(driver, connection);
@@ -268,23 +269,14 @@ class SyncEngine {
       });
 
   /// Asks White Pages on every connection that has it, all at once, for
-  /// [callsign]'s home BBS. The first answer wins. Connections in [skip] are
-  /// left out, and with [skipBusy] so is any connection already in use, so a
-  /// sync asking never waits on another sync asking it.
-  Future<HomeBbsAnswer> lookUpHomeBbsEverywhere(
-    String callsign, {
-    Set<int> skip = const {},
-    bool skipBusy = false,
-  }) async {
+  /// [callsign]'s home BBS, for the user's Look up. The first answer wins.
+  /// Each logs in, so sync never calls this.
+  Future<HomeBbsAnswer> lookUpHomeBbsEverywhere(String callsign) async {
     final call = callsign.trim().toUpperCase();
     final all = await (store.select(store.connections)..orderBy([(c) => OrderingTerm(expression: c.name)])).get();
-    // No awaits from here until every lookup is queued, so the busy check holds.
     final ask = [
       for (final c in all)
-        if (!skip.contains(c.id) &&
-            _capabilitiesOf(c.bbsType).contains(DriverCapability.whitePagesLookup) &&
-            !(skipBusy && _queues.containsKey(c.id)))
-          c,
+        if (_capabilitiesOf(c.bbsType).contains(DriverCapability.whitePagesLookup)) c,
     ];
     final asked = [for (final c in ask) c.name];
     if (ask.isEmpty) return HomeBbsAnswer(asked: asked);
@@ -532,8 +524,7 @@ class SyncEngine {
     return isCallsign(call) ? call : null;
   }
 
-  /// The address book first, then this BBS's White Pages, then White Pages
-  /// on every other connection that has it and isn't busy. Each callsign is
+  /// The address book first, then this BBS's White Pages. Each callsign is
   /// looked up once a session.
   Future<({String address, String source})?> _homeBbs(
     MailDriver driver,
@@ -545,20 +536,38 @@ class SyncEngine {
     final known = contact?.homeBbs?.trim();
     if (known != null && known.isNotEmpty) return (address: known, source: 'your address book');
     if (s.lookedUp.containsKey(call)) return s.lookedUp[call];
-    String? wp;
-    var source = 'White Pages';
-    if (driver.capabilities.contains(DriverCapability.whitePagesLookup)) wp = await driver.lookUpHomeBbs(call);
-    if (wp == null) {
-      final elsewhere = await lookUpHomeBbsEverywhere(call, skip: {connection.id}, skipBusy: true);
-      wp = elsewhere.home;
-      source = 'White Pages on ${elsewhere.from}';
-    }
+    if (!driver.capabilities.contains(DriverCapability.whitePagesLookup)) return null;
+    final wp = await driver.lookUpHomeBbs(call);
     if (wp == null) return s.lookedUp[call] = null;
     final found = MailAddress.parse('$call@$wp');
     if (found.address?.at case final at? when !found.problems.any((p) => p.blocking)) {
       await _learnHomeBbs(call, at, 'whitepages');
     }
-    return s.lookedUp[call] = (address: wp, source: source);
+    return s.lookedUp[call] = (address: wp, source: 'White Pages');
+  }
+
+  /// Mail held on other connections for want of a home BBS: asks this BBS's
+  /// White Pages, inside this session, so no extra login is needed. What it
+  /// learns goes in the address book, and those copies go back in the queue
+  /// for their own connection's next sync.
+  Future<void> _resolveHeldElsewhere(MailDriver driver, Connection connection, _Session s) async {
+    if (!driver.capabilities.contains(DriverCapability.whitePagesLookup)) return;
+    final rows = await store.customSelect(
+      "SELECT DISTINCT UPPER(r.address) AS call FROM outgoing_recipients r JOIN outgoing o ON o.id = r.outgoing_id "
+      "WHERE r.state = 'held' AND o.sent_at IS NULL AND o.type = 'personal' AND o.connection_id != ?1",
+      variables: [Variable.withInt(connection.id)],
+      readsFrom: {store.outgoingRecipients, store.outgoing},
+    ).get();
+    for (final row in rows) {
+      final call = row.read<String>('call');
+      try {
+        if (!isCallsign(call) || await _homeBbs(driver, connection, s, call) == null) continue;
+      } on BbsError {
+        continue;
+      }
+      final contact = await (store.select(store.contacts)..where((c) => c.callsign.equals(call))).getSingleOrNull();
+      if ((contact?.homeBbs?.trim() ?? '').isNotEmpty) await releaseHeld(call);
+    }
   }
 
   // Address book

@@ -78,6 +78,26 @@ void main() {
     expect(await d.lookUpHomeBbs('Q0OTH'), isNull);
   });
 
+  test('a new user whose name prompt took our BBS line gets the right name with N', () async {
+    // A slow auto-starting account: `BBS` reaches the name prompt. Shaped on
+    // a test BBS session where BBS was typed at the prompt.
+    final t = ReplayTransport(Recording.parse([
+      '{"dir":"tx","data":"user\r"}',
+      '{"dir":"tx","data":"PASSWORD\r","secret":true}',
+      '{"dir":"tx","data":"BBS\r"}',
+      '{"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}',
+      '{"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM\$]\rPlease enter your Name\r>\rHello BBS. Latest Message is 1, Last listed is -19\rde Q0TST>\r"}',
+      '{"dir":"tx","data":"N Tom User\r"}',
+      '{"dir":"rx","data":"Hello Tom. Latest Message is 1, Last listed is -19\rde Q0TST>\r"}',
+      '{"dir":"tx","data":"I Q0USR\r"}',
+      '{"dir":"rx","data":"Q0USR   Tom  \rde Q0TST>\r"}',
+    ].map((l) => l.replaceAll('\r', r'\r')).join('\n')));
+    final d = driverFor(t, BpqPort.fbb);
+    await d.logIn(user: 'user', password: 'user', name: 'Tom User');
+    expect(await d.lookUpHomeBbs('Q0USR'), isNull);
+    expect(t.finished, isTrue);
+  });
+
   test('White Pages lines: name, postcode and QTH, or no home BBS', () {
     expect(
       BpqDriver.parseWhitePages('M0LTE', ['M0LTE  GB7RDG.#42.GBR.EURO Tom RG304JT Reading']),
