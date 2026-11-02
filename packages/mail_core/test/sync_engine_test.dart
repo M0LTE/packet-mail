@@ -523,14 +523,25 @@ void main() {
   });
 
   group('personal mail', () {
-    test('new headers are stored unread, without bodies, by default', () async {
+    test('mail already read on the BBS arrives read and is not counted as new', () async {
+      bbs
+        ..addPersonal(20, status: 'Y')
+        ..addPersonal(21, status: 'Y')
+        ..addPersonal(22);
+      final r = await engine.sync(conn);
+      expect(r.newMessages, 1);
+      expect((await messages()).where((m) => !m.read).map((m) => m.bbsNumber), [22]);
+    });
+
+    test('new headers are stored without bodies; unread unless the BBS says read', () async {
       bbs
         ..addPersonal(10)
         ..addPersonal(11, status: 'Y');
       await engine.sync(conn);
       final m = await messages();
       expect(m.map((m) => m.bbsNumber), [10, 11]);
-      expect(m.every((m) => !m.read && m.body == null && m.type == 'personal'), isTrue);
+      expect(m.every((m) => m.body == null && m.type == 'personal'), isTrue);
+      expect(m.map((m) => m.read), [false, true]); // 11 was already read on the BBS
       expect([m.first.fromCall, m.first.toCall, m.first.at, m.first.subject], ['G4APL', 'M0LTE', 'GB7RDG', 'Hello']);
       expect(reads(bbs), isEmpty);
       expect(bbs.personal[10]!.header.status, 'N'); // still unread on the BBS

@@ -722,7 +722,14 @@ class SyncEngine {
   /// until the user deletes them. Headers never downloaded go.
   Future<void> _listPersonal(MailDriver driver, Connection connection, _Session s) async {
     final headers = await driver.listPersonal();
-    s.newMessages += (await _storeHeaders(connection.id, headers, driver)).length;
+    final added = await _storeHeaders(connection.id, headers, driver);
+    // Only mail nobody has read yet counts as new; mail read elsewhere arrives read.
+    if (added.isNotEmpty) {
+      s.newMessages += await (store.select(store.messages)
+            ..where((m) => m.id.isIn(added) & m.read.equals(false)))
+          .get()
+          .then((rows) => rows.length);
+    }
     await _dropUnlisted(connection.id, headers, bulletins: false);
   }
 
@@ -931,6 +938,8 @@ class SyncEngine {
               subject: h.subject,
               date: h.date,
               size: Value(h.size),
+              // Mail the BBS already counts as read (read elsewhere) arrives read.
+              read: Value(h.type != MessageType.bulletin && !h.isUnread),
               lastListedAt: now,
             ));
         added.add(id);
