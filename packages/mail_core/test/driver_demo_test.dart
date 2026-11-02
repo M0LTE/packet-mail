@@ -15,8 +15,10 @@ import 'package:test/test.dart';
 final _port = int.parse(Platform.environment['PACKET_MAIL_DEMO_BBS_PORT'] ?? '18111');
 const _home = 'Q0DEMO.#42.GBR.EURO';
 
-Future<BpqDriver> _connect() async =>
-    BpqDriver(await TcpTransport.connect('127.0.0.1', _port), port: BpqPort.fbb, timeout: const Duration(seconds: 10));
+/// The demo BBS acts as an ordinary account, so known not to start the BBS
+/// by itself, as the app remembers after the first login.
+Future<BpqDriver> _connect() async => BpqDriver(await TcpTransport.connect('127.0.0.1', _port),
+    port: BpqPort.fbb, timeout: const Duration(seconds: 10), startsBbs: false);
 
 var _users = 0;
 
