@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:mail_core/mail_core.dart';
@@ -175,5 +177,30 @@ void main() {
     addTearDown(old.close);
     final c = await old.select(old.connections).getSingle();
     expect([c.name, c.bbsCall], ['GB7BDH', null]);
+  });
+
+  test('a version 7 database has its stored UTF-8 mail decoded', () async {
+    final file = File('${Directory.systemTemp.createTempSync('store').path}/mail.db');
+    final before = MailStore(NativeDatabase(file));
+    final c = await before.into(before.connections).insert(
+        ConnectionsCompanion.insert(name: 'GB7RDG', bbsType: 'bpq', portKind: 'fbb', loginName: 'tf'));
+    await before.into(before.messages).insert(MessagesCompanion.insert(
+          connectionId: c,
+          bbsNumber: 4677,
+          type: 'personal',
+          fromCall: 'M9TWM',
+          toCall: 'M0LTE',
+          subject: 'Re: caf\u00c3\u00a9',
+          date: DateTime.utc(2026, 11, 3, 6, 6),
+          lastListedAt: DateTime.utc(2026, 11, 3, 6, 6),
+          body: const Value('New things!\n> \u00ef\u00bb\u00bfR:261028/1159Z 4499@GB7RDG.#42.GBR.EURO'),
+        ));
+    await before.customStatement('PRAGMA user_version = 7');
+    await before.close();
+
+    final after = MailStore(NativeDatabase(file));
+    addTearDown(after.close);
+    final m = await after.select(after.messages).getSingle();
+    expect([m.subject, m.body], ['Re: café', 'New things!\n> R:261028/1159Z 4499@GB7RDG.#42.GBR.EURO']);
   });
 }

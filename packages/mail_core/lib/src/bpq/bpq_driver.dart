@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../address.dart';
 import '../ansi.dart';
+import '../charset.dart';
 import '../driver.dart';
 import '../message.dart';
 import '../transport/line_session.dart';
@@ -284,7 +285,7 @@ class BpqDriver implements MailDriver {
     final now = _clock().toUtc();
     return [
       for (final line in lines)
-        if (parseListingLine(line, now) case final h? when h.status != 'K' && h.status != 'H') h,
+        if (parseListingLine(decodeMailText(line), now) case final h? when h.status != 'K' && h.status != 'H') h,
     ];
   }
 
@@ -295,7 +296,7 @@ class BpqDriver implements MailDriver {
         '|(?:^|\\r)Message $number not (?:found|for you)\\r'
         '|(?:^|\\r)File for Message $number not found\\r');
     // The body may carry escape codes of its own, so they come too.
-    final raw = _withoutStray(await _session.readUntil(end, timeout: timeout, keepCodes: true));
+    final raw = decodeMailText(_withoutStray(await _session.readUntil(end, timeout: timeout, keepCodes: true)));
     final text = stripAnsi(raw);
     await _session.readUntil(_promptOrThrow, timeout: timeout);
     if (text.contains('Message $number not found')) {

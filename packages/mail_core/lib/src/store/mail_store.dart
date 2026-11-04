@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../charset.dart';
 import 'tables.dart';
 
 part 'mail_store.g.dart';
@@ -10,7 +11,7 @@ class MailStore extends _$MailStore {
   MailStore(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -32,9 +33,29 @@ class MailStore extends _$MailStore {
             await m.alterTable(TableMigration(connections, newColumns: [connections.lastVia, connections.bbsCall]));
           }
           if (from >= 6 && from < 7) await m.addColumn(connections, connections.bbsCall);
+          if (from < 8) await _decodeStoredText();
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
       );
+
+  /// Mail read before the app understood UTF-8 is stored as Latin-1.
+  /// Plain SQL, since an old database may lack later columns or tables.
+  Future<void> _decodeStoredText() async {
+    for (final table in ['messages', 'sent_listings']) {
+      final present = await customSelect("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+          variables: [Variable(table)]).get();
+      if (present.isEmpty) continue;
+      for (final row in await customSelect('SELECT id, subject, body FROM $table').get()) {
+        final subject = row.read<String>('subject');
+        final body = row.readNullable<String>('body');
+        final newSubject = decodeMailText(subject);
+        final newBody = body == null ? null : decodeMailText(body);
+        if (newSubject == subject && newBody == body) continue;
+        await customStatement(
+            'UPDATE $table SET subject = ?, body = ? WHERE id = ?', [newSubject, newBody, row.read<int>('id')]);
+      }
+    }
+  }
 
   /// A connection's addresses, in the order they are tried.
   Future<List<ConnectionAddress>> addressesOf(int connectionId) => (select(connectionAddresses)

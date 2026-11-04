@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../address.dart';
 import '../ansi.dart';
+import '../charset.dart';
 import '../driver.dart';
 import '../message.dart';
 import '../transport/line_session.dart';
@@ -142,7 +143,7 @@ class XRouterDriver implements MailDriver {
     final now = _clock().toUtc();
     return [
       for (final line in lines)
-        if (parseXrouterListingLine(line, now) case final h? when h.status != 'H') h,
+        if (parseXrouterListingLine(decodeMailText(line), now) case final h? when h.status != 'H') h,
     ];
   }
 
@@ -202,7 +203,7 @@ class XRouterDriver implements MailDriver {
         '|(?:^|\\r)Msg $number not found\\r'
         '|(?:^|\\r)Access to message $number denied\\r');
     // The body may carry escape codes of its own, so they come too.
-    final raw = await _session.readUntil(end, timeout: timeout, keepCodes: true);
+    final raw = decodeMailText(await _session.readUntil(end, timeout: timeout, keepCodes: true));
     final text = stripAnsi(raw);
     await _session.readUntil(_prompt, timeout: timeout);
     if (text.contains('Msg $number not found')) {

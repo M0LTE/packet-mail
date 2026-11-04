@@ -7,6 +7,7 @@ export 'src/address.dart';
 export 'src/ansi.dart';
 export 'src/bpq/bpq_driver.dart';
 export 'src/bpq/bpq_format.dart';
+export 'src/charset.dart';
 export 'src/xrouter/xrouter_driver.dart';
 export 'src/xrouter/xrouter_format.dart';
 export 'src/compose.dart';
