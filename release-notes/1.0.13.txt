@@ -1,0 +1,1 @@
+Accented letters, symbols and curly quotes in mail written on phones and computers now show properly, instead of as strings of odd characters. Mail you already have is fixed too.
