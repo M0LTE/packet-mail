@@ -11,7 +11,7 @@ class MailStore extends _$MailStore {
   MailStore(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -33,12 +33,14 @@ class MailStore extends _$MailStore {
             await m.alterTable(TableMigration(connections, newColumns: [connections.lastVia, connections.bbsCall]));
           }
           if (from >= 6 && from < 7) await m.addColumn(connections, connections.bbsCall);
-          if (from < 8) await _decodeStoredText();
+          // Again at 9, when code page 437 and Windows-1252 joined in.
+          if (from < 9) await _decodeStoredText();
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
       );
 
-  /// Mail read before the app understood UTF-8 is stored as Latin-1.
+  /// Mail read before the app understood UTF-8 and the older code pages
+  /// is stored as Latin-1.
   /// Plain SQL, since an old database may lack later columns or tables.
   Future<void> _decodeStoredText() async {
     for (final table in ['messages', 'sent_listings']) {

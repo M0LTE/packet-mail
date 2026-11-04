@@ -179,7 +179,7 @@ void main() {
     expect([c.name, c.bbsCall], ['GB7BDH', null]);
   });
 
-  test('a version 7 database has its stored UTF-8 mail decoded', () async {
+  test('a version 8 database has its stored mail decoded again, code pages too', () async {
     final file = File('${Directory.systemTemp.createTempSync('store').path}/mail.db');
     final before = MailStore(NativeDatabase(file));
     final c = await before.into(before.connections).insert(
@@ -193,14 +193,14 @@ void main() {
           subject: 'Re: caf\u00c3\u00a9',
           date: DateTime.utc(2026, 11, 3, 6, 6),
           lastListedAt: DateTime.utc(2026, 11, 3, 6, 6),
-          body: const Value('New things!\n> \u00ef\u00bb\u00bfR:261028/1159Z 4499@GB7RDG.#42.GBR.EURO'),
+          body: const Value('New things!\n> \u00ef\u00bb\u00bfR:261028/1159Z 4499@GB7RDG.#42.GBR.EURO\n\u00da\u00c4\u00bf\n\u00b3 \u00b3\n\u00c0\u00c4\u00d9'),
         ));
-    await before.customStatement('PRAGMA user_version = 7');
+    await before.customStatement('PRAGMA user_version = 8');
     await before.close();
 
     final after = MailStore(NativeDatabase(file));
     addTearDown(after.close);
     final m = await after.select(after.messages).getSingle();
-    expect([m.subject, m.body], ['Re: café', 'New things!\n> R:261028/1159Z 4499@GB7RDG.#42.GBR.EURO']);
+    expect([m.subject, m.body], ['Re: café', 'New things!\n> R:261028/1159Z 4499@GB7RDG.#42.GBR.EURO\n┌─┐\n│ │\n└─┘']);
   });
 }
