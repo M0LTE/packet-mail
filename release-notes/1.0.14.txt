@@ -1,0 +1,1 @@
+Diagrams drawn with old DOS line characters now show as proper boxes and lines, and accented letters and symbols from older PCs show properly. Mail you already have is fixed too.
