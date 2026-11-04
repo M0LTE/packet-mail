@@ -33,7 +33,7 @@ class MailStore extends _$MailStore {
             await m.alterTable(TableMigration(connections, newColumns: [connections.lastVia, connections.bbsCall]));
           }
           if (from >= 6 && from < 7) await m.addColumn(connections, connections.bbsCall);
-          // Again at 9, when code page 437 and Windows-1252 joined in.
+          // Again at 9, when the older code pages joined in.
           if (from < 9) await _decodeStoredText();
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
