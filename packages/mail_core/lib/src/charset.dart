@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'ansi.dart';
+
 final _line = RegExp(r'[^\r\n]+');
 
 /// The line session reads bytes as Latin-1, one character per byte. Mail
@@ -10,16 +12,45 @@ final _line = RegExp(r'[^\r\n]+');
 /// naturally wins (see [_score]); Windows on a tie. Byte-order marks are
 /// dropped: they are invisible in UTF-8 and show as "ï»¿" in Latin-1.
 ///
-/// Safe to run on text it has already decoded.
+/// A line that reads better in Windows-1252 than in the message's page, with
+/// none of the bytes 0x80 to 0x9F (Windows punctuation, DOS small accented
+/// letters) and no box drawing in the page's reading, keeps Windows-1252.
+/// So Latin-1 text an earlier version decoded, such as a stored "café",
+/// survives another pass.
 String decodeMailText(String text) {
   final lines = [for (final m in _line.allMatches(text)) m[0]!];
-  final page = lines.any((l) => _undecoded(l) != null) ? _choosePage(lines) : _cp1252;
+  final raw = [for (final l in lines) _undecoded(l)];
+  if (raw.every((r) => r == null)) return _withUtf8Lines(text);
+  // Escape codes are scored as if absent; their letters and widths would
+  // otherwise count as text and shift columns.
+  final plain = [for (final l in lines) stripAnsi(l)];
+  final plainRaw = [for (final l in plain) _undecoded(l)];
+  final page = _choosePage(plain, plainRaw);
+  final pageText = _decodeAll(plain, plainRaw, page);
+  final windowsText = _decodeAll(plain, plainRaw, _cp1252);
+  var i = 0;
   return text.replaceAllMapped(_line, (m) {
     final line = m[0]!;
-    if (_undecoded(line) case final raw?) return _decode(raw, page);
-    final asUtf8 = line.codeUnits.any((c) => c > 0xff) ? null : _utf8(line);
-    return (asUtf8 ?? line).replaceAll('\uFEFF', '');
+    final k = i++;
+    final r = raw[k];
+    if (r == null) return _asUtf8(line);
+    final pr = plainRaw[k];
+    if (page != _cp1252 &&
+        pr != null &&
+        !pr.codeUnits.any((c) => c >= 0x80 && c < 0xa0) &&
+        !pageText[k].split('').any(_isBox) &&
+        _lineScore(windowsText, k, pr) > _lineScore(pageText, k, pr)) {
+      return _decode(r, _cp1252);
+    }
+    return _decode(r, page);
   });
+}
+
+String _withUtf8Lines(String text) => text.replaceAllMapped(_line, (m) => _asUtf8(m[0]!));
+
+String _asUtf8(String line) {
+  final decoded = line.codeUnits.any((c) => c > 0xff) ? null : _utf8(line);
+  return (decoded ?? line).replaceAll('\uFEFF', '');
 }
 
 /// The line itself when it is still undecoded bytes, not ASCII and not
@@ -40,66 +71,95 @@ String? _utf8(String line) {
 String _decode(String raw, String page) =>
     String.fromCharCodes(raw.codeUnits.map((c) => c >= 0x80 ? page.codeUnitAt(c - 0x80) : c));
 
-/// The code page under which the undecoded lines of [lines] read most naturally.
-String _choosePage(List<String> lines) {
-  final raw = [for (final l in lines) _undecoded(l)];
+List<String> _decodeAll(List<String> lines, List<String?> raw, String page) => [
+  for (var i = 0; i < lines.length; i++) raw[i] == null ? lines[i] : _decode(raw[i]!, page),
+];
+
+int _lineScore(List<String> text, int i, String raw) {
+  var score = 0;
+  for (var j = 0; j < raw.length; j++) {
+    if (raw.codeUnitAt(j) >= 0x80) score += _score(text, i, j);
+  }
+  return score;
+}
+
+/// The code page under which the undecoded lines ([raw] not null) read most
+/// naturally. Windows-1252 on a tie.
+String _choosePage(List<String> lines, List<String?> raw) {
   var best = _cp1252;
   var bestScore = -1 << 30;
   for (final page in [_cp1252, _cp437, _cp850]) {
-    final text = [for (var i = 0; i < lines.length; i++) raw[i] == null ? lines[i] : _decode(raw[i]!, page)];
+    final text = _decodeAll(lines, raw, page);
     var score = 0;
     for (var i = 0; i < lines.length; i++) {
-      final r = raw[i];
-      if (r == null) continue;
-      for (var j = 0; j < r.length; j++) {
-        if (r.codeUnitAt(j) >= 0x80) score += _score(text, i, j);
-      }
+      if (raw[i] case final r?) score += _lineScore(text, i, r);
     }
     if (score > bestScore) (best, bestScore) = (page, score);
   }
   return best;
 }
 
+/// Signs that go with numbers: degree, plus-minus, micro, powers, fractions,
+/// times, divide and ohm.
+const _numeric = '\u00B0\u00B1\u00B5\u00B2\u00B3\u00BC\u00BD\u00BE\u00D7\u00F7\u03A9';
+
 /// +1 when the character at [j] of line [i] makes sense where it stands, -1
-/// when it doesn't, 0 when it could go either way. A letter makes sense in a
-/// word that is mostly plain letters, but not as a capital after a small
-/// letter; box drawing when it touches more box drawing; punctuation and
-/// symbols where they belong, such as a curly apostrophe after a letter or a
+/// when it doesn't, 0 when it could go either way. A Latin letter makes sense
+/// in a word that is mostly plain letters, but not in a word with a capital
+/// after a small letter; box drawing when it touches more box drawing;
+/// punctuation and symbols where they belong, such as a curly apostrophe after a letter or a
 /// degree sign by a number. Anything else, such as Greek or maths symbols in
-/// running text or a byte the code page doesn't define, counts against.
+/// running text, counts against, and a byte the code page doesn't define
+/// counts heavily against: it all but proves the page wrong.
 int _score(List<String> lines, int i, int j) {
   final t = lines[i];
   final ch = t[j];
+  final c = ch.codeUnitAt(0);
   final left = j > 0 ? t[j - 1] : ' ';
   final right = j + 1 < t.length ? t[j + 1] : ' ';
+  if (c >= 0x80 && c < 0xa0) return -5;
   if (_isBox(ch)) {
     String at(int k) => k >= 0 && k < lines.length && j < lines[k].length ? lines[k][j] : ' ';
     return [left, right, at(i - 1), at(i + 1)].any(_isBox) ? 1 : -1;
   }
-  if ('°±µ²³¼½¾×÷Ω'.contains(ch)) return _nearDigit(t, j) ? 1 : 0;
+  if (_numeric.contains(ch)) return _nearDigit(t, j) ? 1 : 0;
+  // Letters Western mail hardly uses; Windows-1252 has them where DOS has
+  // common ones, so they mustn't win a tie for Windows.
+  if ('\u0160\u0161\u017D\u017E\u0178\u0192'.contains(ch)) return 0;
   if (_isLetter(ch)) return _scoreLetter(t, j);
+  final rightOk = right == ' ' || j + 1 >= t.length;
   switch (ch) {
-    case '’':
+    case '\u2019':
       return _isLetter(left) ? 1 : 0;
-    case '‘' || '“':
+    case '\u2018' || '\u201C':
       return _isLetter(right) || _isDigit(right) ? 1 : -1;
-    case '”':
-      return left != ' ' ? 1 : -1;
-    case '‚' || '„':
+    case '\u201D':
+      return left != ' ' && !_isLetter(right) ? 1 : -1;
+    case '\u201A' || '\u201E':
       return _isLetter(right) ? 1 : -1;
-    case '–' || '—' || '…' || '•' || '™':
-      return _isAsciiLetter(left) && _isAsciiLetter(right) ? 0 : 1;
-    case '€' || '£' || r'$' || '¥':
+    case '\u2026':
+      if (left == ' ' && rightOk) return -1;
+      return (_isLetter(left) || left == '.') && rightOk ? 1 : 0;
+    case '\u2013' || '\u2014':
+      // Spaced, or closed up between words as American style has it.
+      return (left == ' ' && right == ' ') || (_isLetter(left) && _isLetter(right)) ? 1 : 0;
+    case '\u2022':
+      return t.substring(0, j).trim().isEmpty && right == ' ' ? 1 : 0;
+    case '\u2122':
+      return _isLetter(left) ? 1 : -1;
+    case '\u20AC' || '\u00A3' || '\u00A5':
       return _isDigit(right) || (right == ' ' && j + 2 < t.length && _isDigit(t[j + 2])) ? 1 : -1;
-    case '©' || '®':
+    case '\u00A2':
+      return _isDigit(left) ? 1 : -1;
+    case '\u00A9' || '\u00AE':
       return _isLetter(right) ? -1 : 1;
-    case '¿' || '¡':
+    case '\u00BF' || '\u00A1':
       return _isLetter(right) ? 1 : -1;
-    case '«' || '»':
+    case '\u00AB' || '\u00BB':
       return left == ' ' || right == ' ' || _isLetter(left) || _isLetter(right) ? 1 : -1;
-    case 'ª' || 'º' || '§':
+    case '\u00AA' || '\u00BA' || '\u00A7':
       return _nearDigit(t, j) ? 1 : 0;
-    case '\u00A0' || '·':
+    case '\u00A0' || '\u00B7':
       return 0;
   }
   return -1;
@@ -109,7 +169,6 @@ int _scoreLetter(String t, int j) {
   final left = j > 0 ? t[j - 1] : ' ';
   final right = j + 1 < t.length ? t[j + 1] : ' ';
   if (_isDigit(left) || _isDigit(right)) return 0;
-  if (_isUpper(t[j]) && _isLower(left)) return -1;
   var a = j, b = j;
   while (a > 0 && _isLetter(t[a - 1])) {
     a--;
@@ -118,14 +177,21 @@ int _scoreLetter(String t, int j) {
     b++;
   }
   final word = t.substring(a, b);
+  // A capital after a small letter: "BurenÆs", or "ôThis" from a DOS
+  // reading of a curly quote.
+  for (var k = 1; k < word.length; k++) {
+    if (_isUpper(word[k]) && _isLower(word[k - 1])) return -1;
+  }
   final plain = word.codeUnits.where((c) => c < 0x80).length;
-  if (plain == 0) return word.length == 1 ? 0 : -1;
+  // A word of one accented letter, as French "à" or "où" without the o.
+  if (plain == 0) return word.length == 1 && _isLower(t[j]) ? 1 : -1;
   var run = 0, longest = 0;
   for (final c in word.codeUnits) {
     run = c < 0x80 ? 0 : run + 1;
     if (run > longest) longest = run;
   }
-  return word.length - plain <= plain && longest < 3 ? 1 : -1;
+  // "été" has two accented letters to one plain one.
+  return word.length - plain <= plain + 1 && longest < 3 ? 1 : -1;
 }
 
 bool _nearDigit(String t, int j) {
@@ -137,10 +203,17 @@ bool _nearDigit(String t, int j) {
 
 bool _isBox(String ch) => ch.codeUnitAt(0) >= 0x2500 && ch.codeUnitAt(0) <= 0x259F;
 bool _isDigit(String ch) => ch.codeUnitAt(0) >= 0x30 && ch.codeUnitAt(0) <= 0x39;
-bool _isAsciiLetter(String ch) => ch.codeUnitAt(0) < 0x80 && _isLetter(ch);
-bool _isLetter(String ch) => ch.toUpperCase() != ch.toLowerCase();
-bool _isUpper(String ch) => _isLetter(ch) && ch == ch.toUpperCase();
-bool _isLower(String ch) => _isLetter(ch) && ch == ch.toLowerCase();
+
+/// Latin letters only: ASCII, the Latin-1 letters and Latin Extended A and B.
+/// Greek counts as a symbol, since in Latin text it is a sign of the wrong page.
+bool _isLetter(String ch) {
+  final c = ch.codeUnitAt(0);
+  if (c < 0x80) return (c | 0x20) >= 0x61 && (c | 0x20) <= 0x7a;
+  return c >= 0xc0 && c <= 0x24f && c != 0xd7 && c != 0xf7;
+}
+
+bool _isUpper(String ch) => _isLetter(ch) && ch == ch.toUpperCase() && ch != ch.toLowerCase();
+bool _isLower(String ch) => _isLetter(ch) && !_isUpper(ch);
 
 /// Windows-1252, 0x80 to 0xFF. Its five unused bytes stay as they are.
 const _cp1252 =

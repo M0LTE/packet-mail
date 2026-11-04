@@ -38,7 +38,11 @@ void main() {
     });
 
     test('reads curly quotes and dashes from Windows as Windows-1252', () {
-      expect(decodeMailText(latin1.decode([0x93, ...'hi'.codeUnits, 0x94, 0x20, 0x85])), '“hi” …');
+      final text = latin1.decode([
+        ...'It'.codeUnits, 0x92, ...'s '.codeUnits, 0x93, ...'fine'.codeUnits, 0x94, //
+        ...', he said '.codeUnits, 0x96, ...' honestly'.codeUnits, 0x85,
+      ]);
+      expect(decodeMailText(text), 'It’s “fine”, he said \u2013 honestly…');
     });
 
     test('keeps a German capital in Latin-1 text as itself', () {
@@ -79,14 +83,67 @@ void main() {
         expect(decodeMailText(text), '"The whole 3YØK team is safely back\r“This is NØA, November Zero” calling CQ');
       });
 
+      test('Windows em dashes closed up between words (AR Newsline, 13326)', () {
+        final text = bytes('controllers\u2014QUOTE\u2014“may temporarily lose”\u2014END QUOTE.', '1252');
+        expect(decodeMailText(text), 'controllers\u2014QUOTE\u2014“may temporarily lose”\u2014END QUOTE.');
+      });
+
+      test('a diagram whose lines are not all joined up (13392)', () {
+        // Only the clamp's two bars line up; the rest is ASCII art.
+        final art = [
+          '          _______________                    =│__│=',
+          '        ./-------------/ |                 __│____│___',
+          ' .-\'   \\__ . - ".-\'        |  4 Wire     │         │   Mast Clamp',
+          '├──────────────┤        _.:|   Cable     └┐         )====)',
+        ].join('\r');
+        expect(decodeMailText(bytes(art, '437')), art);
+      });
+
       test('Windows apostrophes (13374)', () {
         final text = bytes('Van Buren’s nickname, behind “OK”, one of America’s greatest', '1252');
         expect(decodeMailText(text), 'Van Buren’s nickname, behind “OK”, one of America’s greatest');
       });
     });
 
-    test('is safe to run twice', () {
-      final once = decodeMailText(wire('Grüße ✓\rcafé'));
+    group('DOS mail in other languages', () {
+      String dos(String s) => latin1.decode(_encode(s, '437'));
+      for (final text in [
+        'Viele Grüße',
+        'Mit freundlichen Grüßen, schönes Wochenende',
+        'Il va à Paris',
+        'Il a été là',
+        'où est-il',
+        'ZUR ÄNDERUNG DER FREQUENZ',
+      ]) {
+        test(text, () => expect(decodeMailText(dos(text)), text));
+      }
+    });
+
+    test('Windows cents', () {
+      expect(decodeMailText(latin1.decode([...'costs 5'.codeUnits, 0xa2])), 'costs 5¢');
+    });
+
+    test('scores DOS boxes behind colour codes as boxes', () {
+      final text = latin1.decode([
+        0x1b,
+        ...'[1;32m'.codeUnits,
+        0xda,
+        0xc4,
+        0xbf,
+        0x1b,
+        ...'[0m\r'.codeUnits,
+        0xc0,
+        0xc4,
+        0xd9,
+      ]);
+      expect(decodeMailText(text), '\x1b[1;32m┌─┐\x1b[0m\r└─┘');
+    });
+
+    test('keeps text an earlier version decoded, such as a UTF-8 "café" beside DOS boxes', () {
+      // 1.0.13 stored UTF-8 lines decoded and other lines as Latin-1 bytes.
+      final stored = 'café\r${latin1.decode([0xda, 0xc4, 0xbf])}\r${latin1.decode([0xc0, 0xc4, 0xd9])}';
+      expect(decodeMailText(stored), 'café\r┌─┐\r└─┘');
+      final once = decodeMailText(wire('Grüße ✓\rcaf\u00e9\r') + latin1.decode([0xda, 0xc4, 0xc4, 0xbf, 0xb3, 0xb3]));
       expect(decodeMailText(once), once);
     });
   });
