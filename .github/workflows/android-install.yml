@@ -21,10 +21,7 @@ jobs:
   install:
     name: Install and launch on API ${{ matrix.api }}
     runs-on: ubuntu-latest
-    # Android 7's x86_64 emulator image often boots too slowly on hosted runners.
-    # It still runs and reports, but a stuck boot there doesn't fail the release.
-    timeout-minutes: ${{ matrix.api == 24 && 25 || 40 }}
-    continue-on-error: ${{ matrix.api == 24 }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +65,14 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@v2
+      # Android 7's x86_64 emulator image often boots too slowly on hosted runners.
+      # It still runs and reports, but a stuck boot there doesn't fail the release.
+      # The limit is on the step, not the job: a job that runs out of time shows
+      # the whole run as cancelled.
+      - id: emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: ${{ matrix.api == 24 && 25 || 35 }}
+        continue-on-error: ${{ matrix.api == 24 }}
         with:
           api-level: ${{ matrix.api }}
           target: ${{ matrix.target }}
@@ -76,6 +80,9 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: bash .github/scripts/android-install-test.sh out "$APK" "$SPLIT_APK" "$PREV_APK"
+      - name: Say so when Android 7 didn't finish
+        if: steps.emulator.outcome == 'failure'
+        run: echo "::warning::Android 7 install check did not finish (usually a slow emulator boot); not counted against the release"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
