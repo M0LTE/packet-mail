@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mail_core/mail_core.dart';
 
 import '../connections.dart';
+import '../demo.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
@@ -19,6 +20,10 @@ class ConnectionsScreen extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final connections = ref.watch(connectionsProvider);
     final addresses = ref.watch(addressesProvider).value ?? const {};
+    final list = connections.value;
+    final demoOffer = list != null && !list.any((c) => isDemoConnection(c, addresses[c.id] ?? const []))
+        ? const AddDemoOffer()
+        : null;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Connections'),
@@ -31,15 +36,21 @@ class ConnectionsScreen extends ConsumerWidget {
         ],
       ),
       body: switch (connections) {
-        AsyncData(value: final list) when list.isEmpty => Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text('No connections yet. Add one to reach your BBS.', style: text.titleMedium),
+        AsyncData(value: final list) when list.isEmpty => ListView(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('No connections yet. Add one to reach your BBS.', style: text.titleMedium),
+              ),
+              ?demoOffer,
+            ],
           ),
         AsyncData(value: final list) => ListView.separated(
-            itemCount: list.length + 1,
-            separatorBuilder: (_, i) => i == 0 ? const SizedBox.shrink() : const Divider(indent: 24),
+            itemCount: list.length + 2,
+            separatorBuilder: (_, i) => i == 0 || i == list.length ? const SizedBox.shrink() : const Divider(indent: 24),
             itemBuilder: (context, i) {
               if (i == 0) return const MergeOffer();
+              if (i == list.length + 1) return demoOffer ?? const SizedBox.shrink();
               final c = list[i - 1];
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
@@ -64,6 +75,54 @@ class ConnectionsScreen extends ConsumerWidget {
 
   void _open(BuildContext context, Connection? c) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ConnectionEditScreen(connection: c)));
+}
+
+/// Offers the demo BBS, for trying the app or showing someone, when it
+/// isn't one of the connections.
+class AddDemoOffer extends ConsumerStatefulWidget {
+  const AddDemoOffer({super.key});
+
+  @override
+  ConsumerState<AddDemoOffer> createState() => _AddDemoOfferState();
+}
+
+class _AddDemoOfferState extends ConsumerState<AddDemoOffer> {
+  var _adding = false;
+
+  Future<void> _add() async {
+    setState(() => _adding = true);
+    try {
+      final (id, _) = await addDemoConnection(ref.read(storeProvider), ref.read(passwordsProvider));
+      ref.read(syncingProvider.notifier).sync(id).ignore();
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not add it. Try again.')));
+      }
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton(
+            key: const ValueKey('add-demo'),
+            onPressed: _adding ? null : _add,
+            child: const Text('Add the demo BBS'),
+          ),
+          const SizedBox(height: 8),
+          Text('Our demo BBS with sample mail. No licence needed.',
+              textAlign: TextAlign.center, style: text.bodySmall),
+        ],
+      ),
+    );
+  }
 }
 
 /// "192.168.1.87:8011", or "192.168.1.87:8011 and 1 more".

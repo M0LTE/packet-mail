@@ -67,10 +67,10 @@ class SyncController extends Notifier<Set<int>> {
     await Future.wait(ids.map(sync));
   }
 
-  Future<void> sync(int connectionId) async {
+  Future<SyncResult> sync(int connectionId) async {
     state = {...state, connectionId};
     try {
-      await ref.read(syncEngineProvider).sync(connectionId);
+      return await ref.read(syncEngineProvider).sync(connectionId);
     } finally {
       if (ref.mounted) state = {...state}..remove(connectionId);
     }

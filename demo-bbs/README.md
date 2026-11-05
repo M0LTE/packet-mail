@@ -69,12 +69,17 @@ For local tests, `./run.sh` builds the image and starts it on `127.0.0.1:18111`.
 
 ## App Review notes
 
-Replace `HOST` with the public host name once it is hosted.
+Replace `HOST` with packet-mail-app.m0lte.compute.oarc.uk.
 
 ```
 Packet Mail needs a packet radio BBS. We run a demo BBS on the internet
 for review. All its stations, names and mail are made up, and nothing
 you send is seen by anyone else.
+
+On the first screen, tap Try the demo. It signs in to our demo BBS
+with sample mail; no account or licence needed.
+
+To set it up by hand instead:
 
 1. First screen, your station:
    Callsign: Q0YOU

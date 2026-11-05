@@ -29,7 +29,7 @@ Mail, bulletins, contacts, callsigns and passwords stay on the phone or go only 
 - **Category:** Utilities; secondary Productivity.
 - **Sign-in required for review:** Yes. Provide the demo BBS details (#35): server, port, user, password, and these notes:
 
-  > Packet Mail is a mail client for amateur (ham) radio packet BBSes. It needs a BBS to connect to, so we run a demo BBS for review. On first launch enter the callsign Q0YOU, any name, and the home BBS Q0DEMO.#42.GBR.EURO, then add a connection with the details above (BBS type LinBPQ, FBB port, login name demo, password demo). The demo BBS has sample mail and bulletins and a robot user, Q0BOT, that replies to any personal message you send it. Your copy of the demo mail is private to you, kept for 30 minutes after you last connect, then reset.
+  > Packet Mail is a mail client for amateur (ham) radio packet BBSes. It needs a BBS to connect to, so we run a demo BBS for review. On the first screen, tap Try the demo. It signs in to our demo BBS with sample mail; no account or licence needed. To set it up by hand instead, enter the callsign Q0YOU, any name, and the home BBS Q0DEMO.#42.GBR.EURO, tap Next, then add a connection with the details above (BBS type LinBPQ, FBB port, login name demo, password demo). The demo BBS has sample mail and bulletins and a robot user, Q0BOT, that replies to any personal message you send it. Your copy of the demo mail is private to you, kept for 30 minutes after you last connect, then reset.
 
   The full notes text is in `demo-bbs/README.md`.
 

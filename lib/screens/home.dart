@@ -130,84 +130,90 @@ class SettingsTab extends ConsumerWidget {
     final identity = ref.watch(identityProvider).value;
     final connections = ref.watch(connectionsProvider).value ?? [];
     final blocked = ref.watch(blockedStationsProvider).value ?? const [];
-    return SafeArea(
-      child: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-            child: Text('Settings', style: text.displaySmall),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
-            child: Text('YOUR STATION', style: Logbook.sectionLabel),
-          ),
-          if (identity != null)
+    // Its own Material, so the tiles' ink still shows while a screen pushed
+    // from here animates away over it.
+    return Material(
+      type: MaterialType.transparency,
+      child: SafeArea(
+        child: ListView(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Text('Settings', style: text.displaySmall),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+              child: Text('YOUR STATION', style: Logbook.sectionLabel),
+            ),
+            if (identity != null)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                title: Text('${identity.callsign}, ${identity.name}', style: text.titleMedium?.calls),
+                subtitle: Text('@${identity.homeBbs}', style: text.labelMedium?.calls),
+                trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
+                onTap: () =>
+                    Navigator.of(context)
+                        .push(MaterialPageRoute<void>(builder: (_) => IdentityScreen(identity: identity))),
+              ),
+            const Divider(indent: 24),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+              child: Text('MAIL', style: Logbook.sectionLabel),
+            ),
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-              title: Text('${identity.callsign}, ${identity.name}', style: text.titleMedium?.calls),
-              subtitle: Text('@${identity.homeBbs}', style: text.labelMedium?.calls),
+              title: Text('Connections', style: text.titleMedium),
+              subtitle: Text(switch (connections.length) {
+                0 => 'None yet',
+                1 => connections.single.name,
+                final n => '$n connections',
+              }, style: text.labelMedium),
               trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
               onTap: () =>
-                  Navigator.of(context)
-                      .push(MaterialPageRoute<void>(builder: (_) => IdentityScreen(identity: identity))),
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen())),
             ),
-          const Divider(indent: 24),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
-            child: Text('MAIL', style: Logbook.sectionLabel),
-          ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-            title: Text('Connections', style: text.titleMedium),
-            subtitle: Text(switch (connections.length) {
-              0 => 'None yet',
-              1 => connections.single.name,
-              final n => '$n connections',
-            }, style: text.labelMedium),
-            trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectionsScreen())),
-          ),
-          ListTile(
-            key: const ValueKey('blocked-stations'),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-            title: Text('Blocked stations', style: text.titleMedium),
-            subtitle: Text(switch (blocked.length) {
-              0 => 'None',
-              1 => blocked.single.callsign,
-              final n => '$n stations',
-            }, style: text.labelMedium),
-            trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
-            onTap: () =>
-                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BlockedStationsScreen())),
-          ),
-          SwitchListTile(
-            key: const ValueKey('compact-lists'),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-            activeThumbColor: Logbook.stampRed,
-            title: Text('Compact lists', style: text.titleMedium),
-            subtitle: Text('One line per message, so more fit on screen', style: text.labelMedium),
-            value: ref.watch(compactListsProvider),
-            onChanged: (on) => ref.read(compactListsProvider.notifier).set(on),
-          ),
-          const Divider(indent: 24),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
-            child: Text('HELP', style: Logbook.sectionLabel),
-          ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-            title: Text('Report a problem', style: text.titleMedium),
-            subtitle: Text('Send a note and recent BBS traffic', style: text.labelMedium),
-            trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ReportScreen())),
-          ),
-          const Divider(indent: 24),
-          if (ref.watch(appDetailsProvider).value case final app?)
+            ListTile(
+              key: const ValueKey('blocked-stations'),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+              title: Text('Blocked stations', style: text.titleMedium),
+              subtitle: Text(switch (blocked.length) {
+                0 => 'None',
+                1 => blocked.single.callsign,
+                final n => '$n stations',
+              }, style: text.labelMedium),
+              trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
+              onTap: () =>
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BlockedStationsScreen())),
+            ),
+            SwitchListTile(
+              key: const ValueKey('compact-lists'),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+              activeThumbColor: Logbook.stampRed,
+              title: Text('Compact lists', style: text.titleMedium),
+              subtitle: Text('One line per message, so more fit on screen', style: text.labelMedium),
+              value: ref.watch(compactListsProvider),
+              onChanged: (on) => ref.read(compactListsProvider.notifier).set(on),
+            ),
+            const Divider(indent: 24),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              child: Text('Packet Mail ${app.version} (build ${app.build})', style: text.labelMedium),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+              child: Text('HELP', style: Logbook.sectionLabel),
             ),
-        ],
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+              title: Text('Report a problem', style: text.titleMedium),
+              subtitle: Text('Send a note and recent BBS traffic', style: text.labelMedium),
+              trailing: const Icon(Icons.chevron_right, color: Logbook.inkFaint),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ReportScreen())),
+            ),
+            const Divider(indent: 24),
+            if (ref.watch(appDetailsProvider).value case final app?)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Text('Packet Mail ${app.version} (build ${app.build})', style: text.labelMedium),
+              ),
+          ],
+        ),
       ),
     );
   }

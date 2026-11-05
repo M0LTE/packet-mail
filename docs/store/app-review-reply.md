@@ -1,4 +1,20 @@
-# Reply to App Review (Guideline 2.1, information needed)
+# Replies to App Review
+
+## Guideline 2.1(a): couldn't get past first run (2026-11-05)
+
+App Review didn't know what to enter on the first screen and won't accept a video. The app now has a demo mode. Paste this reply into App Store Connect, and put the same text in App Review Information, Notes:
+
+---
+
+Thank you. The app now has a demo mode.
+
+On the first screen, tap Try the demo. It signs in to our demo BBS with sample mail; no account or licence needed. The inbox then opens. You can read a message, and send a message to Q0BOT, which replies straight away; pull down on the inbox to fetch the reply.
+
+If you would rather set it up by hand, enter the callsign Q0YOU, any name, and the home BBS Q0DEMO.#42.GBR.EURO, then tap Next and add the connection: host packet-mail-app.m0lte.compute.oarc.uk, port 8011, BBS type LinBPQ, FBB port, login demo, password demo. Tap Save and finish.
+
+---
+
+## Guideline 2.1: information needed (first submission)
 
 Paste the reply below into App Store Connect, attach the screen recording, and put the same text in App Review Information, Notes.
 
@@ -20,8 +36,8 @@ Packet Mail is an email-style client for amateur (ham) radio packet BBSes. Packe
 
 The app needs a BBS to connect to, so we run a public demo BBS with sample content:
 
-1. Launch the app. Enter the callsign Q0YOU, any name, and the home BBS Q0DEMO.#42.GBR.EURO, and tap Continue.
-2. Add a connection: host packet-mail-app.m0lte.compute.oarc.uk, port 8011, BBS type LinBPQ, FBB port, login demo, password demo. Tap Test connection, then Save.
+1. Launch the app. On the first screen, tap Try the demo. It signs in to our demo BBS with sample mail; nothing to type.
+2. If you would rather set it up by hand: enter the callsign Q0YOU, any name, and the home BBS Q0DEMO.#42.GBR.EURO, and tap Next. Add the connection: host packet-mail-app.m0lte.compute.oarc.uk, port 8011, BBS type LinBPQ, FBB port, login demo, password demo. Tap Test connection, then Save and finish.
 3. The Mail tab syncs and shows the inbox. Open a message to read it; switch between Readable and As sent.
 4. Tap compose, send a message to Q0BOT; pull down to sync again and its automatic reply arrives.
 5. The Bulletins tab lists bulletins by category or date; open one, or subscribe to a category.
@@ -52,8 +68,8 @@ The app does not transmit on radio and needs no licence itself: it connects over
 On an iPhone with the latest iOS: Settings, Control Centre, add Screen Recording. Delete Packet Mail first so it starts fresh, install the build under review from TestFlight, then record:
 
 1. Start recording, then launch Packet Mail from the home screen.
-2. First run: callsign Q0YOU, a name, home BBS Q0DEMO.#42.GBR.EURO, Continue.
-3. Add connection with the demo details above; Test connection (show the success line); Save.
+2. First run: tap Try the demo.
+3. The inbox opens once the first sync is done.
 4. Inbox fills in. Open a message; toggle Readable / As sent; go back.
 5. Compose to Q0BOT, short subject and text, Send. Pull to refresh until the reply arrives; open it.
 6. Bulletins: show the list, open one, subscribe to a category.

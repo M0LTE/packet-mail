@@ -37,6 +37,9 @@ class TestApp {
   /// When set, connecting waits for it.
   Completer<void>? gate;
 
+  /// When set, Test connection waits for it.
+  Completer<void>? testGate;
+
   /// Fixed so list times are predictable.
   var now = DateTime(2026, 10, 28, 12);
 
@@ -64,6 +67,7 @@ class TestApp {
         }),
         connectionTesterProvider.overrideWithValue((draft, {required password, required name}) async {
           tested.add(draft);
+          await testGate?.future;
           return testResult;
         }),
         ...overrides,
