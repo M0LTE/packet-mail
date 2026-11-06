@@ -34,6 +34,12 @@ void main() {
       expect(decodeMailText(body), 'To  : BBS@WW\r\rll,\r\rThe public bulletins\r');
     });
 
+    test('drops a vertical tab an email gateway left in a quoted address', () {
+      // The shape of a gateway reply on GB7RDG (11616, 2025-10-29, private):
+      // the "@gb" of an address had become one vertical tab.
+      expect(decodeMailText('> To: M0LTE <m0lte\x0b7rdg.#44.gbr.euro>\r'), '> To: M0LTE <m0lte7rdg.#44.gbr.euro>\r');
+    });
+
     test('keeps tabs and the escape codes, BEL-ended strings too', () {
       const text = 'a\tb\x1b]0;title\x07\x1b[1mc\x1b[0m\r\n';
       expect(decodeMailText(text), text);
