@@ -198,6 +198,8 @@ final _onlySymbols = RegExp(
 );
 final _tle = RegExp(r'^[12] [A-Z0-9]{5}[A-Z ] ');
 final _number = RegExp(r'^[-+]?\$?\d[\d.,:/%-]*$');
+// A dash alone stands for an empty cell in a table of figures.
+final _emptyCell = RegExp(r'^-{1,2}$');
 final _listItem = RegExp(r'^\s*(?:[-*•]|\d{1,2}[.)]|[a-z][.)])\s+\S');
 
 _Kind _kind(String line) {
@@ -215,14 +217,33 @@ bool _looksLaidOut(String line) {
   if (_onlySymbols.hasMatch(line)) return true;
   if (_tle.hasMatch(line)) return true;
   if ('|'.allMatches(line).length >= 2) return true;
-  // Columns of figures: mostly numbers, several of them.
+  return _isFigures(line);
+}
+
+/// Columns of figures: mostly numbers, several of them. With [dashes], a
+/// dash alone counts as an empty cell; only next to another row of figures,
+/// since in running text it is more often a range ("22 - 30 March").
+bool _isFigures(String line, {bool dashes = false}) {
   final words = line.trim().split(RegExp(r'\s+'));
-  if (words.length >= 4 && words.where(_number.hasMatch).length * 3 >= words.length * 2) return true;
-  return false;
+  final figures = words.where((w) => _number.hasMatch(w) || (dashes && _emptyCell.hasMatch(w))).length;
+  return words.length >= 4 && figures * 3 >= words.length * 2;
 }
 
 List<BodyBlock> _blocks(List<String> lines) {
   final kinds = [for (final l in lines) _kind(l)];
+
+  // Rows with empty cells, next to a row of figures or another such row.
+  final figureRow = [for (final l in lines) _isFigures(l)];
+  for (var changed = true; changed;) {
+    changed = false;
+    for (var i = 0; i < lines.length; i++) {
+      if (kinds[i] != _Kind.text || !_isFigures(lines[i], dashes: true)) continue;
+      if ((i > 0 && figureRow[i - 1]) || (i + 1 < lines.length && figureRow[i + 1])) {
+        kinds[i] = _Kind.laidOut;
+        figureRow[i] = changed = true;
+      }
+    }
+  }
 
   // A single text line between laid-out lines (a table heading, or a
   // satellite's name between its keps) belongs to the layout.
@@ -234,6 +255,20 @@ List<BodyBlock> _blocks(List<String> lines) {
   // Likewise the line just before keps: the first satellite's name.
   for (var i = 0; i < lines.length - 1; i++) {
     if (kinds[i] == _Kind.text && _tle.hasMatch(lines[i + 1]) && lines[i].trim().length <= 24) {
+      kinds[i] = _Kind.laidOut;
+    }
+  }
+
+  // A line standing alone on top of a table is the table's heading. Not a
+  // sentence or the end of a paragraph, though, and no wider than a terminal.
+  for (var i = 0; i < lines.length - 2; i++) {
+    final line = lines[i].trim();
+    if (kinds[i] == _Kind.text &&
+        (i == 0 || kinds[i - 1] == _Kind.blank) &&
+        kinds[i + 1] == _Kind.laidOut &&
+        kinds[i + 2] == _Kind.laidOut &&
+        !RegExp(r'[.!?:,;]$').hasMatch(line) &&
+        line.length <= 80) {
       kinds[i] = _Kind.laidOut;
     }
   }

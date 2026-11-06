@@ -216,6 +216,54 @@ void main() {
       ]);
     });
 
+    test('an MCAST report from GM8BPQ is one table, empty cells and heading too', () {
+      // GB7RDG 4697, 2026-11-05.
+      const lines = [
+        'MCR1 0.32.0 IO68vl sc 0/0 14:RIG14 0 0',
+        '10 W4 3 3 +19.9 IU+PU 4 1.5/-1 0.59 0.24 271 p',
+        '11 - 0 - - IU+PU',
+        '12 - 0 - - IU+PU',
+        '13 - 0 -2 +19.4 IU+PU 1 - 0.49 0.63 - p',
+        '14 - 0 3 +19.3 IU+PU 2 1.3/-9 0.4 0.23 277 p',
+        '15 W3 1 4 +19.6 IU+PU 1 - 0.75 0.54 - p',
+        '16 W4 7 3 +19.1 IU+PU 2 - 0.47 1.03 - p',
+        'S M0LTE 7 5 11 0 3 274 0',
+      ];
+      expect(readableBlocks(lines.join('\r')), [const PreformattedBlock(lines)]);
+    });
+
+    test('a heading wider than its table still joins it', () {
+      // GB7RDG 4647, 2026-11-02: nothing heard, so only the last row is full.
+      const lines = [
+        'MCR1 0.29.1 IO92kx sc 0/0 7:AUD1,HOOK3,RIG3 0 0',
+        '09 - 0 - - IU+PU',
+        '10 - 0 - - IU+PU',
+        '11 - 0 - - IU+PU',
+        '12 - 0 - - IU+PU',
+        '13 - 0 - - IU+PU',
+        'S GB7RDG 5 0 0 0 - - 0',
+        'S GM8BPQ 7 3 0 0 -5 212 0',
+      ];
+      expect(readableBlocks(lines.join('\n')), [const PreformattedBlock(lines)]);
+    });
+
+    test('a date range in running text is not a row of figures', () {
+      // DX news on GB7RDG: the dashes are ranges, not empty cells.
+      const body = 'BUD, AA3B WILL BE ACTIVE AS V26K FROM ANTIGUA ISLAND, IOTA NA - 100,\n22 - 30 MARCH 2026.';
+      expect(readableBlocks(body), [ParagraphBlock(body.replaceFirst('\n', ' '))]);
+    });
+
+    test('a sentence or the end of a paragraph above a table stays text', () {
+      expect(readableBlocks('The figures for this week:\n142 8 3 2.5 1\n140 7 3 2.4 1'), [
+        const ParagraphBlock('The figures for this week:'),
+        const PreformattedBlock(['142 8 3 2.5 1', '140 7 3 2.4 1']),
+      ]);
+      expect(readableBlocks('Thanks to all\nwho sent these in\n142 8 3 2.5 1\n140 7 3 2.4 1'), [
+        const ParagraphBlock('Thanks to all\nwho sent these in'),
+        const PreformattedBlock(['142 8 3 2.5 1', '140 7 3 2.4 1']),
+      ]);
+    });
+
     test('handles CRLF and an empty body', () {
       expect(readableBlocks('one\r\ntwo'), const [ParagraphBlock('one\ntwo')]);
       expect(readableBlocks(''), isEmpty);
