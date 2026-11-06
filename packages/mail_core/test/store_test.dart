@@ -203,4 +203,30 @@ void main() {
     final m = await after.select(after.messages).getSingle();
     expect([m.subject, m.body], ['Re: café', 'New things!\n> R:261028/1159Z 4499@GB7RDG.#42.GBR.EURO\n┌─┐\n│ │\n└─┘']);
   });
+
+  test('a version 9 database has stray control characters dropped from its stored mail, and nothing else changed', () async {
+    final file = File('${Directory.systemTemp.createTempSync('store').path}/mail.db');
+    final before = MailStore(NativeDatabase(file));
+    final c = await before.into(before.connections).insert(
+        ConnectionsCompanion.insert(name: 'GB7RDG', bbsType: 'bpq', portKind: 'fbb', loginName: 'tf'));
+    await before.into(before.messages).insert(MessagesCompanion.insert(
+          connectionId: c,
+          bbsNumber: 4693,
+          type: 'bulletin',
+          fromCall: 'F6BVP',
+          toCall: 'BBS',
+          subject: 'F6BVP-1 bulletins on the web',
+          date: DateTime.utc(2026, 11, 4, 14, 29),
+          lastListedAt: DateTime.utc(2026, 11, 4, 14, 29),
+          // Already decoded: "Ã©" here is what the sender wrote, not UTF-8 to read again.
+          body: const Value('To  : BBS@WW\n\n\x00\x00\x00ll,\n\tcaf\u00c3\u00a9 \x1b[1m73\x1b[0m'),
+        ));
+    await before.customStatement('PRAGMA user_version = 9');
+    await before.close();
+
+    final after = MailStore(NativeDatabase(file));
+    addTearDown(after.close);
+    final m = await after.select(after.messages).getSingle();
+    expect(m.body, 'To  : BBS@WW\n\nll,\n\tcaf\u00c3\u00a9 \x1b[1m73\x1b[0m');
+  });
 }

@@ -17,7 +17,10 @@ final _line = RegExp(r'[^\r\n]+');
 /// letters) and no box drawing in the page's reading, keeps Windows-1252.
 /// So Latin-1 text an earlier version decoded, such as a stored "café",
 /// survives another pass.
+///
+/// Stray control characters are dropped first (see [withoutStrayControls]).
 String decodeMailText(String text) {
+  text = withoutStrayControls(text);
   final lines = [for (final m in _line.allMatches(text)) m[0]!];
   final raw = [for (final l in lines) _undecoded(l)];
   if (raw.every((r) => r == null)) return _withUtf8Lines(text);
@@ -45,6 +48,15 @@ String decodeMailText(String text) {
     return _decode(r, page);
   });
 }
+
+final _stray = RegExp('[\x00-\x06\x08\x0B\x0C\x0E-\x1A\x1C-\x1F\x7F]');
+
+/// [text] without the control characters that mean nothing in mail and stop
+/// the phone drawing the rest of it: a NUL cut F6BVP's bulletin short after
+/// its first lines (GB7RDG 4693, 2026-11-04). Tab, the line ends and the
+/// escape codes' ESC and BEL stay. Bytes 0x80 to 0x9F are characters in the
+/// code pages, so they stay too.
+String withoutStrayControls(String text) => text.contains(_stray) ? text.replaceAll(_stray, '') : text;
 
 String _withUtf8Lines(String text) => text.replaceAllMapped(_line, (m) => _asUtf8(m[0]!));
 

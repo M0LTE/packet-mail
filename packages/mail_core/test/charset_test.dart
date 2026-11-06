@@ -27,6 +27,23 @@ void main() {
       expect(decodeMailText('a\r\n\x1b[1mb\n\n'), 'a\r\n\x1b[1mb\n\n');
     });
 
+    test('drops stray control characters, which stopped the phone drawing the rest', () {
+      // F6BVP's "F6BVP-1 bulletins on the web", GB7RDG 4693, 2026-11-04:
+      // seven NULs in place of the start of its greeting.
+      final body = 'To  : BBS@WW\r\r${'\x00' * 7}ll,\r\rThe public bulletins\x7f\x0c\r';
+      expect(decodeMailText(body), 'To  : BBS@WW\r\rll,\r\rThe public bulletins\r');
+    });
+
+    test('keeps tabs and the escape codes, BEL-ended strings too', () {
+      const text = 'a\tb\x1b]0;title\x07\x1b[1mc\x1b[0m\r\n';
+      expect(decodeMailText(text), text);
+    });
+
+    test('drops stray controls in code-page mail without changing the page it reads as', () {
+      final art = latin1.decode([0x00, 0xda, 0xc4, 0xbf, 0x01, ...'\r'.codeUnits, 0xc0, 0xc4, 0xd9]);
+      expect(decodeMailText(art), '┌─┐\r└─┘');
+    });
+
     test('reads DOS box drawing as code page 437', () {
       // G8MNY's "Digital ATV experience" bulletin, GB7RDG 4679, 2026-11-04.
       final art = latin1.decode([

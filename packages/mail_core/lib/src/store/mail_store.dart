@@ -11,7 +11,7 @@ class MailStore extends _$MailStore {
   MailStore(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -35,6 +35,7 @@ class MailStore extends _$MailStore {
           if (from >= 6 && from < 7) await m.addColumn(connections, connections.bbsCall);
           // Again at 9, when the older code pages joined in.
           if (from < 9) await _decodeStoredText();
+          if (from >= 9 && from < 10) await _dropStrayControls();
         },
         beforeOpen: (details) async => customStatement('PRAGMA foreign_keys = ON'),
       );
@@ -52,6 +53,22 @@ class MailStore extends _$MailStore {
         final body = row.readNullable<String>('body');
         final newSubject = decodeMailText(subject);
         final newBody = body == null ? null : decodeMailText(body);
+        if (newSubject == subject && newBody == body) continue;
+        await customStatement(
+            'UPDATE $table SET subject = ?, body = ? WHERE id = ?', [newSubject, newBody, row.read<int>('id')]);
+      }
+    }
+  }
+
+  /// Mail stored before stray control characters were dropped on reading.
+  /// Only those go; the text was decoded already.
+  Future<void> _dropStrayControls() async {
+    for (final table in ['messages', 'sent_listings']) {
+      for (final row in await customSelect('SELECT id, subject, body FROM $table').get()) {
+        final subject = row.read<String>('subject');
+        final body = row.readNullable<String>('body');
+        final newSubject = withoutStrayControls(subject);
+        final newBody = body == null ? null : withoutStrayControls(body);
         if (newSubject == subject && newBody == body) continue;
         await customStatement(
             'UPDATE $table SET subject = ?, body = ? WHERE id = ?', [newSubject, newBody, row.read<int>('id')]);
