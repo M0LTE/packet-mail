@@ -112,3 +112,18 @@ bool hasTime(DateTime stored) {
 
 /// [when] marked as carrying a time of day, even at midnight UTC.
 DateTime withTime(DateTime when) => hasTime(when) ? when : when.add(const Duration(milliseconds: 1));
+
+/// A day and month with no year, as BBS listings give them, in the most
+/// recent year that doesn't put it more than a day after [now], in UTC.
+///
+/// 29 February goes to the last leap year; DateTime would otherwise roll it
+/// over to 1 March in a year without one.
+DateTime recentDate(int month, int day, DateTime now, {int hour = 0, int minute = 0}) {
+  DateTime inYear(int year) => DateTime.utc(year, month, day, hour, minute);
+  var year = now.year;
+  if (inYear(year).isAfter(now.add(const Duration(days: 1)))) year--;
+  while (month == 2 && day == 29 && inYear(year).month != 2) {
+    year--;
+  }
+  return inYear(year);
+}
