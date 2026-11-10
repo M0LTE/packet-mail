@@ -88,7 +88,11 @@ code, .mono { font-family: var(--mono); font-size: 0.9em; }
   background: var(--paper);
 }
 
-.buttons { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1.5rem 0 0.5rem; }
+.buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 1.5rem 0 0.5rem; }
+/* Apple's badge, unaltered; Apple asks for at least 40 px tall on screen. */
+.store-badge { display: inline-block; line-height: 0; border-radius: 9px; }
+.store-badge img { height: 52px; width: auto; display: block; }
+.store-badge:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
 .button {
   display: inline-flex; flex-direction: column; justify-content: center;
   min-height: 3rem; padding: 0.45rem 1.1rem;
@@ -97,6 +101,7 @@ code, .mono { font-family: var(--mono); font-size: 0.9em; }
 }
 .button small { font-weight: 500; font-size: 0.75rem; color: var(--ink-soft); }
 .button.primary { background: var(--red); color: #fff; }
+.button.primary small { color: rgba(255, 255, 255, 0.88); }
 .button.primary:hover { background: var(--red-dark); color: #fff; }
 .button.soon { border-style: dashed; border-color: var(--ink-soft); color: var(--ink); }
 
