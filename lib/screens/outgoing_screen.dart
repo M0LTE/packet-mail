@@ -10,6 +10,7 @@ import '../sync.dart';
 import '../theme.dart';
 import 'held_screen.dart';
 import 'message_screen.dart';
+import 'layout.dart';
 
 /// Something we wrote: each recipient's state, then the text as sent. A
 /// message nothing has been tried for yet can be cancelled.
@@ -40,12 +41,17 @@ class OutgoingScreen extends ConsumerWidget {
         centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 40,
-        title: TextButton.icon(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.chevron_left, size: 20),
-          label: Text(from),
-          style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
-        ),
+        title: showsBackLink(context)
+            ? TextButton.icon(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.chevron_left, size: 20),
+                label: Text(from),
+                style: TextButton.styleFrom(
+                  textStyle: text.bodyMedium,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+              )
+            : null,
       ),
       body: item == null
           ? Padding(
@@ -199,12 +205,17 @@ class _SentListingScreenState extends ConsumerState<SentListingScreen> {
         centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 40,
-        title: TextButton.icon(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.chevron_left, size: 20),
-          label: Text(widget.from),
-          style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
-        ),
+        title: showsBackLink(context)
+            ? TextButton.icon(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.chevron_left, size: 20),
+                label: Text(widget.from),
+                style: TextButton.styleFrom(
+                  textStyle: text.bodyMedium,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+              )
+            : null,
       ),
       body: l == null
           ? Padding(

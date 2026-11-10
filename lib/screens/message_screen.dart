@@ -21,6 +21,7 @@ import 'compose_screen.dart';
 import 'contact_screen.dart';
 import 'mail_widgets.dart';
 import 'side_scroll.dart';
+import 'layout.dart';
 
 /// Opens a message for reading, downloading it first if the app hasn't got it.
 class MessageScreen extends ConsumerStatefulWidget {
@@ -122,8 +123,10 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   /// Opens a report to the sysop of the BBS that holds [m]; once it is
   /// sent, offers to block the sender too.
   Future<void> _report(Message m) async {
-    final sent = await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: ComposeDraft.report(m, bbs: _bbsName()))),
+    final sent = await openSheet<bool>(
+      context,
+      (_) => ComposeScreen(draft: ComposeDraft.report(m, bbs: _bbsName())),
+      rootNavigator: true,
     );
     if (sent != true || !mounted) return;
     final call = bareCall(m.fromCall);
@@ -143,12 +146,17 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
         centerTitle: false,
         titleSpacing: 8,
         toolbarHeight: 40,
-        title: TextButton.icon(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.chevron_left, size: 20),
-          label: Text(widget.from),
-          style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
-        ),
+        title: showsBackLink(context)
+            ? TextButton.icon(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.chevron_left, size: 20),
+                label: Text(widget.from),
+                style: TextButton.styleFrom(
+                  textStyle: text.bodyMedium,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+              )
+            : null,
         actions: [if (m != null) _more(m)],
       ),
       body: switch (message) {
@@ -543,10 +551,8 @@ class _Actions extends ConsumerWidget {
   final Message message;
   final VoidCallback onDelete;
 
-  void _compose(BuildContext context, ComposeDraft draft) => Navigator.of(
-    context,
-    rootNavigator: true,
-  ).push(MaterialPageRoute<bool>(builder: (_) => ComposeScreen(draft: draft)));
+  void _compose(BuildContext context, ComposeDraft draft) =>
+      openSheet<bool>(context, (_) => ComposeScreen(draft: draft), rootNavigator: true);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -625,10 +631,11 @@ class _AddressSheet extends ConsumerWidget {
     final shown = target?.address ?? address.text;
     final call = target?.call;
     final contact = (ref.watch(contactsProvider).value ?? const []).where((c) => c.callsign == call).firstOrNull;
-    final nav = Navigator.of(context, rootNavigator: true);
-    void then(Route<void> route) {
+    // The sheet closes first, so open the next screen from below it.
+    final below = Navigator.of(context, rootNavigator: true).context;
+    void then<T>(WidgetBuilder builder) {
       Navigator.of(context).pop();
-      nav.push(route);
+      openSheet<T>(below, builder, rootNavigator: true);
     }
 
     return SafeArea(
@@ -645,22 +652,16 @@ class _AddressSheet extends ConsumerWidget {
               key: const ValueKey('address-write'),
               leading: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
               title: Text('Write to $call'),
-              onTap: () => then(
-                MaterialPageRoute<bool>(
-                  builder: (_) => ComposeScreen(draft: ComposeDraft(to: target.address)),
-                ),
-              ),
+              onTap: () => then<bool>((_) => ComposeScreen(draft: ComposeDraft(to: target.address))),
             ),
             ListTile(
               key: const ValueKey('address-contact'),
               leading: Icon(contact == null ? Icons.person_add_alt : Icons.person_outline, color: Logbook.stampRed),
               title: Text(contact == null ? 'Add to contacts' : 'Open contact'),
-              onTap: () => then(
-                MaterialPageRoute<void>(
-                  builder: (_) => contact != null
-                      ? ContactScreen(contact: contact)
-                      : ContactScreen(callsign: call, homeBbs: target.at),
-                ),
+              onTap: () => then<void>(
+                (_) => contact != null
+                    ? ContactScreen(contact: contact)
+                    : ContactScreen(callsign: call, homeBbs: target.at),
               ),
             ),
           ],

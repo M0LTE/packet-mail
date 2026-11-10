@@ -16,6 +16,16 @@ enum Mailbox {
   final String label;
 }
 
+/// The mailbox on show in Mail, shared by its own switcher and the sidebar.
+final mailboxProvider = NotifierProvider<MailboxChoice, Mailbox>(MailboxChoice.new);
+
+class MailboxChoice extends Notifier<Mailbox> {
+  @override
+  Mailbox build() => Mailbox.inbox;
+
+  void set(Mailbox box) => state = box;
+}
+
 /// Personal mail (traffic shows as personal), newest first, without
 /// messages deleted here and waiting to be killed, or from blocked stations.
 final inboxProvider = StreamProvider<List<Message>>((ref) async* {

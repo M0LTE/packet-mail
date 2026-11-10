@@ -12,6 +12,7 @@ import '../view_choice.dart';
 import 'compose_screen.dart';
 import 'mail_widgets.dart';
 import 'held_screen.dart';
+import 'layout.dart';
 import 'message_screen.dart';
 import 'outgoing_screen.dart';
 
@@ -24,13 +25,15 @@ class MailTab extends ConsumerStatefulWidget {
 }
 
 class _MailTabState extends ConsumerState<MailTab> {
-  var _box = Mailbox.inbox;
+  /// Watched in build; read here so callbacks can use it too.
+  Mailbox get _box => ref.read(mailboxProvider);
 
   /// Swiped away but not yet gone from the store's stream.
   final _hidden = <int>{};
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(mailboxProvider);
     final text = Theme.of(context).textTheme;
     final identity = ref.watch(identityProvider).value;
     final connections = ref.watch(connectionsProvider).value ?? const [];
@@ -50,9 +53,7 @@ class _MailTabState extends ConsumerState<MailTab> {
                   key: const ValueKey('compose'),
                   tooltip: 'New message',
                   icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
-                  onPressed: () => Navigator.of(context, rootNavigator: true).push(
-                    MaterialPageRoute<bool>(builder: (_) => const ComposeScreen()),
-                  ),
+                  onPressed: () => openSheet<bool>(context, (_) => const ComposeScreen(), rootNavigator: true),
                 ),
               ],
             ),
@@ -65,7 +66,11 @@ class _MailTabState extends ConsumerState<MailTab> {
                 style: text.bodySmall?.copyWith(letterSpacing: 0.3).calls,
               ),
             ),
-          _MailboxSwitcher(selected: _box, onSelected: (b) => setState(() => _box = b)),
+          // On a wide window the sidebar lists the mailboxes.
+          if (isWide(context))
+            const SizedBox(height: 10)
+          else
+            _MailboxSwitcher(selected: _box, onSelected: ref.read(mailboxProvider.notifier).set),
           Expanded(
             child: RefreshIndicator(
               color: Logbook.stampRed,
@@ -136,7 +141,10 @@ class _MailTabState extends ConsumerState<MailTab> {
         return true;
       },
       onDismissed: (_) => _delete(m),
-      child: MessageRow(message: m, onTap: () => _open(m)),
+      child: PaneHighlight(
+        detail: ('message', m.id),
+        child: MessageRow(message: m, onTap: () => _open(m)),
+      ),
     );
   }
 
@@ -160,11 +168,10 @@ class _MailTabState extends ConsumerState<MailTab> {
     await setPendingKill(store, m.id, true);
   }
 
-  void _open(Message m) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => MessageScreen(messageId: m.id, from: _box.label),
-    ),
-  );
+  void _open(Message m) {
+    final from = _box.label;
+    openDetail(context, key: ('message', m.id), builder: (_) => MessageScreen(messageId: m.id, from: from));
+  }
 
   Widget _outgoing(AsyncValue<List<OutgoingItem>> value, {required bool sent}) {
     final list = value.value;
@@ -173,16 +180,22 @@ class _MailTabState extends ConsumerState<MailTab> {
     return _scrollable([
       if (sent) HeldMailTip(connectionIds: {for (final i in list) i.message.connectionId}),
       for (final item in list)
-        OutgoingRow(
-          item: item,
-          sent: sent,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => switch (heldRecipient(item)) {
-                final held? => HeldScreen(recipient: held, connectionId: item.message.connectionId, from: _box.label),
-                null => OutgoingScreen(outgoingId: item.message.id, from: _box.label),
-              },
-            ),
+        PaneHighlight(
+          detail: ('outgoing', item.message.id),
+          child: OutgoingRow(
+            item: item,
+            sent: sent,
+            onTap: () {
+              final from = _box.label;
+              openDetail(
+                context,
+                key: ('outgoing', item.message.id),
+                builder: (_) => switch (heldRecipient(item)) {
+                  final held? => HeldScreen(recipient: held, connectionId: item.message.connectionId, from: from),
+                  null => OutgoingScreen(outgoingId: item.message.id, from: from),
+                },
+              );
+            },
           ),
         ),
     ]);
@@ -208,20 +221,30 @@ class _MailTabState extends ConsumerState<MailTab> {
         ),
       for (final e in entries)
         switch (e) {
-          PhoneSent(:final item, :final listings) => OutgoingRow(
-            item: item,
-            sent: true,
-            listings: listings,
-            homeBbs: home,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => OutgoingScreen(outgoingId: item.message.id, from: _box.label)),
+          PhoneSent(:final item, :final listings) => PaneHighlight(
+            detail: ('outgoing', item.message.id),
+            child: OutgoingRow(
+              item: item,
+              sent: true,
+              listings: listings,
+              homeBbs: home,
+              onTap: () => openDetail(
+                context,
+                key: ('outgoing', item.message.id),
+                builder: (_) => OutgoingScreen(outgoingId: item.message.id, from: Mailbox.sent.label),
+              ),
             ),
           ),
-          BbsSent(:final listing) => SentListingRow(
-            listing: listing,
-            homeBbs: home,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => SentListingScreen(sentId: listing.id, from: _box.label)),
+          BbsSent(:final listing) => PaneHighlight(
+            detail: ('sent-listing', listing.id),
+            child: SentListingRow(
+              listing: listing,
+              homeBbs: home,
+              onTap: () => openDetail(
+                context,
+                key: ('sent-listing', listing.id),
+                builder: (_) => SentListingScreen(sentId: listing.id, from: Mailbox.sent.label),
+              ),
             ),
           ),
         },
@@ -236,6 +259,14 @@ class _MailTabState extends ConsumerState<MailTab> {
   );
 }
 
+/// Unread mail in each mailbox, and what is waiting to go.
+Map<Mailbox, int> mailboxCounts(WidgetRef ref) => {
+  Mailbox.inbox: ref.watch(inboxProvider).value?.where((m) => !m.read).length ?? 0,
+  Mailbox.outbox: ref.watch(outboxProvider).value?.length ?? 0,
+  Mailbox.sent: 0,
+  Mailbox.starred: ref.watch(starredProvider).value?.where((m) => !m.read).length ?? 0,
+};
+
 class _MailboxSwitcher extends ConsumerWidget {
   const _MailboxSwitcher({required this.selected, required this.onSelected});
 
@@ -244,12 +275,7 @@ class _MailboxSwitcher extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final counts = {
-      Mailbox.inbox: ref.watch(inboxProvider).value?.where((m) => !m.read).length ?? 0,
-      Mailbox.outbox: ref.watch(outboxProvider).value?.length ?? 0,
-      Mailbox.sent: 0,
-      Mailbox.starred: ref.watch(starredProvider).value?.where((m) => !m.read).length ?? 0,
-    };
+    final counts = mailboxCounts(ref);
     final text = Theme.of(context).textTheme;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

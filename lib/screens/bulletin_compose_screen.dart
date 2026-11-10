@@ -9,14 +9,15 @@ import '../sync.dart';
 import '../theme.dart';
 import 'compose_screen.dart';
 import 'mail_widgets.dart';
+import 'layout.dart';
 
 /// Opens bulletin compose, with the category and area filled in if given.
 Future<void> openBulletinCompose(BuildContext context, {String? category, String? area}) =>
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => BulletinComposeScreen(category: category, area: area),
-      ),
+    openSheet<void>(
+      context,
+      (_) => BulletinComposeScreen(category: category, area: area),
+      rootNavigator: true,
+      fullscreenDialog: true,
     );
 
 /// Writes a bulletin: a category at an area, a subject and the text.

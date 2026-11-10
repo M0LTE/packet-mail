@@ -12,17 +12,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:packetmail/screens/home.dart';
+import 'package:packetmail/screens/layout.dart';
 import 'package:packetmail/theme.dart';
 
 import '../helpers.dart';
 
 final _wanted = Platform.environment.containsKey('SCREENSHOTS');
 
-/// Output folder name, logical size at a device pixel ratio of 3.
-const _sizes = <String, Size>{
-  '1320x2868': Size(440, 956),
-  '1242x2688': Size(414, 896),
-  '1080x1920': Size(360, 640),
+/// Output folder name, then logical size and device pixel ratio.
+const _sizes = <String, (Size, double)>{
+  '1320x2868': (Size(440, 956), 3),
+  '1242x2688': (Size(414, 896), 3),
+  '1080x1920': (Size(360, 640), 3),
+  // iPad 13-inch, upright.
+  '2064x2752': (Size(1032, 1376), 2),
+  // Google Play 7-inch and 10-inch tablets, on their side.
+  '1920x1200': (Size(960, 600), 2),
+  '2560x1600': (Size(1280, 800), 2),
 };
 
 Future<void> _loadFont(String family, List<String> files) async {
@@ -56,6 +62,16 @@ const _readBody =
     '\n'
     '73, Alice Q0ABC';
 
+const _galesBody =
+    'Gales are expected along the south west coast from 18:00 tonight,\n'
+    'with gusts of 60 mph on exposed hills.\n'
+    '\n'
+    'Please check your masts and guy lines before dark, and lower any\n'
+    'telescopic masts. The Q0BBS node will stay on its battery if the\n'
+    'mains fails.\n'
+    '\n'
+    '73, Alice Q0ABC';
+
 const _netBody = 'Hi all, the Saturday net moves to the new node this week.';
 
 Future<void> _settle(TestApp app, WidgetTester tester) async {
@@ -70,10 +86,10 @@ void main() {
     if (_wanted) await _loadFonts();
   });
 
-  Future<TestApp> station(WidgetTester tester, Size size) async {
+  Future<TestApp> station(WidgetTester tester, Size size, double ratio) async {
     tester.view
-      ..physicalSize = size * 3
-      ..devicePixelRatio = 3;
+      ..physicalSize = size * ratio
+      ..devicePixelRatio = ratio;
     addTearDown(tester.view.reset);
     final app = TestApp()..now = DateTime(2026, 10, 28, 10, 30);
     final store = app.store;
@@ -138,7 +154,15 @@ void main() {
       await personal(4398, 'Q0ABC', 'Node maintenance this week', 'Q0BBS is down from 20:00 on Thursday.', DateTime(2026, 10, 12, 8), read: true);
 
       var n = 900;
-      Future<void> bulletin(String from, String to, String at, String subject, {bool read = false, bool body = false}) =>
+      Future<void> bulletin(
+        String from,
+        String to,
+        String at,
+        String subject, {
+        bool read = false,
+        bool body = false,
+        String text = 'Text',
+      }) =>
           store
               .into(store.messages)
               .insert(
@@ -151,12 +175,12 @@ void main() {
                   at: Value(at),
                   subject: subject,
                   date: DateTime(2026, 10, 28, 9).subtract(Duration(hours: n - 900)),
-                  body: Value(body ? 'Text' : null),
+                  body: Value(body ? text : null),
                   read: Value(read),
                   lastListedAt: DateTime(2026, 10, 28),
                 ),
               );
-      await bulletin('Q0ABC', 'WX', 'GBR', 'Gales tonight in the south west', body: true);
+      await bulletin('Q0ABC', 'WX', 'GBR', 'Gales tonight in the south west', body: true, text: _galesBody);
       await bulletin('Q0ABC', 'WX', 'GBR', 'Frost warning for Thursday', body: true, read: true);
       await bulletin('Q0GHI', 'WX', 'EURO', 'Heat across southern Europe', body: true);
       await bulletin('Q0DEF', 'ALL', 'WW', 'Contest this weekend');
@@ -210,31 +234,43 @@ void main() {
     return app;
   }
 
-  for (final MapEntry(key: dir, value: size) in _sizes.entries) {
+  for (final MapEntry(key: dir, value: (size, ratio)) in _sizes.entries) {
     Future<void> shot(WidgetTester tester, String name) =>
         expectLater(find.byType(Navigator).first, matchesGoldenFile('../../docs/store/screenshots/$dir/$name.png'));
 
     void screen(String name, Future<void> Function(WidgetTester tester, TestApp app) steps) {
       testWidgets('$dir $name', skip: !_wanted, (tester) async {
-        final app = await station(tester, size);
+        final app = await station(tester, size, ratio);
         await steps(tester, app);
         await shot(tester, name);
         await app.dispose(tester);
       });
     }
 
-    screen('01-inbox', (tester, app) async {});
-    screen('02-message', (tester, app) async {
-      await tester.tap(find.text('Re: Hilltop test on 2m'));
+    // Tablets show the list and an open item side by side.
+    final wide = size.width >= twoPaneMinWidth;
+    Future<void> tap(WidgetTester tester, TestApp app, Finder f) async {
+      await tester.ensureVisible(f);
+      await tester.pump();
+      await tester.tap(f);
       await _settle(app, tester);
+    }
+
+    screen('01-inbox', (tester, app) async {
+      if (wide) await tap(tester, app, find.text('Saturday net and the new node'));
+    });
+    screen('02-message', (tester, app) async {
+      await tap(tester, app, find.text('Re: Hilltop test on 2m'));
     });
     screen('03-bulletins', (tester, app) async {
-      await tester.tap(find.text('Bulletins').last);
-      await _settle(app, tester);
+      if (!wide) return tap(tester, app, find.text('Bulletins').last);
+      await tap(tester, app, find.byKey(const ValueKey('side-bulletins')));
+      await tap(tester, app, find.text('WX').first);
+      await tap(tester, app, find.text('Gales tonight in the south west'));
     });
     screen('04-compose', (tester, app) async {
-      await tester.tap(find.byKey(const ValueKey('compose')));
-      await _settle(app, tester);
+      if (wide) await tap(tester, app, find.text('Re: Hilltop test on 2m'));
+      await tap(tester, app, find.byKey(const ValueKey('compose')));
       await tester.enterText(find.byKey(const ValueKey('to')), 'Q0ABC@Q0BBS.#42.GBR.EURO, Q0DEF');
       await tester.enterText(find.byKey(const ValueKey('subject')), 'Hill top on Saturday');
       await tester.enterText(
@@ -245,12 +281,13 @@ void main() {
       await _settle(app, tester);
     });
     screen('05-sent', (tester, app) async {
-      await tester.tap(find.byKey(const ValueKey('mailbox-sent')));
-      await _settle(app, tester);
+      await tap(tester, app, find.byKey(ValueKey(wide ? 'side-mailbox-sent' : 'mailbox-sent')));
+      if (wide) await tap(tester, app, find.text('Hill top on Saturday'));
     });
     screen('06-address-book', (tester, app) async {
-      await tester.tap(find.text('Contacts'));
-      await _settle(app, tester);
+      if (!wide) return tap(tester, app, find.text('Contacts'));
+      await tap(tester, app, find.byKey(const ValueKey('side-contacts')));
+      await tap(tester, app, find.text('Alice, Q0ABC'));
     });
   }
 }

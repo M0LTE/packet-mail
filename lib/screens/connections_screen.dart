@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../view_choice.dart';
 import 'connection_form.dart';
 import 'last_session_screen.dart';
+import 'layout.dart';
 
 /// Every connection, with its last sync result.
 class ConnectionsScreen extends ConsumerWidget {
@@ -74,7 +75,7 @@ class ConnectionsScreen extends ConsumerWidget {
   }
 
   void _open(BuildContext context, Connection? c) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ConnectionEditScreen(connection: c)));
+      openSheet<void>(context, (_) => ConnectionEditScreen(connection: c));
 }
 
 /// Offers the demo BBS, for trying the app or showing someone, when it

@@ -30,6 +30,8 @@ Packet Mail is for licensed radio amateurs. It talks to your own BBS over your l
 
 **Privacy policy URL:** https://packet-mail.m0lte.uk/privacy.html
 
+**iPad screenshots (13-inch):** `docs/store/screenshots/2064x2752/` (the six, in order).
+
 **App review notes:** see docs/store/review-answers.md (demo BBS at packet-mail-app.m0lte.compute.oarc.uk port 8011, login demo / demo).
 
 ## Google Play
@@ -45,6 +47,10 @@ Packet Mail is for licensed radio amateurs. It talks to your own BBS over your l
 **Feature graphic:** `docs/store/creative/play-feature-1024x500.png` (1024 x 500).
 
 **Phone screenshots:** `docs/store/screenshots/1080x1920/` (the six, in order).
+
+**7-inch tablet screenshots:** `docs/store/screenshots/1920x1200/` (the six, in order).
+
+**10-inch tablet screenshots:** `docs/store/screenshots/2560x1600/` (the six, in order).
 
 **Category:** Communication. **Tags:** Email, Productivity.
 

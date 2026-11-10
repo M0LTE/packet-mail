@@ -1,0 +1,1 @@
+New: Packet Mail now runs on iPad, Android tablets and foldables. On a wide screen a sidebar lists your mailboxes, Bulletins, Contacts and Settings, with your mail on the left and the open message on the right. New messages and editors open as a card over both. Narrow the window, for Split View or a folded phone, and you get the phone layout, keeping the message you were reading.

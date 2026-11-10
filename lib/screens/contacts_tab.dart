@@ -6,6 +6,7 @@ import '../contacts.dart';
 import '../theme.dart';
 import 'contact_screen.dart';
 import 'mail_widgets.dart';
+import 'layout.dart';
 
 /// The address book: search, add, and tap to edit.
 class ContactsTab extends ConsumerStatefulWidget {
@@ -24,8 +25,11 @@ class _ContactsTabState extends ConsumerState<ContactsTab> {
     super.dispose();
   }
 
-  void _open(Contact? c) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ContactScreen(contact: c)));
+  /// An existing contact opens beside the list on a wide window; a new one
+  /// is an editor, so it comes up as a sheet.
+  void _open(Contact? c) => c == null
+      ? openSheet<void>(context, (_) => const ContactScreen())
+      : openDetail(context, key: ('contact', c.callsign), builder: (_) => ContactScreen(contact: c));
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +93,11 @@ class _ContactsTabState extends ConsumerState<ContactsTab> {
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                 child: Text('No one matches.', style: text.titleMedium?.copyWith(color: Logbook.inkSoft)),
               ),
-            for (final c in list) _ContactRow(contact: c, onTap: () => _open(c)),
+            for (final c in list)
+              PaneHighlight(
+                detail: ('contact', c.callsign),
+                child: _ContactRow(contact: c, onTap: () => _open(c)),
+              ),
           ],
         ),
       ),

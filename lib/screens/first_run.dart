@@ -12,6 +12,7 @@ import '../sync.dart';
 import '../theme.dart';
 import 'connection_form.dart';
 import 'identity_fields.dart';
+import 'layout.dart';
 
 /// Shown until there is an identity: who you are, then how to reach your BBS.
 /// Nothing is saved until the connection is, so the app opens on the
@@ -123,76 +124,82 @@ class _FirstRunScreenState extends ConsumerState<FirstRunScreen> {
       },
       child: Scaffold(
         appBar: _step == 1 ? AppBar(leading: BackButton(onPressed: () => setState(() => _step = 0))) : null,
+        // On a tablet the form keeps to a comfortable width in the middle.
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-            children: _step == 0
-                ? [
-                    Text('Packet Mail', style: text.displaySmall),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Your BBS mail, like any other mail app. First, who are you on the air?',
-                      style: text.titleMedium,
-                    ),
-                    const SizedBox(height: 28),
-                    Text('YOUR STATION', style: Logbook.sectionLabel),
-                    const SizedBox(height: 8),
-                    IgnorePointer(
-                      ignoring: _demoBusy,
-                      child: Form(
-                        key: _identityForm,
-                        autovalidateMode: _validateAsTyped
-                            ? AutovalidateMode.onUserInteraction
-                            : AutovalidateMode.disabled,
-                        child: IdentityFields(callsign: _callsign, name: _name, homeBbs: _homeBbs),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    FilledButton(onPressed: _demoBusy ? null : _next, child: const Text('Next')),
-                    const SizedBox(height: 28),
-                    const Divider(),
-                    const SizedBox(height: 20),
-                    if (_demoFailed) ...[
-                      Text(
-                        "Couldn't reach the demo BBS. Check you're online, then try again.",
-                        style: text.bodyMedium?.copyWith(color: Logbook.stampRed),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    OutlinedButton(
-                      key: const ValueKey('try-demo'),
-                      onPressed: _demoBusy ? null : _tryDemo,
-                      child: Text(
-                        _demoBusy
-                            ? 'Signing in to the demo...'
-                            : _demoFailed
-                            ? 'Try again'
-                            : 'Try the demo',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Use our demo BBS with sample mail. No licence needed.',
-                      textAlign: TextAlign.center,
-                      style: text.bodySmall,
-                    ),
-                  ]
-                : [
-                    Text('Your BBS', style: text.displaySmall),
-                    const SizedBox(height: 8),
-                    Text(
-                      'How the app reaches your BBS, much like adding an account to a mail app.',
-                      style: text.titleMedium,
-                    ),
-                    const SizedBox(height: 28),
-                    Text('CONNECTION', style: Logbook.sectionLabel),
-                    const SizedBox(height: 8),
-                    ConnectionForm(
-                      loginNameForTest: () => _name.text.trim(),
-                      saveLabel: 'Save and finish',
-                      onSave: _save,
-                    ),
-                  ],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isWide(context) ? 600 : double.infinity),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+                children: _step == 0
+                    ? [
+                        Text('Packet Mail', style: text.displaySmall),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Your BBS mail, like any other mail app. First, who are you on the air?',
+                          style: text.titleMedium,
+                        ),
+                        const SizedBox(height: 28),
+                        Text('YOUR STATION', style: Logbook.sectionLabel),
+                        const SizedBox(height: 8),
+                        IgnorePointer(
+                          ignoring: _demoBusy,
+                          child: Form(
+                            key: _identityForm,
+                            autovalidateMode: _validateAsTyped
+                                ? AutovalidateMode.onUserInteraction
+                                : AutovalidateMode.disabled,
+                            child: IdentityFields(callsign: _callsign, name: _name, homeBbs: _homeBbs),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        FilledButton(onPressed: _demoBusy ? null : _next, child: const Text('Next')),
+                        const SizedBox(height: 28),
+                        const Divider(),
+                        const SizedBox(height: 20),
+                        if (_demoFailed) ...[
+                          Text(
+                            "Couldn't reach the demo BBS. Check you're online, then try again.",
+                            style: text.bodyMedium?.copyWith(color: Logbook.stampRed),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        OutlinedButton(
+                          key: const ValueKey('try-demo'),
+                          onPressed: _demoBusy ? null : _tryDemo,
+                          child: Text(
+                            _demoBusy
+                                ? 'Signing in to the demo...'
+                                : _demoFailed
+                                ? 'Try again'
+                                : 'Try the demo',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Use our demo BBS with sample mail. No licence needed.',
+                          textAlign: TextAlign.center,
+                          style: text.bodySmall,
+                        ),
+                      ]
+                    : [
+                        Text('Your BBS', style: text.displaySmall),
+                        const SizedBox(height: 8),
+                        Text(
+                          'How the app reaches your BBS, much like adding an account to a mail app.',
+                          style: text.titleMedium,
+                        ),
+                        const SizedBox(height: 28),
+                        Text('CONNECTION', style: Logbook.sectionLabel),
+                        const SizedBox(height: 8),
+                        ConnectionForm(
+                          loginNameForTest: () => _name.text.trim(),
+                          saveLabel: 'Save and finish',
+                          onSave: _save,
+                        ),
+                      ],
+              ),
+            ),
           ),
         ),
       ),

@@ -12,6 +12,7 @@ import '../view_choice.dart';
 import 'bulletin_compose_screen.dart';
 import 'mail_widgets.dart';
 import 'message_screen.dart';
+import 'layout.dart';
 
 /// Bulletins grouped by category, then by area, or all of them newest first.
 class BulletinsTab extends ConsumerWidget {
@@ -411,17 +412,17 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      PaneHighlight(detail: ('message', widget.message.id), child: _row(context));
+
+  Widget _row(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final m = widget.message;
     final call = bareCall(m.fromCall);
     final name = ref.watch(contactNamesProvider).value?[call];
     final unread = !m.read;
-    void open() => Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MessageScreen(messageId: m.id, from: widget.from),
-      ),
-    );
+    void open() =>
+        openDetail(context, key: ('message', m.id), builder: (_) => MessageScreen(messageId: m.id, from: widget.from));
     if (ref.watch(compactListsProvider)) {
       return CompactRow(
         call: call,
