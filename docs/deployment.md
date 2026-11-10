@@ -103,3 +103,5 @@ Restarting the demo BBS throws away every visitor's sandbox, which is harmless. 
 ## Public address
 
 Since 2026-10-29 the web side is reached as https://packet-mail.m0lte.uk through an OARC load balancer, which terminates TLS with its own Let's Encrypt certificate and forwards to this box. The site, privacy policy, support page and the app's report endpoint (`/v1/report`) all use that name. The box's own name, packet-mail-app.m0lte.compute.oarc.uk, still serves everything directly, which keeps older app builds working; the demo BBS (port 8011) is only on the box's own name, since the load balancer carries web traffic only.
+
+The site's stylesheet is cached by browsers for a day. After changing `site/assets/site.css`, bump the `?v=` date on its link in every page in `site/`, so visitors get the new copy straight away.

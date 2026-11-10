@@ -101,7 +101,7 @@ code, .mono { font-family: var(--mono); font-size: 0.9em; }
 }
 .button small { font-weight: 500; font-size: 0.75rem; color: var(--ink-soft); }
 .button.primary { background: var(--red); color: #fff; }
-.button.primary small { color: rgba(255, 255, 255, 0.88); }
+.button.primary small { color: #fff; }
 .button.primary:hover { background: var(--red-dark); color: #fff; }
 .button.soon { border-style: dashed; border-color: var(--ink-soft); color: var(--ink); }
 
