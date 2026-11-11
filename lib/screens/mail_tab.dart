@@ -156,6 +156,7 @@ class _MailTabState extends ConsumerState<MailTab> {
       ..showSnackBar(
         SnackBar(
           content: const Text('Deleted. It goes from the BBS at the next sync.'),
+          persist: false,
           action: SnackBarAction(
             label: 'Undo',
             onPressed: () async {
