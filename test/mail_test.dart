@@ -345,6 +345,23 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('the Undo after a delete goes away by itself', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addMessage(app, tester, c, number: 51, subject: 'Gone soon', body: 'Hi', read: true);
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Gone soon'));
+    await settleAll(app, tester);
+    await tester.tap(find.text('Delete'));
+    await settleAll(app, tester);
+    expect(find.text('Undo'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.text('Undo'), findsNothing);
+    await app.dispose(tester);
+  });
+
   testWidgets('leaving the message view while a download is failing is quiet', (tester) async {
     final app = TestApp();
     await seedStation(app, tester);

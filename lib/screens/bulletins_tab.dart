@@ -155,6 +155,7 @@ Future<void> markAllRead(BuildContext context, WidgetRef ref, Iterable<Message> 
     ..showSnackBar(
       SnackBar(
         content: Text('${_count(ids.length, 'bulletin')} marked read.'),
+        persist: false,
         action: SnackBarAction(label: 'Undo', onPressed: () => setBulletinsRead(store, ids, false)),
       ),
     );

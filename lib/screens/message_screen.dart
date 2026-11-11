@@ -89,6 +89,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
       ..showSnackBar(
         SnackBar(
           content: const Text('Deleted. It goes from the BBS at the next sync.'),
+          persist: false,
           action: SnackBarAction(label: 'Undo', onPressed: () => setPendingKill(store, m.id, false)),
         ),
       );
@@ -115,6 +116,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                 ? 'Report in the outbox. Blocked $call.'
                 : 'Blocked $call. Their mail and bulletins are hidden.',
           ),
+          persist: false,
           action: SnackBarAction(label: 'Undo', onPressed: () => unblockStation(store, call)),
         ),
       );
