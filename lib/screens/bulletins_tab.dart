@@ -39,13 +39,21 @@ class BulletinsTab extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
               child: Row(
                 children: [
-                  Expanded(child: Text('Bulletins', style: text.displaySmall)),
+                  // The title gives way before the Subscriptions button is cut short.
+                  const Expanded(flex: 2, child: ListTitle('Bulletins')),
                   if (!none) ...[
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.of(context)
-                              .push(MaterialPageRoute<void>(builder: (_) => const SubscriptionsScreen())),
-                      child: Text(subs.isEmpty ? 'Subscriptions' : 'Subscriptions ${subs.length}'),
+                    Flexible(
+                      flex: 3,
+                      child: TextButton(
+                        onPressed: () =>
+                            Navigator.of(context)
+                                .push(MaterialPageRoute<void>(builder: (_) => const SubscriptionsScreen())),
+                        child: Text(
+                          subs.isEmpty ? 'Subscriptions' : 'Subscriptions ${subs.length}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ),
                     IconButton(
                       key: const ValueKey('new-bulletin'),
@@ -412,8 +420,7 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      PaneHighlight(detail: ('message', widget.message.id), child: _row(context));
+  Widget build(BuildContext context) => PaneHighlight(detail: ('message', widget.message.id), child: _row(context));
 
   Widget _row(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -421,8 +428,11 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
     final call = bareCall(m.fromCall);
     final name = ref.watch(contactNamesProvider).value?[call];
     final unread = !m.read;
-    void open() =>
-        openDetail(context, key: ('message', m.id), builder: (_) => MessageScreen(messageId: m.id, from: widget.from));
+    void open() => openDetail(
+      context,
+      key: ('message', m.id),
+      builder: (_) => MessageScreen(messageId: m.id, from: widget.from),
+    );
     if (ref.watch(compactListsProvider)) {
       return CompactRow(
         call: call,

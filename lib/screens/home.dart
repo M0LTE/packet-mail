@@ -187,8 +187,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _wideLayout(BuildContext context, Widget lists, Widget Function(Widget Function(int i)) stack) {
     final media = MediaQuery.of(context);
     final width = media.size.width;
-    final sidebar = width < 1000 ? 184.0 : 232.0;
-    var list = (width * 0.3).clamp(280.0, 380.0);
+    final choice = ref.watch(sidebarChoiceProvider);
+    final open = sidebarOpen(context, choice);
+    final sidebar = !open
+        ? 64.0 + media.padding.left
+        : width < 1000
+        ? 184.0
+        : 232.0;
+    var list = ((width - sidebar) * 0.38).clamp(300.0, 380.0);
     var gap = 0.0;
     // On a foldable or a two-screen phone, split the panes at the hinge.
     for (final f in media.displayFeatures) {
@@ -206,7 +212,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           SizedBox(
             width: sidebar,
-            child: _Sidebar(tab: _tab, onTab: _select, onMailbox: _selectMailbox),
+            child: _Sidebar(
+              tab: _tab,
+              open: open,
+              onOpen: ref.read(sidebarChoiceProvider.notifier).set,
+              onTab: _select,
+              onMailbox: _selectMailbox,
+            ),
           ),
           const VerticalDivider(width: 1),
           SizedBox(width: list, child: lists),
@@ -224,11 +236,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 /// The wide window's navigation: Mail with its mailboxes, then Bulletins,
-/// Contacts and Settings.
+/// Contacts and Settings. Folded, it is a strip of icons, and the mail list
+/// shows its own mailbox switcher as on a phone.
 class _Sidebar extends ConsumerWidget {
-  const _Sidebar({required this.tab, required this.onTab, required this.onMailbox});
+  const _Sidebar({
+    required this.tab,
+    required this.open,
+    required this.onOpen,
+    required this.onTab,
+    required this.onMailbox,
+  });
 
   final int tab;
+  final bool open;
+  final ValueChanged<bool> onOpen;
   final ValueChanged<int> onTab;
   final ValueChanged<Mailbox> onMailbox;
 
@@ -241,19 +262,35 @@ class _Sidebar extends ConsumerWidget {
       child: SafeArea(
         right: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(10, 16, 10, 16),
+          padding: EdgeInsets.fromLTRB(10, open ? 8 : 12, 10, 16),
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-              child: Text('Packet Mail', style: Theme.of(context).textTheme.titleLarge),
-            ),
+            if (open)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 0, 4),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('Packet Mail', style: Theme.of(context).textTheme.titleLarge)),
+                    _toggle(),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Center(child: _toggle()),
+              ),
             _SideItem(
               key: const ValueKey('side-mail'),
               icon: tab == 0 ? Icons.mail : Icons.mail_outline,
               label: 'Mail',
-              onTap: () => onMailbox(Mailbox.inbox),
+              open: open,
+              // Folded, Mail is one item: lit when chosen, with the inbox's count.
+              selected: !open && tab == 0,
+              count: open ? 0 : counts[Mailbox.inbox]!,
+              // Folded, the list has the mailbox switcher, so keep its mailbox.
+              onTap: () => open ? onMailbox(Mailbox.inbox) : onTab(0),
             ),
-            for (final b in Mailbox.values)
+            for (final b in open ? Mailbox.values : const <Mailbox>[])
               _SideItem(
                 key: ValueKey('side-mailbox-${b.name}'),
                 label: b.label,
@@ -267,6 +304,7 @@ class _Sidebar extends ConsumerWidget {
               key: const ValueKey('side-bulletins'),
               icon: tab == 1 ? Icons.article : Icons.article_outlined,
               label: 'Bulletins',
+              open: open,
               selected: tab == 1,
               onTap: () => onTab(1),
             ),
@@ -274,6 +312,7 @@ class _Sidebar extends ConsumerWidget {
               key: const ValueKey('side-contacts'),
               icon: tab == 2 ? Icons.people : Icons.people_outline,
               label: 'Contacts',
+              open: open,
               selected: tab == 2,
               onTap: () => onTab(2),
             ),
@@ -281,6 +320,7 @@ class _Sidebar extends ConsumerWidget {
               key: const ValueKey('side-settings'),
               icon: tab == 3 ? Icons.settings : Icons.settings_outlined,
               label: 'Settings',
+              open: open,
               selected: tab == 3,
               onTap: () => onTab(3),
             ),
@@ -289,6 +329,14 @@ class _Sidebar extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _toggle() => IconButton(
+    key: const ValueKey('side-toggle'),
+    tooltip: open ? 'Hide sidebar' : 'Show sidebar',
+    visualDensity: VisualDensity.compact,
+    icon: Icon(open ? Icons.menu_open : Icons.menu, size: 22, color: Logbook.inkSoft),
+    onPressed: () => onOpen(!open),
+  );
 }
 
 class _SideItem extends StatelessWidget {
@@ -299,9 +347,12 @@ class _SideItem extends StatelessWidget {
     this.count = 0,
     this.indent = false,
     this.selected = false,
+    this.open = true,
     required this.onTap,
   });
 
+  /// False in the folded sidebar: the icon alone, with any count as a badge.
+  final bool open;
   final IconData? icon;
   final String label;
   final int count;
@@ -313,6 +364,34 @@ class _SideItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colour = selected ? Logbook.stampRed : Logbook.ink;
+    if (!open) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Tooltip(
+          message: label,
+          child: Material(
+            color: selected ? Logbook.stampRed.withValues(alpha: 0.10) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: onTap,
+              child: SizedBox(
+                height: 44,
+                child: Center(
+                  child: Badge(
+                    isLabelVisible: count > 0,
+                    backgroundColor: Logbook.stampRed,
+                    textColor: Logbook.paper,
+                    label: Text('$count'),
+                    child: Icon(icon, size: 22, color: selected ? Logbook.stampRed : Logbook.inkSoft),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Material(

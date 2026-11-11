@@ -48,3 +48,19 @@ class CompactLists extends Notifier<bool> {
     ref.read(prefsProvider).setBool(_key, compact);
   }
 }
+
+/// The tablet sidebar: open (true), folded down to its icons (false), or not
+/// chosen yet (null), when the window's width decides.
+final sidebarChoiceProvider = NotifierProvider<SidebarChoice, bool?>(SidebarChoice.new);
+
+class SidebarChoice extends Notifier<bool?> {
+  static const _key = 'sidebar.open';
+
+  @override
+  bool? build() => ref.watch(prefsProvider).getBool(_key);
+
+  void set(bool open) {
+    state = open;
+    ref.read(prefsProvider).setBool(_key, open);
+  }
+}

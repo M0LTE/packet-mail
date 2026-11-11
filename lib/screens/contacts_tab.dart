@@ -29,7 +29,11 @@ class _ContactsTabState extends ConsumerState<ContactsTab> {
   /// is an editor, so it comes up as a sheet.
   void _open(Contact? c) => c == null
       ? openSheet<void>(context, (_) => const ContactScreen())
-      : openDetail(context, key: ('contact', c.callsign), builder: (_) => ContactScreen(contact: c));
+      : openDetail(
+          context,
+          key: ('contact', c.callsign),
+          builder: (_) => ContactScreen(contact: c),
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +52,7 @@ class _ContactsTabState extends ConsumerState<ContactsTab> {
               padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
               child: Row(
                 children: [
-                  Expanded(child: Text('Contacts', style: text.displaySmall)),
+                  const Expanded(child: ListTitle('Contacts')),
                   IconButton(
                     key: const ValueKey('add-contact'),
                     tooltip: 'Add a contact',

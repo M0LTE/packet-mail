@@ -6,6 +6,7 @@ import 'package:mail_core/mail_core.dart' show ContactsCompanion;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:packetmail/screens/compose_screen.dart';
 import 'package:packetmail/screens/contact_screen.dart';
+import 'package:packetmail/screens/layout.dart';
 import 'package:packetmail/screens/message_screen.dart';
 
 import 'helpers.dart';
@@ -103,6 +104,69 @@ void main() {
     await settleAll(app, tester);
     expect(find.byKey(const ValueKey('sheet')), findsNothing);
     expect(find.byType(ComposeScreen), findsNothing);
+    await app.dispose(tester);
+  });
+
+  testWidgets('a reply on a tablet stays in view above the keyboard', (tester) async {
+    // An 11-inch iPad on its side, then its keyboard.
+    final app = await _station(tester, const Size(1180, 820));
+    await tester.tap(find.text('QSL and thanks'));
+    await settleAll(app, tester);
+    await tester.tap(find.text('Reply'));
+    await settleAll(app, tester);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 422 * 2);
+    await settleAll(app, tester);
+
+    final sheet = tester.getRect(find.byKey(const ValueKey('sheet')));
+    expect(sheet.bottom, lessThanOrEqualTo(820 - 422));
+    // The writing is on show inside the sheet, cursor and all.
+    final body = tester.getRect(find.byKey(const ValueKey('body')));
+    expect(body.overlaps(sheet), isTrue);
+    final list = tester.getRect(
+      find.descendant(of: find.byType(ComposeScreen), matching: find.byType(ListView)).first,
+    );
+    expect(list.height, greaterThan(200));
+    await app.dispose(tester);
+  });
+
+  testWidgets('an upright small tablet starts with the sidebar folded, and it opens and folds', (tester) async {
+    final app = await _station(tester, const Size(820, 1180));
+    // Folded: icons only, and the list has the mailbox switcher.
+    expect(find.byKey(const ValueKey('side-mail')), findsOneWidget);
+    expect(find.byKey(const ValueKey('side-mailbox-sent')), findsNothing);
+    expect(find.text('Packet Mail'), findsNothing);
+    expect(find.byKey(const ValueKey('mailbox-outbox')), findsOneWidget);
+    final folded = tester.getSize(find.byKey(const ValueKey('tab-0')).first).width;
+
+    await tester.tap(find.byKey(const ValueKey('side-toggle')));
+    await settleAll(app, tester);
+    expect(find.byKey(const ValueKey('side-mailbox-sent')), findsOneWidget);
+    expect(find.text('Packet Mail'), findsOneWidget);
+    expect(find.byKey(const ValueKey('mailbox-outbox')), findsNothing);
+
+    // The big title stays on one line however little room it has.
+    await tester.tap(find.byKey(const ValueKey('side-bulletins')));
+    await settleAll(app, tester);
+    expect(tester.getSize(find.byType(ListTitle).last).height, lessThan(48));
+
+    await tester.tap(find.byKey(const ValueKey('side-toggle')));
+    await settleAll(app, tester);
+    expect(find.byKey(const ValueKey('side-mailbox-sent')), findsNothing);
+    expect(tester.getSize(find.byKey(const ValueKey('tab-0')).first).width, folded);
+    // Folded, the icons still change section.
+    await tester.tap(find.byKey(const ValueKey('side-contacts')));
+    await settleAll(app, tester);
+    expect(find.text('Choose a contact'), findsOneWidget);
+    await app.dispose(tester);
+  });
+
+  testWidgets('a wide tablet can fold its sidebar, and the choice is kept', (tester) async {
+    final app = await _station(tester, _landscape);
+    expect(find.byKey(const ValueKey('side-mailbox-sent')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('side-toggle')));
+    await settleAll(app, tester);
+    expect(find.byKey(const ValueKey('side-mailbox-sent')), findsNothing);
+    expect(app.prefs.getBool('sidebar.open'), isFalse);
     await app.dispose(tester);
   });
 

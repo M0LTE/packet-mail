@@ -9,6 +9,15 @@ const twoPaneMinWidth = 820.0;
 /// Whether the window is wide enough for the sidebar and two panes.
 bool isWide(BuildContext context) => MediaQuery.sizeOf(context).width >= twoPaneMinWidth;
 
+/// Wide windows narrower than this (an iPad upright) start with the sidebar
+/// folded down to its icons, to leave room for the message.
+const openSidebarMinWidth = 900.0;
+
+/// Whether the sidebar shows its labels and mailboxes: [choice] if the user
+/// has opened or folded it, otherwise by the window's width.
+bool sidebarOpen(BuildContext context, bool? choice) =>
+    choice ?? MediaQuery.sizeOf(context).width >= openSidebarMinWidth;
+
 /// Whether the screen holding [context] offers a way back. A screen shown
 /// in the right-hand pane has none: choosing something else replaces it.
 bool showsBackLink(BuildContext context) => ModalRoute.of(context)?.impliesAppBarDismissal ?? true;
@@ -200,6 +209,21 @@ class _PaneObserver extends NavigatorObserver {
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => _later();
 }
 
+/// A list's big title, on one line: it shrinks to fit a narrow pane
+/// rather than wrapping.
+class ListTitle extends StatelessWidget {
+  const ListTitle(this.title, {super.key});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: Alignment.centerLeft,
+    child: Text(title, maxLines: 1, softWrap: false, style: Theme.of(context).textTheme.displaySmall),
+  );
+}
+
 /// The empty right-hand pane: one quiet line.
 class PanePlaceholder extends StatelessWidget {
   const PanePlaceholder({super.key, required this.icon, required this.message});
@@ -317,46 +341,41 @@ class _SheetState<T> extends State<_Sheet<T>> {
       duration: const Duration(milliseconds: 100),
       curve: Curves.decelerate,
       padding: media.viewInsets + media.padding + const EdgeInsets.all(24),
-      child: MediaQuery.removeViewInsets(
-        context: context,
-        removeLeft: true,
-        removeTop: true,
-        removeRight: true,
-        removeBottom: true,
-        child: MediaQuery.removePadding(
-          context: context,
-          removeLeft: true,
-          removeTop: true,
-          removeRight: true,
-          removeBottom: true,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 620, maxHeight: size.height < 900 ? double.infinity : 860),
-              child: Material(
-                key: const ValueKey('sheet'),
-                color: Logbook.paper,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: const BorderSide(color: Logbook.rule),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: NavigatorPopHandler<Object?>(
-                  onPopWithResult: (_) => _nav.currentState?.maybePop(),
-                  child: Navigator(
-                    key: _nav,
-                    observers: [_SheetObserver(_closed)],
-                    onGenerateInitialRoutes: (_, _) {
-                      final screen = MaterialPageRoute<T>(fullscreenDialog: true, builder: widget.route.builder);
-                      screen.popped.then((r) => _result = r);
-                      return [
-                        PageRouteBuilder<void>(
-                          pageBuilder: (_, _, _) => const SizedBox.shrink(),
-                          transitionDuration: Duration.zero,
-                        ),
-                        screen,
-                      ];
-                    },
-                  ),
+      // The padding above already keeps the sheet clear of the keyboard and
+      // the screen edges, so the screen inside must not allow for them again.
+      // One MediaQuery: two nested removals would each start from the outer
+      // values, and the inner one would put the keyboard back.
+      child: MediaQuery(
+        data: media
+            .removeViewInsets(removeLeft: true, removeTop: true, removeRight: true, removeBottom: true)
+            .removePadding(removeLeft: true, removeTop: true, removeRight: true, removeBottom: true),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 620, maxHeight: size.height < 900 ? double.infinity : 860),
+            child: Material(
+              key: const ValueKey('sheet'),
+              color: Logbook.paper,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: Logbook.rule),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: NavigatorPopHandler<Object?>(
+                onPopWithResult: (_) => _nav.currentState?.maybePop(),
+                child: Navigator(
+                  key: _nav,
+                  observers: [_SheetObserver(_closed)],
+                  onGenerateInitialRoutes: (_, _) {
+                    final screen = MaterialPageRoute<T>(fullscreenDialog: true, builder: widget.route.builder);
+                    screen.popped.then((r) => _result = r);
+                    return [
+                      PageRouteBuilder<void>(
+                        pageBuilder: (_, _, _) => const SizedBox.shrink(),
+                        transitionDuration: Duration.zero,
+                      ),
+                      screen,
+                    ];
+                  },
                 ),
               ),
             ),

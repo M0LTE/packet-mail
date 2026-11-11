@@ -48,7 +48,7 @@ class _MailTabState extends ConsumerState<MailTab> {
             padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
             child: Row(
               children: [
-                Expanded(child: Text(_box.label, style: text.displaySmall)),
+                Expanded(child: ListTitle(_box.label)),
                 IconButton(
                   key: const ValueKey('compose'),
                   tooltip: 'New message',
@@ -66,8 +66,8 @@ class _MailTabState extends ConsumerState<MailTab> {
                 style: text.bodySmall?.copyWith(letterSpacing: 0.3).calls,
               ),
             ),
-          // On a wide window the sidebar lists the mailboxes.
-          if (isWide(context))
+          // On a wide window the open sidebar lists the mailboxes.
+          if (isWide(context) && sidebarOpen(context, ref.watch(sidebarChoiceProvider)))
             const SizedBox(height: 10)
           else
             _MailboxSwitcher(selected: _box, onSelected: ref.read(mailboxProvider.notifier).set),
@@ -170,7 +170,11 @@ class _MailTabState extends ConsumerState<MailTab> {
 
   void _open(Message m) {
     final from = _box.label;
-    openDetail(context, key: ('message', m.id), builder: (_) => MessageScreen(messageId: m.id, from: from));
+    openDetail(
+      context,
+      key: ('message', m.id),
+      builder: (_) => MessageScreen(messageId: m.id, from: from),
+    );
   }
 
   Widget _outgoing(AsyncValue<List<OutgoingItem>> value, {required bool sent}) {
@@ -435,10 +439,7 @@ class OutgoingRow extends ConsumerWidget {
     final lines = [
       for (final r in item.recipients)
         if (state(r) case final s?)
-          (
-            text: many ? '${r.address.split('@').first}: $s' : s,
-            problem: r.state == 'failed' || r.state == 'held',
-          ),
+          (text: many ? '${r.address.split('@').first}: $s' : s, problem: r.state == 'failed' || r.state == 'held'),
     ];
     if (ref.watch(compactListsProvider)) {
       return CompactRow(

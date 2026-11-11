@@ -1,0 +1,4 @@
+Tablets:
+- Replying with the on-screen keyboard up no longer leaves an empty card; what you are writing stays in view.
+- The sidebar folds down to a strip of icons and opens again with the button at its top. Smaller tablets held upright start with it folded.
+- List titles such as Bulletins stay on one line in a narrow list.
