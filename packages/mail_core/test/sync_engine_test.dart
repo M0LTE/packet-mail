@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
@@ -28,6 +29,9 @@ class FakeBbs implements MailDriver {
 
   /// The From line a read gives, when it differs from the listing.
   final senders = <int, String>{};
+
+  /// The subject a read gives, when it differs from the listing.
+  final readSubjects = <int, String>{};
   final notMine = <int>{};
   final calls = <String>[];
   final sent = <String>[];
@@ -154,7 +158,7 @@ class FakeBbs implements MailDriver {
       statusBeforeRead: h.status,
       from: senders[number] ?? h.from,
       to: h.to,
-      subject: h.subject,
+      subject: readSubjects[number] ?? h.subject,
       date: noDateOnRead ? DateTime.utc(1970) : h.date.add(const Duration(hours: 5)),
       bid: m.bid ?? '',
       routing: const ['R:261028/0520Z @:GB7RDG.#42.GBR.EURO'],
@@ -1496,6 +1500,69 @@ void main() {
       await engine.sync(conn);
       final m = await message(10);
       expect([m.id, m.subject, m.body], [id, whole, 'Body text']);
+    });
+
+    group('old code page subjects', () {
+      /// What the line session hands over for DOS 437 bytes: one Latin-1 character per byte.
+      String wire(List<int> bytes) => String.fromCharCodes(bytes);
+      // "Strasse" in DOS 437, where 0xE1 is the sharp s; alone it reads as a-acute in Windows-1252.
+      final dosSubject = wire([...'Stra'.codeUnits, 0xe1, ...'e'.codeUnits]);
+      final dosBody = wire([
+        ...'Die gro'.codeUnits,
+        0xe1,
+        ...'e Stra'.codeUnits,
+        0xe1,
+        ...'e ist sch'.codeUnits,
+        0x94,
+        ...'n'.codeUnits,
+      ]);
+
+      /// A listing, then a read whose subject was decoded together with the text, as the drivers do.
+      Future<Message> listAndRead(String raw, {String body = ''}) async {
+        final listed = decodeMailText(raw);
+        bbs.addPersonal(10, subject: listed);
+        await engine.sync(conn);
+        bbs.readSubjects[10] = body.isEmpty ? listed : decodeMailText('$raw\r$body').split('\r').first;
+        await engine.openMessage((await message(10)).id);
+        return message(10);
+      }
+
+      test('the listing alone picks the wrong page', () {
+        expect(decodeMailText(dosSubject), 'Stra\u00e1e');
+        expect(decodeMailText('$dosSubject\r$dosBody').split('\r').first, 'Stra\u00dfe');
+      });
+
+      test('reading a message gives its subject the page of its text', () async {
+        final m = await listAndRead(dosSubject, body: dosBody);
+        expect(m.subject, 'Stra\u00dfe');
+      });
+
+      test('a read message is still the same message when listed again', () async {
+        final id = (await listAndRead(dosSubject, body: dosBody)).id;
+        bbs.addPersonal(10, subject: decodeMailText(dosSubject), status: 'Y');
+        await engine.sync(conn);
+        final m = await message(10);
+        expect([m.id, m.subject, m.body], [id, 'Stra\u00dfe', 'Body text']);
+      });
+
+      test('a message not read keeps the subject as listed', () async {
+        bbs.addPersonal(10, subject: decodeMailText(dosSubject));
+        await engine.sync(conn);
+        expect((await message(10)).subject, 'Stra\u00e1e');
+      });
+
+      test('a UTF-8 subject is unchanged by reading', () async {
+        final m = await listAndRead(wire(utf8.encode('Stra\u00dfe \u2713')), body: 'Hello');
+        expect(m.subject, 'Stra\u00dfe \u2713');
+      });
+
+      test('a different subject on a read does not replace the listed one', () async {
+        bbs.addPersonal(10, subject: 'Hello');
+        await engine.sync(conn);
+        bbs.readSubjects[10] = 'Something else';
+        await engine.openMessage((await message(10)).id);
+        expect((await message(10)).subject, 'Hello');
+      });
     });
 
     test('lost while sending: earlier sends kept, the rest stay queued', () async {

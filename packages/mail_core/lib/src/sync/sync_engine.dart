@@ -961,7 +961,7 @@ class SyncEngine {
   static bool _same(Message m, MessageHeader h, {required bool cutSubjects}) =>
       m.fromCall == h.from &&
       m.toCall == h.to &&
-      sameSubject(m.subject, h.subject, cut: cutSubjects) &&
+      sameSubject(m.subject, h.subject, cut: cutSubjects, decoded: m.body != null) &&
       _sameDay(m.date, h.date);
 
   /// True if two dates are on the same day, give or take one: a listed day
@@ -985,8 +985,21 @@ class SyncEngine {
   /// True if a stored subject and a listed one are the same. Where listings
   /// [cut] subjects short (XRouter), reading gives the whole, so a listed
   /// subject may be the start of the stored one.
-  static bool sameSubject(String stored, String listed, {required bool cut}) =>
-      stored == listed || (cut && listed.length >= 20 && stored.startsWith(listed));
+  ///
+  /// Once a message is read, its stored subject was decoded with the code page
+  /// of its text, while a listing judges the subject on its few characters
+  /// alone (see [decodeMailText]). With [decoded] the two may then differ in
+  /// their non-ASCII letters, which still count as the same.
+  static bool sameSubject(String stored, String listed, {required bool cut, bool decoded = false}) {
+    final shortened = cut && listed.length >= 20;
+    if (stored == listed || (shortened && stored.startsWith(listed))) return true;
+    if (!decoded) return false;
+    final head = shortened && stored.length > listed.length ? stored.substring(0, listed.length) : stored;
+    return head.length == listed.length && _asciiOnly(head) == _asciiOnly(listed);
+  }
+
+  /// [s] with each non-ASCII character as a question mark.
+  static String _asciiOnly(String s) => s.replaceAll(RegExp(r'[^\x00-\x7f]'), '?');
 
   Future<void> _deleteIds(List<int> ids) async {
     if (ids.isNotEmpty) await (store.delete(store.messages)..where((m) => m.id.isIn(ids))).go();
@@ -1010,12 +1023,20 @@ class SyncEngine {
       routing: Value(read.routing.isEmpty ? null : read.routing.join('\n')),
       bid: Value(read.bid.isEmpty ? m.bid : read.bid),
       date: _readDate(read),
-      // The whole subject, where the listing cut it short.
-      subject: cut && read.subject.length > m.subject.length && read.subject.startsWith(m.subject)
-          ? Value(read.subject)
-          : const Value.absent(),
+      // The whole subject, where the listing cut it short. And the subject as
+      // read: it was decoded together with the text, so it has the text's code
+      // page, while the listing judged it on its own few characters.
+      subject: _readSubject(m, read, cut: cut),
     ));
     if (m.type != 'bulletin') await _learnFromSender(read);
+  }
+
+  static Value<String> _readSubject(Message m, ReadMessage read, {required bool cut}) {
+    if (read.subject.isEmpty || read.subject == m.subject) return const Value.absent();
+    final whole = cut && read.subject.length > m.subject.length && read.subject.startsWith(m.subject);
+    return whole || sameSubject(read.subject, m.subject, cut: cut, decoded: true)
+        ? Value(read.subject)
+        : const Value.absent();
   }
 
   /// The date and time from a message's own header, which replaces the
