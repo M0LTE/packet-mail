@@ -1,0 +1,2 @@
+- Tablets: the card for writing mail is taller while the on-screen keyboard is up.
+- Subjects of older mail with accented letters now show the right characters in lists once the message has been read.
