@@ -337,10 +337,12 @@ class _SheetState<T> extends State<_Sheet<T>> {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final size = media.size;
+    // With the keyboard up the sheet needs every point of height it can get.
+    final vertical = media.viewInsets.bottom > 0 ? 8.0 : 24.0;
     return AnimatedPadding(
       duration: const Duration(milliseconds: 100),
       curve: Curves.decelerate,
-      padding: media.viewInsets + media.padding + const EdgeInsets.all(24),
+      padding: media.viewInsets + media.padding + EdgeInsets.fromLTRB(24, vertical, 24, vertical),
       // The padding above already keeps the sheet clear of the keyboard and
       // the screen edges, so the screen inside must not allow for them again.
       // One MediaQuery: two nested removals would each start from the outer

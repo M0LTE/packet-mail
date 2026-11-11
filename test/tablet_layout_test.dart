@@ -129,6 +129,32 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('a sheet on a tablet has smaller top and bottom margins while the keyboard is up', (tester) async {
+    final app = await _station(tester, const Size(1180, 820));
+    await tester.tap(find.text('QSL and thanks'));
+    await settleAll(app, tester);
+    await tester.tap(find.text('Reply'));
+    await settleAll(app, tester);
+
+    // No keyboard: the 24 point margin stays.
+    var sheet = tester.getRect(find.byKey(const ValueKey('sheet')));
+    expect(sheet.top, 24);
+    expect(sheet.bottom, 820 - 24);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 422 * 2);
+    await settleAll(app, tester);
+    sheet = tester.getRect(find.byKey(const ValueKey('sheet')));
+    expect(sheet.top, 8);
+    expect(sheet.bottom, 820 - 422 - 8);
+    expect(sheet.height, greaterThan(820 - 422 - 48));
+
+    tester.view.resetViewInsets();
+    await settleAll(app, tester);
+    sheet = tester.getRect(find.byKey(const ValueKey('sheet')));
+    expect(sheet.top, 24);
+    await app.dispose(tester);
+  });
+
   testWidgets('an upright small tablet starts with the sidebar folded, and it opens and folds', (tester) async {
     final app = await _station(tester, const Size(820, 1180));
     // Folded: icons only, and the list has the mailbox switcher.
