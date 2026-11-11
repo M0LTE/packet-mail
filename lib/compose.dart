@@ -4,7 +4,18 @@ import 'message_format.dart';
 
 /// What the compose screen starts with: empty, a reply or a forward.
 class ComposeDraft {
-  const ComposeDraft({this.to = '', this.subject = '', this.body = '', this.connectionId, this.startAtTop = false});
+  const ComposeDraft({
+    this.to = '',
+    this.subject = '',
+    this.body = '',
+    this.connectionId,
+    this.startAtTop = false,
+    this.quote,
+  });
+
+  /// On a reply, the mail being answered. The compose screen adds it to
+  /// [body] as much as the user wants quoted, above or below their writing.
+  final ReplyQuote? quote;
 
   final String to;
   final String subject;
@@ -17,7 +28,7 @@ class ComposeDraft {
   final bool startAtTop;
 
   /// To the sender, with their route if the message says where they are.
-  /// The original is quoted below a line saying who wrote it.
+  /// The original is quoted under a line saying who wrote it.
   factory ComposeDraft.reply(Message m) {
     final call = bareCall(m.fromCall);
     final origin = routeOrigin(m.routing);
@@ -30,7 +41,7 @@ class ComposeDraft {
     return ComposeDraft(
       to: to,
       subject: replySubject(m.subject),
-      body: '$call wrote:\n${quoteForReply(stripAnsi(m.body ?? ''))}\n\n',
+      quote: ReplyQuote(by: call, original: stripAnsi(m.body ?? '')),
       connectionId: m.connectionId,
     );
   }
@@ -74,6 +85,52 @@ class ComposeDraft {
   }
 
   static String _two(int n) => n.toString().padLeft(2, '0');
+}
+
+/// How much of the original a reply quotes.
+enum QuoteAmount {
+  all('All'),
+  start('First $quoteStartLines lines'),
+  none('None');
+
+  const QuoteAmount(this.label);
+  final String label;
+}
+
+/// How many lines of the original [QuoteAmount.start] keeps.
+const quoteStartLines = 5;
+
+/// The mail a reply answers: who wrote it and what it said.
+class ReplyQuote {
+  const ReplyQuote({required this.by, required this.original});
+
+  final String by;
+  final String original;
+
+  /// The quoted lines under "CALL wrote:", or nothing for [QuoteAmount.none].
+  String _block(QuoteAmount amount) => amount == QuoteAmount.none
+      ? ''
+      : '$by wrote:\n${quoteForReply(original, maxLines: amount == QuoteAmount.start ? quoteStartLines : null)}';
+
+  /// The quote with the gap between it and the writing: it goes before the
+  /// writing, or after it when the reply is written [above].
+  String part(QuoteAmount amount, {required bool above}) {
+    final block = _block(amount);
+    if (block.isEmpty) return '';
+    return above ? '\n\n$block\n' : '$block\n\n';
+  }
+
+  /// [body] with its quote changed [from] one amount [to] another, leaving
+  /// the writing alone. Null if the quote has been edited, so it can't be
+  /// told apart from the writing any more.
+  String? swap(String body, {required QuoteAmount from, required QuoteAmount to, required bool above}) {
+    final old = part(from, above: above);
+    final next = part(to, above: above);
+    if (above) {
+      return body.endsWith(old) ? body.substring(0, body.length - old.length) + next : null;
+    }
+    return body.startsWith(old) ? next + body.substring(old.length) : null;
+  }
 }
 
 /// `Report: ` before [subject], cut to the BBS's limit.

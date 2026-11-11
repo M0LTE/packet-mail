@@ -183,5 +183,15 @@ void main() {
     ]) {
       test('quote $name', () => expect(quoteForReply(input), output));
     }
+
+    test('a cut quote keeps the first lines and marks the rest', () {
+      expect(quoteForReply('\n\na\nb\n\nc\nd', maxLines: 3), '> a\n> b\n> [...]');
+      expect(quoteForReply('a\nb\nc\nd', maxLines: 3), '> a\n> b\n> c\n> [...]');
+    });
+
+    test('a short original is quoted whole, with no mark', () {
+      expect(quoteForReply('a\nb\n\n', maxLines: 3), '> a\n> b');
+      expect(quoteForReply('a\nb\nc', maxLines: 3), '> a\n> b\n> c');
+    });
   });
 }

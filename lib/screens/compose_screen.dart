@@ -7,6 +7,7 @@ import '../contacts.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import '../view_choice.dart';
 import 'bulletin_compose_screen.dart';
 import 'message_screen.dart';
 
@@ -24,7 +25,13 @@ class ComposeScreen extends ConsumerStatefulWidget {
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   late final _to = TextEditingController(text: widget.draft.to);
   late final _subject = TextEditingController(text: widget.draft.subject);
-  late final _body = TextEditingController(text: widget.draft.body);
+  /// On a reply, whether it is written above the quote and how much is quoted.
+  late final _above = ref.read(replyAboveProvider);
+  late var _amount = ref.read(quoteAmountProvider);
+
+  /// What the body started as, to tell whether anything was written.
+  late var _startBody = widget.draft.quote?.part(_amount, above: _above) ?? widget.draft.body;
+  late final _body = TextEditingController(text: _startBody);
   final _toFocus = FocusNode();
   final _bodyFocus = FocusNode();
   late int? _connectionId = widget.draft.connectionId;
@@ -50,7 +57,8 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
         _toFocus.requestFocus();
       } else {
         _bodyFocus.requestFocus();
-        _body.selection = TextSelection.collapsed(offset: widget.draft.startAtTop ? 0 : _body.text.length);
+        final top = widget.draft.startAtTop || (widget.draft.quote != null && _above);
+        _body.selection = TextSelection.collapsed(offset: top ? 0 : _body.text.length);
       }
     });
   }
@@ -68,7 +76,27 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
   }
 
   bool get _edited =>
-      _to.text != widget.draft.to || _subject.text != widget.draft.subject || _body.text != widget.draft.body;
+      _to.text != widget.draft.to || _subject.text != widget.draft.subject || _body.text != _startBody;
+
+  /// The body with the quote changed to [amount], or null once the quote
+  /// has been edited.
+  String? _requoted(QuoteAmount amount) =>
+      widget.draft.quote?.swap(_body.text, from: _amount, to: amount, above: _above);
+
+  /// Quotes more or less of the original, keeping what has been written,
+  /// and remembers the choice for the next reply.
+  void _quote(QuoteAmount amount) {
+    final next = _requoted(amount);
+    if (next == null || amount == _amount) return;
+    final untouched = _body.text == _startBody;
+    final quote = widget.draft.quote!;
+    // The cursor stays in the writing: at its end, wherever the quote is.
+    final cursor = _above ? next.length - quote.part(amount, above: true).length : next.length;
+    _amount = amount;
+    _body.value = TextEditingValue(text: next, selection: TextSelection.collapsed(offset: cursor));
+    if (untouched) _startBody = next;
+    ref.read(quoteAmountProvider.notifier).set(amount);
+  }
 
   Connection? _connection(List<Connection> all) =>
       all.where((c) => c.id == _connectionId).firstOrNull ?? all.firstOrNull;
@@ -295,6 +323,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                 style: text.bodySmall,
               ),
             ),
+            if (widget.draft.quote != null) _quoteChoice(text),
             const SizedBox(height: 4),
             TextField(
               key: const ValueKey('body'),
@@ -314,6 +343,49 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// How much of the original to quote. It goes quiet once the quote has
+  /// been edited, since changing it then would lose the edits.
+  Widget _quoteChoice(TextTheme text) {
+    final live = _requoted(_amount) != null;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 14,
+        children: [
+          Text('Quote the original:', style: text.bodySmall?.copyWith(color: Logbook.inkSoft)),
+          for (final a in QuoteAmount.values)
+            InkWell(
+              key: ValueKey('quote-${a.name}'),
+              onTap: live ? () => _quote(a) : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Container(
+                  padding: const EdgeInsets.only(bottom: 1),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: live && a == _amount ? Logbook.stampRed : Colors.transparent, width: 1.5),
+                    ),
+                  ),
+                  child: Text(
+                    a.label,
+                    style: text.bodySmall?.copyWith(
+                      color: !live
+                          ? Logbook.rule
+                          : a == _amount
+                          ? Logbook.stampRed
+                          : Logbook.inkFaint,
+                      fontWeight: live && a == _amount ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

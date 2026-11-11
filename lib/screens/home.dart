@@ -510,6 +510,15 @@ class SettingsTab extends ConsumerWidget {
               value: ref.watch(compactListsProvider),
               onChanged: (on) => ref.read(compactListsProvider.notifier).set(on),
             ),
+            SwitchListTile(
+              key: const ValueKey('reply-above'),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+              activeThumbColor: Logbook.stampRed,
+              title: Text('Reply above the quote', style: text.titleMedium),
+              subtitle: Text('Start writing above the quoted mail, not below it', style: text.labelMedium),
+              value: ref.watch(replyAboveProvider),
+              onChanged: (on) => ref.read(replyAboveProvider.notifier).set(on),
+            ),
             const Divider(indent: 24),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),

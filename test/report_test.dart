@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart';
 import 'package:packetmail/report.dart';
 
+import 'package:packetmail/screens/home.dart';
+
 import 'helpers.dart';
 
 void main() {
@@ -33,6 +35,8 @@ void main() {
       if (sharer != null) reportSharerProvider.overrideWithValue(sharer),
     ]);
     await tapText(tester, 'Settings');
+    // It sits below the fold on the test screen.
+    await tester.dragUntilVisible(find.text('Report a problem'), find.byType(SettingsTab), const Offset(0, -200));
     await tapText(tester, 'Report a problem');
     await tester.enterText(find.widgetWithText(TextField, 'What happened?'), 'Message 4490 looks odd.');
     return app;

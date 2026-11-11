@@ -1,0 +1,3 @@
+Replies:
+- Choose how much of the original to quote, at the top of a reply: all of it, the first 5 lines, or none. It starts on the first 5 lines, to save airtime, and remembers your choice. Changing it keeps what you have written.
+- New in Settings: "Reply above the quote", if you prefer to write above the quoted mail.

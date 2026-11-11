@@ -132,14 +132,28 @@ List<String> _wrapLine(String line, int width) {
 
 /// Quotes [body] for a reply: `> ` before each line, `>` before lines that
 /// are already quoted and on blank lines. Trailing blank lines are dropped.
-String quoteForReply(String body) {
-  final lines = body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n').map((l) => l.trimRight()).toList();
+/// With [maxLines], only that many lines from the first with writing on it
+/// are kept, and a `> [...]` line stands for the rest.
+String quoteForReply(String body, {int? maxLines}) {
+  var lines = body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n').map((l) => l.trimRight()).toList();
   while (lines.isNotEmpty && lines.last.isEmpty) {
     lines.removeLast();
+  }
+  var cut = false;
+  if (maxLines != null) {
+    lines = lines.skipWhile((l) => l.isEmpty).toList();
+    if (lines.length > maxLines) {
+      lines = lines.sublist(0, maxLines);
+      while (lines.isNotEmpty && lines.last.isEmpty) {
+        lines.removeLast();
+      }
+      cut = true;
+    }
   }
   return [
     for (final l in lines)
       if (l.isEmpty) '>' else if (l.startsWith('>')) '>$l' else '> $l',
+    if (cut) '> [...]',
   ].join('\n');
 }
 

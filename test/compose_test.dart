@@ -226,6 +226,96 @@ void main() {
     await app.dispose(tester);
   });
 
+  group('quoting in a reply', () {
+    const original = 'one\ntwo\nthree\nfour\nfive\nsix\nseven';
+    const first = 'G8BPQ wrote:\n> one\n> two\n> three\n> four\n> five\n> [...]';
+    const whole = 'G8BPQ wrote:\n> one\n> two\n> three\n> four\n> five\n> six\n> seven';
+
+    Future<TestApp> replying(WidgetTester tester) async {
+      final app = TestApp();
+      final c = await seedStation(app, tester);
+      await addMessage(app, tester, c, number: 30, subject: 'Saturday net', body: original, read: true);
+      await app.pump(tester);
+      await settleAll(app, tester);
+      await tester.tap(find.text('Saturday net'));
+      await settleAll(app, tester);
+      return app;
+    }
+
+    Future<void> tap(TestApp app, WidgetTester tester, Finder f) async {
+      await tester.ensureVisible(f);
+      await tester.tap(f);
+      await settleAll(app, tester);
+    }
+
+    String body(WidgetTester tester) =>
+        tester.widget<TextField>(find.byKey(const ValueKey('body'))).controller!.text;
+
+    testWidgets('starts on the first lines, and changing it keeps the writing and is remembered', (tester) async {
+      final app = await replying(tester);
+      await tap(app, tester, find.text('Reply'));
+      expect(body(tester), '$first\n\n');
+
+      await type(tester, 'body', '$first\n\nSee you then.');
+      await tap(app, tester, find.byKey(const ValueKey('quote-all')));
+      expect(body(tester), '$whole\n\nSee you then.');
+      await tap(app, tester, find.byKey(const ValueKey('quote-none')));
+      expect(body(tester), 'See you then.');
+      await tap(app, tester, find.byKey(const ValueKey('quote-all')));
+      expect(body(tester), '$whole\n\nSee you then.');
+
+      // The next reply starts the same way.
+      await tap(app, tester, find.text('Cancel'));
+      await tap(app, tester, find.text('Discard'));
+      await tap(app, tester, find.text('Reply'));
+      expect(body(tester), '$whole\n\n');
+      // Changing the quote alone is nothing to lose.
+      await tap(app, tester, find.byKey(const ValueKey('quote-start')));
+      await tap(app, tester, find.text('Cancel'));
+      expect(find.text('Discard this message?'), findsNothing);
+      await app.dispose(tester);
+    });
+
+    testWidgets('an edited quote is left alone', (tester) async {
+      final app = await replying(tester);
+      await tap(app, tester, find.text('Reply'));
+      const edited = 'G8BPQ wrote:\n> two\n\nYes to that.';
+      await type(tester, 'body', edited);
+      await tap(app, tester, find.byKey(const ValueKey('quote-none')));
+      expect(body(tester), edited);
+      await app.dispose(tester);
+    });
+
+    testWidgets('the setting puts the writing above the quote', (tester) async {
+      final app = await replying(tester);
+      await tester.tap(find.text('Settings'));
+      await settleAll(app, tester);
+      await tap(app, tester, find.byKey(const ValueKey('reply-above')));
+      await tester.tap(find.text('Mail'));
+      await settleAll(app, tester);
+      await tap(app, tester, find.text('Reply'));
+      expect(body(tester), '\n\n$first\n');
+      final field = tester.widget<TextField>(find.byKey(const ValueKey('body')));
+      expect(field.controller!.selection.baseOffset, 0);
+
+      await type(tester, 'body', 'See you then.\n\n$first\n');
+      await tap(app, tester, find.byKey(const ValueKey('quote-none')));
+      expect(body(tester), 'See you then.');
+      await tap(app, tester, find.byKey(const ValueKey('quote-all')));
+      expect(body(tester), 'See you then.\n\n$whole\n');
+      expect(field.controller!.selection.baseOffset, 'See you then.'.length);
+      await app.dispose(tester);
+    });
+
+    testWidgets('a forward has no quote choice and carries the whole message', (tester) async {
+      final app = await replying(tester);
+      await tap(app, tester, find.text('Forward'));
+      expect(find.byKey(const ValueKey('quote-all')), findsNothing);
+      expect(body(tester), contains('> seven'));
+      await app.dispose(tester);
+    });
+  });
+
   testWidgets('several recipients: one copy each, one item in Sent with each state, and a tip once', (tester) async {
     final app = TestApp();
     await seedStation(app, tester);
