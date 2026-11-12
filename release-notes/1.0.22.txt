@@ -1,0 +1,3 @@
+- The Undo bar after deleting a message, blocking a station or marking bulletins read now goes away by itself.
+- Mail dated 29 February no longer shows as 1 March.
+- Telnet: a stray invisible character at the start of some lines from certain BBSes is gone.
