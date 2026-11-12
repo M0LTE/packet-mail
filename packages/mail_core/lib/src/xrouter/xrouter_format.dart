@@ -27,9 +27,7 @@ DateTime xrouterListingDate(String text, DateTime now) {
   final day = RegExp(r'^(\d\d)/(\d\d)$').firstMatch(text);
   if (day == null) throw FormatException('Not an XRouter listing date', text);
   final d = int.parse(day[1]!), m = int.parse(day[2]!);
-  var date = DateTime.utc(now.year, m, d);
-  if (date.isAfter(now.add(const Duration(days: 1)))) date = DateTime.utc(now.year - 1, m, d);
-  return date;
+  return recentDate(m, d, now);
 }
 
 /// When a read message arrived, from its `Rcvd` header (the node's local

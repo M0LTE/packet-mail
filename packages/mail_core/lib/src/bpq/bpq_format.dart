@@ -16,9 +16,7 @@ DateTime bpqDate(String dayMonth, DateTime now, {int hour = 0, int minute = 0}) 
   if (m == null) throw FormatException('Not a BPQ date', dayMonth);
   final day = int.parse(m[1]!);
   final month = _months[m[2]] ?? (throw FormatException('Not a month', m[2]));
-  var d = DateTime.utc(now.year, month, day, hour, minute);
-  if (d.isAfter(now.add(const Duration(days: 1)))) d = DateTime.utc(now.year - 1, month, day, hour, minute);
-  return d;
+  return recentDate(month, day, now, hour: hour, minute: minute);
 }
 
 final _listing = RegExp(r'^(\d+)\s+(\d\d-\w{3})\s+([PBT])(\S)\s+(\d+)\s+(\S+)\s*(?:@(\S+))?\s+(\S+) ?(.*)$');

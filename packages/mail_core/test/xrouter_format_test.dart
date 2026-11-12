@@ -32,6 +32,12 @@ void main() {
       expect(xrouterListingDate('20/12', now), DateTime.utc(2025, 12, 20));
     });
 
+    test('29 February is in the last leap year, not 1 March', () {
+      expect(xrouterListingDate('29/02', now), DateTime.utc(2024, 2, 29));
+      expect(xrouterListingDate('29/02', DateTime.utc(2028, 3, 1)), DateTime.utc(2028, 2, 29));
+      expect(xrouterListingDate('29/02', DateTime.utc(2028, 2, 1)), DateTime.utc(2024, 2, 29));
+    });
+
     test('a time is from the last 24 hours, never later than now', () {
       // The phone's time zone stands in for the node's, whatever it is.
       DateTime at(int y, int mo, int d, int h, int mi) => DateTime(y, mo, d, h, mi).toUtc();
