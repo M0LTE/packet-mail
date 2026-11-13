@@ -8,7 +8,7 @@
 
 **Description:**
 
-Packet Mail brings packet radio BBS mail to your phone with the ease of an ordinary email app.
+Packet Mail brings packet radio BBS mail to your iPhone and iPad with the ease of an ordinary email app.
 
 Add a connection to your BBS the way you'd add an email account, and your personal mail and bulletins appear in an inbox you already know how to use. Read on the go, reply, write to several stations at once, and keep an address book that fills itself in as mail arrives.
 
@@ -40,7 +40,7 @@ Packet Mail is for licensed radio amateurs. It talks to your own BBS over your l
 
 **Short description (80 characters):** Packet radio BBS mail and bulletins, in a proper mail app.
 
-**Full description:** the same text as the App Store description above.
+**Full description:** the same text as the App Store description above, with "your phone or tablet" in place of "your iPhone and iPad".
 
 **App icon:** `docs/store/creative/play-icon-512.png` (512 x 512).
 
