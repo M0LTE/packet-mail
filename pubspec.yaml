@@ -2,7 +2,10 @@ name: packetmail
 description: "Packet radio BBS mail for your phone"
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 0.1.0+1
+# The version name, then the version code after the +. The code goes up by one every release and is
+# above every build number used before this lived here (they reached 180). Bump both with
+# tool/release.sh; see docs/releasing.md.
+version: 1.0.23+200
 
 environment:
   sdk: ^3.13.7
@@ -25,6 +28,13 @@ dependencies:
   share_plus: ^13.3.1
   package_info_plus: ^10.2.2
   path_provider: ^2.1.6
+
+# Build SQLite from third_party/sqlite rather than downloading a prebuilt library.
+hooks:
+  user_defines:
+    sqlite3:
+      source: source
+      path: third_party/sqlite/sqlite3.c
 
 dev_dependencies:
   flutter_test:
