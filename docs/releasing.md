@@ -4,8 +4,8 @@ Pushes to `master` only build and test. A release is a version tag.
 
 ## Make a release
 
-1. Pick a version, one higher than the last tag (`git tag -l 'v*'`), and write its release notes in `release-notes/<version>.txt` (see "Google Play" below). Commit them.
-2. Run `tool/release.sh <version>`, for example `tool/release.sh 1.0.24`. It sets the version in `pubspec.yaml`, adds one to the version code, copies the release notes to the F-Droid changelog and commits. It doesn't tag or push.
+1. Pick a version, one higher than the last tag (`git tag -l 'v*'`), and write its release notes in `release-notes/<version>.txt` (see "Google Play" below).
+2. On an up-to-date `master`, run `tool/release.sh <version>`, for example `tool/release.sh 1.0.24`. It sets the version in `pubspec.yaml`, adds one to the version code, copies the release notes to the F-Droid changelogs and commits all of that with the notes themselves. It refuses if you're not on `master`, are behind `origin/master`, or have other uncommitted changes. It doesn't tag or push.
 3. Push to `master` and check CI is green on that commit: `gh run list -R m0lte/packet-mail -b master`, or the Actions tab. Copy its full SHA.
 4. Tag that exact commit by its full SHA and push the tag:
 
@@ -21,7 +21,7 @@ Tag by SHA rather than `master` or `HEAD`, so a stale checkout can't tag the wro
 The version lives in `pubspec.yaml` as `version: 1.0.24+201`: the version name the stores show, then the version code (the build number on iPhone). Every build, release or not, uses it.
 
 - The tag must match the version name (`v1.0.24` for 1.0.24). If it doesn't, the "Version" job fails and nothing is built or uploaded; run `tool/release.sh` and tag that commit instead.
-- The code goes up by one each release and must never go down: Google Play, the App Store and F-Droid all refuse a code they have already had or a lower one. Up to v1.0.22 the code was the CI run number (v1.0.22 was build 179, and runs reached about 180), so the version in `pubspec.yaml` started again at 200 with 1.0.23.
+- The code goes up by one each release and must never go down: Google Play, the App Store and F-Droid all refuse a code they have already had or a lower one. Up to v1.0.22 the code was the CI run number (v1.0.22 was build 179, and runs reached about 180), so the version in `pubspec.yaml` started again at 200 with 1.0.23. The "Version" job also fails a new tag whose code isn't above every earlier release's, which catches a suffix tag on a commit whose code wasn't bumped.
 - The version lives in the source, rather than coming from the tag, because F-Droid builds from the tagged source on its own servers.
 
 ## What the tag does
@@ -80,6 +80,6 @@ A release tag also uploads the signed app bundle to Google Play's **closed testi
 F-Droid builds the app itself from the tagged source and signs it with its own key, so its copy doesn't update from, or to, the Play or GitHub APKs. Its build recipe lives in F-Droid's own repository (`metadata/m0lte.packetmail.yml` in fdroiddata). It notices new `v*` tags by itself and reads the version from `pubspec.yaml`, so a normal release needs nothing extra here.
 
 - The listing text, icon and screenshots are in `fastlane/metadata/android/en-US/`. They are copies of the Google Play listing in `docs/store/`; change both together.
-- Each release's "What's new" is `fastlane/metadata/android/en-US/changelogs/<code>.txt`, which `tool/release.sh` copies from `release-notes/`.
+- Each release's "What's new" is in `fastlane/metadata/android/en-US/changelogs/`, three copies named after the F-Droid version codes (below), which `tool/release.sh` copies from `release-notes/`.
 - F-Droid won't take ready-built binaries, so SQLite is compiled from `third_party/sqlite/` instead of downloaded (see the README there). Keep any new dependency free of downloaded or bundled binaries too.
 - F-Droid builds one APK per processor, with version codes of the `pubspec.yaml` code times ten plus 1 (arm32), 2 (arm64) or 3 (x86_64).

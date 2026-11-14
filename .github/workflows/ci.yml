@@ -33,10 +33,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release_tag || github.ref }}
+          fetch-depth: 0
       - name: Read the version from pubspec.yaml, and check it against the tag
         id: v
         run: |
-          line=$(sed -n -E 's/^version:[[:space:]]*([^[:space:]#]+).*/\1/p' pubspec.yaml)
+          read_version() { sed -n -E 's/^version:[[:space:]]*([^[:space:]#]+).*/\1/p'; }
+          line=$(read_version < pubspec.yaml)
           name=${line%%+*}; code=${line#*+}
           if [ -n "$REL_TAG" ]; then
             tag=${REL_TAG#v}; tag=${tag%%-*}
@@ -48,11 +50,30 @@ jobs:
                 echo "::error::Tag $REL_TAG does not match version $name in pubspec.yaml. Run tool/release.sh $tag, push, and tag that commit."
                 exit 1
               fi
+            elif [ -n "$LEGACY_BUILD" ]; then
+              echo "::warning::build_number $LEGACY_BUILD ignored: $REL_TAG has its version in pubspec.yaml ($line)."
             fi
           fi
           if ! printf '%s' "$name" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || ! printf '%s' "$code" | grep -Eq '^[0-9]+$'; then
             echo "::error::Version '$line' in pubspec.yaml should look like 1.2.3+200."
             exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ -n "$REL_TAG" ]; then
+            # A new release tag needs a code above every earlier release's. Tags before v1.0.23 used
+            # the CI run number, up to build 179; later ones carry their version in pubspec.yaml.
+            highest=179; highest_tag="the old run-number builds"
+            for t in $(git tag -l 'v*'); do
+              [ "$t" = "$REL_TAG" ] && continue
+              v=$(git show "$t:pubspec.yaml" 2>/dev/null | read_version) || continue
+              tv=${t#v}; tv=${tv%%-*}
+              [ "${v%%+*}" = "$tv" ] || continue
+              c=${v#*+}
+              if [ "$c" -gt "$highest" ]; then highest=$c; highest_tag=$t; fi
+            done
+            if [ "$code" -le "$highest" ]; then
+              echo "::error::Version code $code is not above $highest ($highest_tag). Run tool/release.sh $name, push, and tag that commit."
+              exit 1
+            fi
           fi
           echo "Version $name, build $code"
           echo "name=$name" >> "$GITHUB_OUTPUT"

@@ -5,8 +5,8 @@
 #
 # The version code (after the + in pubspec.yaml) goes up by one. Giving the current version
 # again only bumps the code, for another build of a version already waiting in App Store review.
-# Needs release-notes/<version>.txt, which is copied to the F-Droid changelog for the new code.
-# Doesn't tag or push; see docs/releasing.md.
+# Needs release-notes/<version>.txt, which goes into the release commit and is copied to the F-Droid
+# changelogs. Run it on an up-to-date master. Doesn't tag or push; see docs/releasing.md.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -27,8 +27,19 @@ if [ "$(wc -c < "$notes")" -gt 500 ]; then
   exit 1
 fi
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "Commit or stash your changes first." >&2
+# Only the release notes may be new or changed; they go into the release commit.
+if [ -n "$(git status --porcelain --untracked-files=all | awk -v n="$notes" 'substr($0, 4) != n')" ]; then
+  echo "Commit or stash your other changes first." >&2
+  exit 1
+fi
+
+if [ "$(git rev-parse --abbrev-ref HEAD)" != master ]; then
+  echo "Releases are made on master; switch to it first." >&2
+  exit 1
+fi
+git fetch -q origin master
+if [ -n "$(git rev-list HEAD..origin/master)" ]; then
+  echo "master is behind origin/master; pull first." >&2
   exit 1
 fi
 
@@ -42,11 +53,15 @@ fi
 code=$((current_code + 1))
 
 sed -i -E "s/^version:[[:space:]]*[^[:space:]#]+/version: $version+$code/" pubspec.yaml
-changelog="fastlane/metadata/android/en-US/changelogs/$code.txt"
-mkdir -p "$(dirname "$changelog")"
-cp "$notes" "$changelog"
+# F-Droid builds one APK per processor, with version codes of this code times ten plus 1, 2 or 3,
+# and looks up each one's changelog by its own code.
+changelogs=fastlane/metadata/android/en-US/changelogs
+mkdir -p "$changelogs"
+for abi in 1 2 3; do
+  cp "$notes" "$changelogs/$((code * 10 + abi)).txt"
+done
 
-git add pubspec.yaml "$changelog"
+git add pubspec.yaml "$notes" "$changelogs"/$((code * 10 + 1)).txt "$changelogs"/$((code * 10 + 2)).txt "$changelogs"/$((code * 10 + 3)).txt
 git commit -q -m "Version $version ($code)"
 
 echo "Committed version $version, build $code."

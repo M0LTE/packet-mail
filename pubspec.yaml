@@ -2,9 +2,9 @@ name: packetmail
 description: "Packet radio BBS mail for your phone"
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-# The version name, then the version code after the +. The code goes up by one every release and is
-# above every build number used before this lived here (they reached 180). Bump both with
-# tool/release.sh; see docs/releasing.md.
+# The version name, then the version code after the +. The code goes up by one every release and
+# started at 200, above every build number used before this lived here (v1.0.22 was build 179).
+# Bump both with tool/release.sh; see docs/releasing.md.
 version: 1.0.23+200
 
 environment:
