@@ -13,6 +13,9 @@ How this project is built and run, for coding agents and anyone else picking it 
   - `feedback-receiver/`: the problem-report endpoint, in Rust.
   - `site/`: the website.
   - `docs/`: plan, protocol notes, deployment, releasing, store material.
+  - `fastlane/`: the F-Droid listing and per-release changelogs.
+  - `third_party/sqlite/`: SQLite source, compiled into the app instead of a downloaded binary.
+  - `tool/`: `release.sh`, which sets the version for a release.
 - **Decisions live in `docs/plan.md`,** `docs/push-design.md` and the issues. Don't reopen a decision Tom has made; if something seems wrong, say so and ask.
 
 ## Ground rules

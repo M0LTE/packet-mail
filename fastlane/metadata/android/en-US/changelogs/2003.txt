@@ -1,0 +1,1 @@
+- Getting ready for F-Droid: the app is now built entirely from its source code, including the database it keeps your mail in.

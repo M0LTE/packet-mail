@@ -12,7 +12,7 @@ on:
         required: false
         default: ''
       build_number:
-        description: Build number to use with release_tag (match the App Store build)
+        description: Only for tags before v1.0.23, whose pubspec.yaml has no real version, the build number to use (match the App Store build)
         required: false
         default: ''
 
@@ -20,6 +20,65 @@ env:
   FLUTTER_VERSION: 3.47.8
 
 jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.v.outputs.name }}
+      code: ${{ steps.v.outputs.code }}
+    env:
+      REL_TAG: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || '' }}
+      LEGACY_BUILD: ${{ inputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          fetch-depth: 0
+      - name: Read the version from pubspec.yaml, and check it against the tag
+        id: v
+        run: |
+          read_version() { sed -n -E 's/^version:[[:space:]]*([^[:space:]#]+).*/\1/p'; }
+          line=$(read_version < pubspec.yaml)
+          name=${line%%+*}; code=${line#*+}
+          if [ -n "$REL_TAG" ]; then
+            tag=${REL_TAG#v}; tag=${tag%%-*}
+            if [ "$tag" != "$name" ]; then
+              if [ -n "$LEGACY_BUILD" ]; then
+                # A tag from before the version lived in pubspec.yaml: name from the tag, code given by hand.
+                name=$tag; code=$LEGACY_BUILD
+              else
+                echo "::error::Tag $REL_TAG does not match version $name in pubspec.yaml. Run tool/release.sh $tag, push, and tag that commit."
+                exit 1
+              fi
+            elif [ -n "$LEGACY_BUILD" ]; then
+              echo "::warning::build_number $LEGACY_BUILD ignored: $REL_TAG has its version in pubspec.yaml ($line)."
+            fi
+          fi
+          if ! printf '%s' "$name" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || ! printf '%s' "$code" | grep -Eq '^[0-9]+$'; then
+            echo "::error::Version '$line' in pubspec.yaml should look like 1.2.3+200."
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ -n "$REL_TAG" ]; then
+            # A new release tag needs a code above every earlier release's. Tags before v1.0.23 used
+            # the CI run number, up to build 179; later ones carry their version in pubspec.yaml.
+            highest=179; highest_tag="the old run-number builds"
+            for t in $(git tag -l 'v*'); do
+              [ "$t" = "$REL_TAG" ] && continue
+              v=$(git show "$t:pubspec.yaml" 2>/dev/null | read_version) || continue
+              tv=${t#v}; tv=${tv%%-*}
+              [ "${v%%+*}" = "$tv" ] || continue
+              c=${v#*+}
+              if [ "$c" -gt "$highest" ]; then highest=$c; highest_tag=$t; fi
+            done
+            if [ "$code" -le "$highest" ]; then
+              echo "::error::Version code $code is not above $highest ($highest_tag). Run tool/release.sh $name, push, and tag that commit."
+              exit 1
+            fi
+          fi
+          echo "Version $name, build $code"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -178,7 +237,7 @@ jobs:
 
   testflight:
     name: Upload to TestFlight
-    needs: [test, bbs, xrouter]
+    needs: [version, test, bbs, xrouter]
     if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
     runs-on: macos-latest
     env:
@@ -212,7 +271,7 @@ jobs:
           # Archive unsigned and sign only at export with the cloud-managed distribution
           # certificate. Signing the archive made Xcode create a new development
           # certificate on every fresh runner until the account hit Apple's limit.
-          flutter build ios --release --no-codesign --build-name=$(v=${GITHUB_REF_NAME#v}; echo ${v%%-*}) --build-number=${{ github.run_number }}
+          flutter build ios --release --no-codesign --build-name=${{ needs.version.outputs.name }} --build-number=${{ needs.version.outputs.code }}
           xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos \
             -archivePath "$RUNNER_TEMP/Runner.xcarchive" archive \
             DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
@@ -232,7 +291,7 @@ jobs:
 
   android-release:
     name: Signed Android app bundle
-    needs: [test, bbs, xrouter]
+    needs: [version, test, bbs, xrouter]
     if: (startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     runs-on: ubuntu-latest
     env:
@@ -240,8 +299,8 @@ jobs:
       KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
-      REL_TAG: ${{ inputs.release_tag || github.ref_name }}
-      BUILD: ${{ inputs.build_number || github.run_number }}
+      VERSION: ${{ needs.version.outputs.name }}
+      BUILD: ${{ needs.version.outputs.code }}
     steps:
       - name: Skip until signing is set up
         id: ready
@@ -276,7 +335,7 @@ jobs:
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
           PROPS
-          v=${REL_TAG#v}; v=${v%%-*}
+          v=$VERSION
           flutter build appbundle --release --build-name=$v --build-number=$BUILD
           flutter build apk --release --build-name=$v --build-number=$BUILD
           mkdir apks
@@ -299,7 +358,7 @@ jobs:
 
   github-release:
     name: GitHub release
-    needs: [android-release]
+    needs: [version, android-release]
     if: (startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     runs-on: ubuntu-latest
     permissions:
@@ -307,7 +366,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REL_TAG: ${{ inputs.release_tag || github.ref_name }}
-      BUILD: ${{ inputs.build_number || github.run_number }}
+      VERSION: ${{ needs.version.outputs.name }}
+      BUILD: ${{ needs.version.outputs.code }}
     steps:
       - uses: actions/download-artifact@v4
         id: apk
@@ -317,9 +377,7 @@ jobs:
       - name: Publish the release with the signed APK
         if: steps.apk.outcome == 'success'
         run: |
-          v=${REL_TAG#v}; v=${v%%-*}
-          # Flutter pads the version to three parts (1.0 becomes 1.0.0); show what the stores show.
-          case "$v" in *.*.*) ;; *) v="$v.0" ;; esac
+          v=$VERSION
           base="packet-mail-$v-$BUILD"
           mv app-release.apk "$base.apk"
           files="$base.apk"
@@ -359,7 +417,7 @@ jobs:
 
   google-play:
     name: Upload to Google Play closed testing
-    needs: [android-release]
+    needs: [version, android-release]
     if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
     runs-on: ubuntu-latest
     env:
@@ -382,9 +440,9 @@ jobs:
           path: bundle
       - name: Release notes for this version
         if: steps.ready.outputs.go
+        env:
+          v: ${{ needs.version.outputs.name }}
         run: |
-          v=${GITHUB_REF_NAME#v}; v=${v%%-*}
-          case "$v" in *.*.*) ;; *) v="$v.0" ;; esac
           mkdir -p whatsnew
           if [ -f "release-notes/$v.txt" ]; then
             cp "release-notes/$v.txt" whatsnew/whatsnew-en-GB
