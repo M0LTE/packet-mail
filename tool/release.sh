@@ -51,8 +51,11 @@ git commit -q -m "Version $version ($code)"
 
 echo "Committed version $version, build $code."
 tag=v$version
-# Another build of the same version needs a tag of its own: add a suffix after a hyphen.
-[ "$version" = "$current_name" ] && tag="v$version-N (pick the next free N)"
+if [ "$version" = "$current_name" ]; then
+  # Another build of the same version needs a tag of its own: a suffix after a hyphen.
+  tag="v$version-2"
+  echo "Same version again: tag it with a suffix, $tag or the next one not yet used."
+fi
 echo "Next: push, wait for CI to go green, then tag that commit by its full SHA:"
 echo "  git tag $tag $(git rev-parse HEAD)"
-echo "  git push origin ${tag%% *}"
+echo "  git push origin $tag"
