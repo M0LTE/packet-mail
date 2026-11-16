@@ -1,0 +1,1 @@
+- Setting up a connection: if Test connection or Save finds a field missing, the screen now scrolls to it and says so, instead of seeming to do nothing.
