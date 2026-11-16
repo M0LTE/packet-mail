@@ -5,6 +5,7 @@ import 'package:mail_core/mail_core.dart';
 import '../connections.dart';
 import '../host_warning.dart';
 import '../providers.dart';
+import '../theme.dart';
 import '../validation.dart';
 
 /// The fields of a connection, with Test connection and a save button.
@@ -55,6 +56,7 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
   var _validateAsTyped = false;
   var _testing = false;
   var _saving = false;
+  var _hasErrors = false;
   String? _testResult;
 
   @override
@@ -101,9 +103,21 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
         bbsType: _type.id,
       );
 
+  /// Checks the fields. The buttons sit below a long form, so on a phone
+  /// a field marked in red is often off the top of the screen: scroll to the
+  /// first one and say so by the buttons, or the tap seems to do nothing.
   bool _check() {
-    setState(() => _validateAsTyped = true);
-    return _form.currentState!.validate();
+    final invalid = _form.currentState!.validateGranularly();
+    setState(() {
+      _validateAsTyped = true;
+      _hasErrors = invalid.isNotEmpty;
+    });
+    if (invalid.isEmpty) return true;
+    double top(FormFieldState<Object?> f) =>
+        (f.context.findRenderObject() as RenderBox?)?.localToGlobal(Offset.zero).dy ?? 0;
+    final first = invalid.reduce((a, b) => top(a) <= top(b) ? a : b);
+    Scrollable.ensureVisible(first.context, alignment: 0.2, duration: const Duration(milliseconds: 300));
+    return false;
   }
 
   int _defaultPort(BbsType type, PortKind kind) => type.hasPortKinds ? kind.defaultPort : xrouterDefaultPort;
@@ -158,6 +172,8 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
     final text = Theme.of(context).textTheme;
     return Form(
       key: _form,
+      // The note by the buttons goes once the user starts putting things right.
+      onChanged: () => _hasErrors ? setState(() => _hasErrors = false) : null,
       autovalidateMode: _validateAsTyped ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -312,6 +328,10 @@ class _ConnectionFormState extends ConsumerState<ConnectionForm> {
             ),
           ),
           const SizedBox(height: 16),
+          if (_hasErrors) ...[
+            Text('Check the fields marked in red above.', style: text.bodyMedium?.copyWith(color: Logbook.stampRed)),
+            const SizedBox(height: 8),
+          ],
           OutlinedButton(
             onPressed: _testing || _saving ? null : _test,
             child: Text(_testing ? 'Testing...' : 'Test connection'),

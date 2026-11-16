@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mail_core/mail_core.dart' show HostPort, ConnectionAddressHostPort;
 import 'package:packetmail/host_warning.dart';
@@ -76,6 +77,34 @@ void main() {
     expect((await tester.runAsync(() => app.store.addressesOf(c.id)))!.map((a) => a.hostPort),
         [const HostPort('192.168.1.20', 8011)]);
     expect(app.passwords.passwords[c.id], 'secret');
+    await app.dispose(tester);
+  });
+
+  testWidgets('a missing field off the top of a phone screen is scrolled to, not silently ignored', (tester) async {
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final app = TestApp();
+    await app.pump(tester);
+    await enter(tester, 'Callsign', 'm0lte');
+    await enter(tester, 'Name', 'Tom');
+    await enter(tester, 'Home BBS', 'GB7RDG.#42.GBR.EURO');
+    await tapText(tester, 'Next');
+    await enter(tester, 'Host', '192.168.1.20');
+    await enter(tester, 'Login name', 'm0lte');
+
+    for (final button in ['Test connection', 'Save and finish']) {
+      await tapText(tester, button);
+      await tester.pumpAndSettle();
+      expect(find.text('Check the fields marked in red above.'), findsOneWidget);
+      final error = tester.getRect(find.text('Enter a name for this connection.'));
+      expect(error.top, greaterThanOrEqualTo(0), reason: button);
+      expect(error.bottom, lessThanOrEqualTo(640), reason: button);
+    }
+    expect(app.tested, isEmpty);
+
+    await enter(tester, 'Name', 'Home BBS');
+    expect(find.text('Check the fields marked in red above.'), findsNothing);
     await app.dispose(tester);
   });
 
