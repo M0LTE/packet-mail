@@ -26,7 +26,7 @@ A phone app for iPhone and Android, released on both app stores, that gives pack
 
 Fixed behaviour throughout: no settings beyond what is listed here. The exceptions are how personal mail downloads, which is a personal trade-off (see Sync rules), and where a reply is written.
 
-Replies (Tom, 2026-11-11): a Settings switch chooses writing above or below the quoted mail (below unless changed). The reply screen offers how much of the original to quote: all, the first 5 lines ending in a `> [...]` line, or none. It starts on the first 5 lines, since long quotes cost airtime, and remembers the last choice. Changing it leaves the writing alone, and it goes quiet once the quote itself has been edited. A forward always carries the whole message.
+Replies (Tom, 2026-11-11): a Settings switch chooses writing above or below the quoted mail (below unless changed). The reply screen offers how much of the original to quote: all, the first 5 lines ending in a `> [...]` line, the last 5 lines starting with a `> [...]` line, or none. It starts on the first 5 lines, since long quotes cost airtime, and remembers the last choice. Changing it leaves the writing alone, and it goes quiet once the quote itself has been edited. A forward always carries the whole message.
 
 ## Layers
 

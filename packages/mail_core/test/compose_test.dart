@@ -193,5 +193,16 @@ void main() {
       expect(quoteForReply('a\nb\n\n', maxLines: 3), '> a\n> b');
       expect(quoteForReply('a\nb\nc', maxLines: 3), '> a\n> b\n> c');
     });
+
+    test('a quote from the end keeps the last lines and marks the earlier ones', () {
+      expect(quoteForReply('a\nb\nc\nd\n\n\n', maxLines: 3, fromEnd: true), '> [...]\n> b\n> c\n> d');
+      expect(quoteForReply('a\nb\n\nc\nd', maxLines: 3, fromEnd: true), '> [...]\n> c\n> d');
+      expect(quoteForReply('a\nb\n\nc', maxLines: 2, fromEnd: true), '> [...]\n> c');
+    });
+
+    test('a short original is quoted whole from the end too, with no mark', () {
+      expect(quoteForReply('\n\na\nb\n\n', maxLines: 3, fromEnd: true), '> a\n> b');
+      expect(quoteForReply('a\nb\nc', maxLines: 3, fromEnd: true), '> a\n> b\n> c');
+    });
   });
 }

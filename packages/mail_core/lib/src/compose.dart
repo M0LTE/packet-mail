@@ -133,8 +133,10 @@ List<String> _wrapLine(String line, int width) {
 /// Quotes [body] for a reply: `> ` before each line, `>` before lines that
 /// are already quoted and on blank lines. Trailing blank lines are dropped.
 /// With [maxLines], only that many lines from the first with writing on it
-/// are kept, and a `> [...]` line stands for the rest.
-String quoteForReply(String body, {int? maxLines}) {
+/// are kept, and a `> [...]` line stands for the rest. With [fromEnd] too,
+/// the last [maxLines] lines are kept instead, and the `> [...]` line comes
+/// first.
+String quoteForReply(String body, {int? maxLines, bool fromEnd = false}) {
   var lines = body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n').map((l) => l.trimRight()).toList();
   while (lines.isNotEmpty && lines.last.isEmpty) {
     lines.removeLast();
@@ -143,17 +145,22 @@ String quoteForReply(String body, {int? maxLines}) {
   if (maxLines != null) {
     lines = lines.skipWhile((l) => l.isEmpty).toList();
     if (lines.length > maxLines) {
-      lines = lines.sublist(0, maxLines);
-      while (lines.isNotEmpty && lines.last.isEmpty) {
-        lines.removeLast();
+      if (fromEnd) {
+        lines = lines.sublist(lines.length - maxLines).skipWhile((l) => l.isEmpty).toList();
+      } else {
+        lines = lines.sublist(0, maxLines);
+        while (lines.isNotEmpty && lines.last.isEmpty) {
+          lines.removeLast();
+        }
       }
       cut = true;
     }
   }
   return [
+    if (cut && fromEnd) '> [...]',
     for (final l in lines)
       if (l.isEmpty) '>' else if (l.startsWith('>')) '>$l' else '> $l',
-    if (cut) '> [...]',
+    if (cut && !fromEnd) '> [...]',
   ].join('\n');
 }
 

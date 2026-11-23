@@ -229,6 +229,7 @@ void main() {
   group('quoting in a reply', () {
     const original = 'one\ntwo\nthree\nfour\nfive\nsix\nseven';
     const first = 'G8BPQ wrote:\n> one\n> two\n> three\n> four\n> five\n> [...]';
+    const last = 'G8BPQ wrote:\n> [...]\n> three\n> four\n> five\n> six\n> seven';
     const whole = 'G8BPQ wrote:\n> one\n> two\n> three\n> four\n> five\n> six\n> seven';
 
     Future<TestApp> replying(WidgetTester tester) async {
@@ -276,6 +277,27 @@ void main() {
       await app.dispose(tester);
     });
 
+    testWidgets('the last lines can be quoted, with the writing kept, below and above', (tester) async {
+      final app = await replying(tester);
+      await tap(app, tester, find.text('Reply'));
+      await type(tester, 'body', '$first\n\nSee you then.');
+      await tap(app, tester, find.byKey(const ValueKey('quote-end')));
+      expect(body(tester), '$last\n\nSee you then.');
+      await tap(app, tester, find.byKey(const ValueKey('quote-start')));
+      expect(body(tester), '$first\n\nSee you then.');
+      await tap(app, tester, find.byKey(const ValueKey('quote-end')));
+      await tap(app, tester, find.byKey(const ValueKey('quote-none')));
+      expect(body(tester), 'See you then.');
+
+      // Remembered for the next reply.
+      await tap(app, tester, find.byKey(const ValueKey('quote-end')));
+      await tap(app, tester, find.text('Cancel'));
+      await tap(app, tester, find.text('Discard'));
+      await tap(app, tester, find.text('Reply'));
+      expect(body(tester), '$last\n\n');
+      await app.dispose(tester);
+    });
+
     testWidgets('an edited quote is left alone', (tester) async {
       final app = await replying(tester);
       await tap(app, tester, find.text('Reply'));
@@ -304,6 +326,8 @@ void main() {
       await tap(app, tester, find.byKey(const ValueKey('quote-all')));
       expect(body(tester), 'See you then.\n\n$whole\n');
       expect(field.controller!.selection.baseOffset, 'See you then.'.length);
+      await tap(app, tester, find.byKey(const ValueKey('quote-end')));
+      expect(body(tester), 'See you then.\n\n$last\n');
       await app.dispose(tester);
     });
 

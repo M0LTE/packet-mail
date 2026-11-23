@@ -90,7 +90,8 @@ class ComposeDraft {
 /// How much of the original a reply quotes.
 enum QuoteAmount {
   all('All'),
-  start('First $quoteStartLines lines'),
+  start('First $quoteStartLines'),
+  end('Last $quoteEndLines'),
   none('None');
 
   const QuoteAmount(this.label);
@@ -100,6 +101,9 @@ enum QuoteAmount {
 /// How many lines of the original [QuoteAmount.start] keeps.
 const quoteStartLines = 5;
 
+/// How many lines of the original [QuoteAmount.end] keeps.
+const quoteEndLines = 5;
+
 /// The mail a reply answers: who wrote it and what it said.
 class ReplyQuote {
   const ReplyQuote({required this.by, required this.original});
@@ -108,9 +112,12 @@ class ReplyQuote {
   final String original;
 
   /// The quoted lines under "CALL wrote:", or nothing for [QuoteAmount.none].
-  String _block(QuoteAmount amount) => amount == QuoteAmount.none
-      ? ''
-      : '$by wrote:\n${quoteForReply(original, maxLines: amount == QuoteAmount.start ? quoteStartLines : null)}';
+  String _block(QuoteAmount amount) => switch (amount) {
+    QuoteAmount.none => '',
+    QuoteAmount.all => '$by wrote:\n${quoteForReply(original)}',
+    QuoteAmount.start => '$by wrote:\n${quoteForReply(original, maxLines: quoteStartLines)}',
+    QuoteAmount.end => '$by wrote:\n${quoteForReply(original, maxLines: quoteEndLines, fromEnd: true)}',
+  };
 
   /// The quote with the gap between it and the writing: it goes before the
   /// writing, or after it when the reply is written [above].
