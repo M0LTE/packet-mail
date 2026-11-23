@@ -141,6 +141,7 @@ class SelectButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => TextButton(
     key: const ValueKey('select'),
     onPressed: () => ref.read(selectionProvider.notifier).begin(scope),
+    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
     child: const Text('Select'),
   );
 }

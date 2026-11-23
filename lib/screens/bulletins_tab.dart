@@ -50,6 +50,8 @@ class BulletinsTab extends ConsumerWidget {
           ]
         : const <Message>[];
 
+    final canSelect = !selecting && !none && byDate && shown != null && shown.isNotEmpty;
+
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -79,7 +81,6 @@ class BulletinsTab extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      if (byDate && shown != null && shown.isNotEmpty) SelectButton(scope: scope),
                       IconButton(
                         key: const ValueKey('new-bulletin'),
                         tooltip: 'New bulletin',
@@ -91,7 +92,7 @@ class BulletinsTab extends ConsumerWidget {
                 ),
               ),
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, unread > 0 ? 8 : 20, unread > 0 ? 0 : 8),
+              padding: EdgeInsets.fromLTRB(20, 0, unread > 0 || canSelect ? 8 : 20, unread > 0 || canSelect ? 0 : 8),
               child: Row(
                 children: [
                   Expanded(
@@ -102,6 +103,8 @@ class BulletinsTab extends ConsumerWidget {
                       style: text.bodySmall?.copyWith(letterSpacing: 0.3),
                     ),
                   ),
+                  // Here, not beside the title, which has no room for it in a narrow pane.
+                  if (canSelect) SelectButton(scope: scope),
                   if (unread > 0)
                     TextButton(
                       key: const ValueKey('mark-all-read'),
