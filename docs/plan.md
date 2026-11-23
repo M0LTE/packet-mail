@@ -111,7 +111,7 @@ Added 2026-10-29 (#49). XRouter's built-in mailbox (its PMS) over the node's tel
   - **As sent:** monospace, exactly the lines the BBS delivered.
   - **Readable:** proportional font, hard-wrapped lines rejoined into paragraphs, quoted text shown as indented blocks, links and callsigns tappable. Blocks that look laid out (tables, ASCII art, columns of figures, lines with runs of spaces) stay monospace so they don't break.
 - **Compose:** To with address book autocomplete and validation, subject with remaining characters, body. Personal or bulletin switch; bulletin mode swaps To for category and area pickers.
-- **Bulletins browser:** grouped by category, then by area. Subscribe from any group. Headers-only entries show a "fetch" action.
+- **Bulletins browser:** grouped by category, then by area. Subscribe from any group. Headers-only entries show a "fetch" action. A third choice beside By category and By date, Subscribed (2026-11-23), lists only the bulletins a subscription covers, newest first; it appears once there is a subscription, and its count line and Mark all read apply to those bulletins alone.
 - **Address book:** list, search, edit, "look up home BBS".
 - **Connections:** list, add, edit, delete, last sync result.
 - **Sync status:** a small bar showing what is happening and the last error in plain words.

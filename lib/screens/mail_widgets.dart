@@ -116,6 +116,60 @@ class SyncStatusBar extends ConsumerWidget {
   }
 }
 
+/// Words side by side, the chosen one underlined in red: how the app
+/// switches between views of the same thing.
+class ChoiceSwitch extends StatelessWidget {
+  const ChoiceSwitch({
+    super.key,
+    required this.labels,
+    required this.selected,
+    required this.onChanged,
+    this.padding = const EdgeInsets.fromLTRB(20, 6, 20, 0),
+  });
+
+  final List<String> labels;
+
+  /// The index in [labels] of the chosen one.
+  final int selected;
+  final ValueChanged<int> onChanged;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget option(int i) {
+      final on = selected == i;
+      return InkWell(
+        onTap: () => onChanged(i),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Container(
+            padding: const EdgeInsets.only(bottom: 1),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: on ? Logbook.stampRed : Colors.transparent, width: 1.5)),
+            ),
+            child: Text(
+              labels[i],
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: on ? Logbook.stampRed : Logbook.inkFaint,
+                fontWeight: on ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: padding,
+      child: Row(
+        children: [
+          for (var i = 0; i < labels.length; i++) ...[if (i > 0) const SizedBox(width: 14), option(i)],
+        ],
+      ),
+    );
+  }
+}
+
 /// Two words side by side, the chosen one underlined in red: how the app
 /// switches between two views of the same thing.
 class ViewSwitch extends StatelessWidget {
@@ -139,35 +193,12 @@ class ViewSwitch extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) {
-    Widget option(String label, bool value) {
-      final on = firstOn == value;
-      return InkWell(
-        onTap: () => onChanged(value),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.only(bottom: 1),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: on ? Logbook.stampRed : Colors.transparent, width: 1.5)),
-            ),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: on ? Logbook.stampRed : Logbook.inkFaint,
-                fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: padding,
-      child: Row(children: [option(first, true), const SizedBox(width: 14), option(second, false)]),
-    );
-  }
+  Widget build(BuildContext context) => ChoiceSwitch(
+    labels: [first, second],
+    selected: firstOn ? 0 : 1,
+    onChanged: (i) => onChanged(i == 0),
+    padding: padding,
+  );
 }
 
 /// A row of tappable suggestions under a field.

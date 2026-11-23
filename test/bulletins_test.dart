@@ -325,7 +325,8 @@ void main() {
     expect(find.text('Subscribed'), findsOneWidget);
     await tester.tap(find.text('Bulletins').first);
     await settleAll(app, tester);
-    expect(find.text('Subscribed'), findsOneWidget);
+    // The red mark in the category list; the view switch now offers Subscribed too.
+    expect(find.byTooltip('Subscribed: downloads at each sync'), findsOneWidget);
 
     // Managed from the list too.
     await tester.tap(find.text('Subscriptions 1'));

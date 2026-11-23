@@ -36,6 +36,22 @@ class BulletinsByDate extends Notifier<bool> {
   }
 }
 
+/// Bulletins limited to the subscribed ones (true), remembered. Takes the place
+/// of By date and By category while chosen, and only applies while a subscription exists.
+final bulletinsSubscribedProvider = NotifierProvider<BulletinsSubscribed, bool>(BulletinsSubscribed.new);
+
+class BulletinsSubscribed extends Notifier<bool> {
+  static const _key = 'bulletins.subscribed';
+
+  @override
+  bool build() => ref.watch(prefsProvider).getBool(_key) ?? false;
+
+  void set(bool subscribed) {
+    state = subscribed;
+    ref.read(prefsProvider).setBool(_key, subscribed);
+  }
+}
+
 /// Compact lists (true): one line per message, so about twice as many fit.
 final compactListsProvider = NotifierProvider<CompactLists, bool>(CompactLists.new);
 

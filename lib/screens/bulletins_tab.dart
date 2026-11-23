@@ -25,17 +25,27 @@ class BulletinsTab extends ConsumerWidget {
     final all = ref.watch(bulletinsProvider).value;
     final subs = ref.watch(subscriptionsProvider).value ?? const [];
     final groups = groupBulletins(all ?? const []);
-    final unread = all?.where((m) => !m.read).length ?? 0;
     final connections = ref.watch(connectionsProvider).value ?? const [];
     final none = connections.isNotEmpty && ref.watch(connectionsWithProvider(DriverCapability.bulletins)).isEmpty;
-    final byDate = ref.watch(bulletinsByDateProvider);
+    // Subscribed only applies while a subscription exists; the choice is kept for when one does again.
+    final onlySubscribed = ref.watch(bulletinsSubscribedProvider) && subs.isNotEmpty;
+    final byDate = ref.watch(bulletinsByDateProvider) || onlySubscribed;
     ref.listen(bulletinsByDateProvider, (_, _) => ref.read(selectionProvider.notifier).clear());
-    const scope = 'bulletins:date';
+    ref.listen(bulletinsSubscribedProvider, (_, _) => ref.read(selectionProvider.notifier).clear());
+    final scope = onlySubscribed ? 'bulletins:subscribed' : 'bulletins:date';
+    // The ones showing, which the count line and Mark all read apply to.
+    final shown = onlySubscribed
+        ? [
+            for (final m in all ?? const <Message>[])
+              if (covered(subs, categoryOf(m), areaOf(m))) m,
+          ]
+        : all;
+    final unread = shown?.where((m) => !m.read).length ?? 0;
     final selection = ref.watch(selectionProvider);
-    final selecting = byDate && all != null && selection?.scope == scope;
+    final selecting = byDate && shown != null && selection?.scope == scope;
     final picked = selecting
         ? [
-            for (final m in all)
+            for (final m in shown)
               if (selection!.ids.contains(m.id)) m,
           ]
         : const <Message>[];
@@ -47,7 +57,7 @@ class BulletinsTab extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (selecting)
-              SelectHeader(visible: [for (final m in all) m.id])
+              SelectHeader(visible: [for (final m in shown) m.id])
             else
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
@@ -69,7 +79,7 @@ class BulletinsTab extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      if (byDate && all != null && all.isNotEmpty) const SelectButton(scope: scope),
+                      if (byDate && shown != null && shown.isNotEmpty) SelectButton(scope: scope),
                       IconButton(
                         key: const ValueKey('new-bulletin'),
                         tooltip: 'New bulletin',
@@ -86,16 +96,16 @@ class BulletinsTab extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      all == null || all.isEmpty
+                      shown == null || shown.isEmpty
                           ? (byDate ? 'Newest first' : 'By category, then area')
-                          : '${_count(all.length, 'bulletin')}${unread > 0 ? ', $unread new' : ''}',
+                          : '${_count(shown.length, 'bulletin')}${unread > 0 ? ', $unread new' : ''}',
                       style: text.bodySmall?.copyWith(letterSpacing: 0.3),
                     ),
                   ),
                   if (unread > 0)
                     TextButton(
                       key: const ValueKey('mark-all-read'),
-                      onPressed: () => markAllRead(context, ref, all!),
+                      onPressed: () => markAllRead(context, ref, shown!),
                       style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                       child: const Text('Mark all read'),
                     ),
@@ -103,12 +113,14 @@ class BulletinsTab extends ConsumerWidget {
               ),
             ),
             if (!none)
-              ViewSwitch(
+              ChoiceSwitch(
                 key: const ValueKey('bulletin-view'),
-                first: 'By category',
-                second: 'By date',
-                firstOn: !byDate,
-                onChanged: (category) => ref.read(bulletinsByDateProvider.notifier).set(!category),
+                labels: ['By category', 'By date', if (subs.isNotEmpty) 'Subscribed'],
+                selected: onlySubscribed ? 2 : (byDate ? 1 : 0),
+                onChanged: (i) {
+                  ref.read(bulletinsSubscribedProvider.notifier).set(i == 2);
+                  if (i != 2) ref.read(bulletinsByDateProvider.notifier).set(i == 1);
+                },
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
               ),
             Expanded(
@@ -137,9 +149,17 @@ class BulletinsTab extends ConsumerWidget {
                           'No bulletins yet. Pull down to check.',
                           style: text.titleMedium?.copyWith(color: Logbook.inkSoft),
                         ),
+                      )
+                    else if (onlySubscribed && all != null && all.isNotEmpty && shown!.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                        child: Text(
+                          'No bulletins in your subscriptions yet.',
+                          style: text.titleMedium?.copyWith(color: Logbook.inkSoft),
+                        ),
                       ),
                     if (byDate)
-                      for (final m in all ?? const <Message>[])
+                      for (final m in shown ?? const <Message>[])
                         BulletinRow(message: m, from: 'Bulletins', showWhere: true, scope: scope)
                     else
                       for (final g in groups) _CategoryBlock(group: g, subscriptions: subs),
