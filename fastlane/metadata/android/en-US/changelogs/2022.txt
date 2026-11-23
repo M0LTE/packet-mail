@@ -1,0 +1,4 @@
+- Replies can quote the last 5 lines of the original, as well as the first 5, all or none.
+- Coming back to the app checks for new mail.
+- If the BBS ends the session by itself, the app says so at once and keeps your unsent mail queued.
+- Links followed by other text, such as an rsync address, now open. A link that can't be opened says so.
