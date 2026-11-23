@@ -1,0 +1,1 @@
+New: select several messages at once. Tap Select at the top of a list, or press and hold a message, tick the ones you want, then Delete, Mark read or Star them together. One Undo brings back a whole batch. Works in the Inbox, Starred and bulletin lists.
