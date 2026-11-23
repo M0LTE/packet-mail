@@ -1,0 +1,1 @@
+New: a Subscribed view in Bulletins, beside By category and By date. It shows only the bulletins you subscribe to, newest first, and is remembered. It appears once you have a subscription.
