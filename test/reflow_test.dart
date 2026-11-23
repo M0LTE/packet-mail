@@ -313,6 +313,20 @@ void main() {
       expect(const LinkText('www.qrz.com').uri.toString(), 'https://www.qrz.com');
     });
 
+    test('a link stops before things that are not part of a web address', () {
+      expect(inlinePieces('rsync -av www.langelaar.net::official .'), const [
+        PlainText('rsync -av '),
+        LinkText('www.langelaar.net'),
+        PlainText('::official .'),
+      ]);
+      expect(inlinePieces('http://example.com:8080/x (see www.qrz.com).'), const [
+        LinkText('http://example.com:8080/x'),
+        PlainText(' (see '),
+        LinkText('www.qrz.com'),
+        PlainText(').'),
+      ]);
+    });
+
     test('finds callsigns', () {
       expect(inlinePieces('73 de M0LTE and 2E0DEF, G8BPQ-7 via GB7RDG'), const [
         PlainText('73 de '),

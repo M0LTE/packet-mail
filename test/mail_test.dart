@@ -304,6 +304,25 @@ void main() {
     await app.dispose(tester);
   });
 
+  testWidgets('a link that cannot be opened says so', (tester) async {
+    final app = TestApp();
+    final c = await seedStation(app, tester);
+    await addMessage(app, tester, c, number: 31, subject: 'Bad link', body: 'Look at https://example.com today.\n\n73');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/url_launcher'),
+      (call) async => false,
+    );
+    await app.pump(tester);
+    await settleAll(app, tester);
+    await tester.tap(find.text('Bad link'));
+    await settleAll(app, tester);
+
+    await tester.tapOnText(find.textRange.ofSubstring('https://example.com'));
+    await tester.pump();
+    expect(find.text("Can't open that link."), findsOneWidget);
+    await app.dispose(tester);
+  });
+
   testWidgets('a message that cannot be downloaded says so and can be tried again', (tester) async {
     final app = TestApp();
     await seedStation(app, tester);
@@ -495,7 +514,8 @@ void main() {
       c,
       number: 32,
       subject: 'Forwarding',
-      body: 'Mail for Italy goes via IW2OHX.ILOM.ITA.EU now.\n\n'
+      body:
+          'Mail for Italy goes via IW2OHX.ILOM.ITA.EU now.\n\n'
           'BBS       Route\n'
           'IW2OHX    IW2OHX.ILOM.ITA.EU\n'
           'GB7RDG    GB7RDG.#42.GBR.EURO\n',

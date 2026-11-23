@@ -497,6 +497,15 @@ class _ParagraphState extends State<_Paragraph> {
     return t;
   }
 
+  Future<void> _open(LinkText link) async {
+    final messenger = ScaffoldMessenger.of(context);
+    var opened = false;
+    try {
+      opened = await launchUrl(link.uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!opened) messenger.showSnackBar(const SnackBar(content: Text("Can't open that link.")));
+  }
+
   @override
   Widget build(BuildContext context) {
     for (final t in _taps) {
@@ -528,7 +537,7 @@ class _ParagraphState extends State<_Paragraph> {
                 next(p.text),
                 defaultText: ink,
                 extra: const TextStyle(color: Logbook.stampRed, decoration: TextDecoration.underline),
-                recognizer: _tap(() => launchUrl(p.uri, mode: LaunchMode.externalApplication)),
+                recognizer: _tap(() => _open(p)),
               ),
               CallsignText() || RouteText() => styledSpans(
                 p.text,

@@ -394,7 +394,9 @@ final class RouteText extends InlinePiece {
   String toString() => 'Route($text)';
 }
 
-final _link = RegExp(r'(?:https?://|www\.)[^\s<>"]+', caseSensitive: false);
+/// A scheme or `www.`, a host, an optional port, then an optional path. The host
+/// stops at a colon, so `www.example.net::official` links `www.example.net` only.
+final _link = RegExp(r'(?:https?://|www\.)[^\s<>"/?#:]+(?::\d+)?(?:[/?#][^\s<>"]*)?', caseSensitive: false);
 
 /// Amateur callsigns: a prefix of one or two letters, a digit and a letter,
 /// or a letter and a digit; then a digit and one to four letters. Then an
