@@ -25,7 +25,13 @@ class TcpTransport implements Transport {
   @override
   Future<void> write(List<int> bytes, {bool secret = false}) async {
     _socket.add(bytes);
-    await _socket.flush();
+    // A socket the system suspended can leave a flush waiting for ever.
+    try {
+      await _socket.flush().timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      _socket.destroy();
+      throw const SocketException('The connection stopped responding.');
+    }
   }
 
   /// Closes at once. Waiting for the BBS to close its side can take half a

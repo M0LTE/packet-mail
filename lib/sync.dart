@@ -60,6 +60,25 @@ class SyncController extends Notifier<Set<int>> {
   @override
   Set<int> build() => const {};
 
+  DateTime? _wentAway;
+  DateTime? _lastFinished;
+
+  /// The app left the screen.
+  void wentToBackground() => _wentAway ??= ref.read(clockProvider)();
+
+  /// The app is back. After a while away, checks mail, unless a sync is
+  /// still running (left to finish or time out) or one finished within the
+  /// last minute.
+  Future<void> cameBack() async {
+    final now = ref.read(clockProvider)();
+    final away = _wentAway == null ? Duration.zero : now.difference(_wentAway!);
+    _wentAway = null;
+    if (away < const Duration(seconds: 5) || state.isNotEmpty) return;
+    final last = _lastFinished;
+    if (last != null && now.difference(last) < const Duration(minutes: 1)) return;
+    await syncAll();
+  }
+
   /// Syncs every connection at once and returns when all have finished.
   Future<void> syncAll() async {
     final store = ref.read(storeProvider);
@@ -72,7 +91,10 @@ class SyncController extends Notifier<Set<int>> {
     try {
       return await ref.read(syncEngineProvider).sync(connectionId);
     } finally {
-      if (ref.mounted) state = {...state}..remove(connectionId);
+      if (ref.mounted) {
+        _lastFinished = ref.read(clockProvider)();
+        state = {...state}..remove(connectionId);
+      }
     }
   }
 }

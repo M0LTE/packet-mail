@@ -28,7 +28,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   var _tab = 0;
 
   /// Each tab keeps its own stack of screens, so the bar stays put and
@@ -56,6 +56,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Check for mail whenever the app opens.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(syncingProvider.notifier).syncAll();
@@ -63,7 +64,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final sync = ref.read(syncingProvider.notifier);
+    switch (state) {
+      case AppLifecycleState.hidden || AppLifecycleState.paused:
+        sync.wentToBackground();
+      case AppLifecycleState.resumed:
+        sync.cameBack().ignore();
+      case AppLifecycleState.inactive || AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     for (final p in _panes) {
       p.dispose();
     }
