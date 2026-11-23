@@ -22,6 +22,18 @@ class SessionClosed implements Exception {
   String toString() => 'SessionClosed; got ${jsonEncode(received)}';
 }
 
+/// Thrown when text that means the conversation is over arrives while we are
+/// waiting for something else (see the `abortOn` argument of
+/// [LineSession.readUntil]).
+class SessionInterrupted implements Exception {
+  SessionInterrupted(this.received);
+
+  /// Everything received, up to and including the interrupting text.
+  final String received;
+  @override
+  String toString() => 'SessionInterrupted; got ${jsonEncode(received)}';
+}
+
 /// Text conversation over a [Transport]: send lines, wait for prompts.
 ///
 /// Packet BBSes speak 8-bit text with CR line ends, so everything is Latin-1
@@ -73,8 +85,11 @@ class LineSession {
   /// The match is made on the text without escape sequences, and that is
   /// what comes back unless [keepCodes] is set. Codes after the last matched
   /// character stay for the next read.
+  ///
+  /// If [abortOn] appears first, without [pattern] having matched, throws
+  /// [SessionInterrupted] at once instead of waiting out the timeout.
   Future<String> readUntil(Pattern pattern,
-      {Duration timeout = const Duration(seconds: 30), bool keepCodes = false}) async {
+      {Duration timeout = const Duration(seconds: 30), bool keepCodes = false, Pattern? abortOn}) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
       final raw = _buffer.toString();
@@ -88,6 +103,7 @@ class LineSession {
           ..write(raw.substring(end));
         return keepCodes ? raw.substring(0, end) : clean.substring(0, match.end);
       }
+      if (abortOn != null && abortOn.allMatches(clean).isNotEmpty) throw SessionInterrupted(clean);
       if (_closed) throw SessionClosed(clean);
       final remaining = deadline.difference(DateTime.now());
       if (remaining <= Duration.zero) throw SessionTimeout(pattern, clean);

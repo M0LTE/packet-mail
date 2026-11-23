@@ -41,6 +41,10 @@ enum BbsErrorKind {
   /// The port answers like another kind (telnet or FBB), or another BBS
   /// type, than the one chosen.
   wrongPort,
+
+  /// The BBS signed off or handed the session back to the node when we had
+  /// not asked it to. The session is over; nothing more was sent.
+  sessionEnded,
 }
 
 /// Said when a node greets like XRouter but another BBS type was chosen.

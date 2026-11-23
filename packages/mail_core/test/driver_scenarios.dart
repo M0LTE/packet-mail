@@ -14,7 +14,7 @@ DateTime Function() scenarioClock = () => fixedNow;
 
 /// Most scenarios use ordinary accounts, known not to start the BBS by
 /// themselves; pass null for an account not yet known.
-BpqDriver driverFor(Transport t, BpqPort port, {bool? startsBbs = false, void Function(bool)? onStartsBbs}) =>
+BpqDriver driverFor(Transport t, BpqPort port, {bool? startsBbs = false, void Function(bool?)? onStartsBbs}) =>
     BpqDriver(t,
         port: port,
         timeout: const Duration(seconds: 10),
@@ -261,7 +261,7 @@ void defineScenarios(Connect connect) {
   // and learns which it is; once known, it no longer waits.
   for (final port in BpqPort.values) {
     test('an account that starts the BBS by itself, ${port.name} port', () async {
-      final learned = <bool>[];
+      final learned = <bool?>[];
       final d = driverFor(await connect('auto-start-${port.name}', port), port, startsBbs: null, onStartsBbs: learned.add);
       await d.logIn(user: 'auto', password: 'auto', name: 'Auto User');
       expect(learned, [true]);
@@ -277,7 +277,7 @@ void defineScenarios(Connect connect) {
     });
 
     test('an ordinary account, not yet known, ${port.name} port', () async {
-      final learned = <bool>[];
+      final learned = <bool?>[];
       final d = driverFor(await connect('ordinary-unknown-${port.name}', port), port, startsBbs: null, onStartsBbs: learned.add);
       await d.logIn(user: 'user', password: 'user', name: 'Tom User');
       expect(learned, [false]);
@@ -290,7 +290,7 @@ void defineScenarios(Connect connect) {
   // that takes 2.5 s to start: sending `BBS` as it starts crashes LinBPQ
   // 6.0.26.1 on the FBB port, so login must wait and not send it.
   test('a new user on a slow-starting account is not sent BBS', () async {
-    final learned = <bool>[];
+    final learned = <bool?>[];
     final t = SlowStart(await connect('slow-start-new-user', BpqPort.fbb));
     final d = driverFor(t, BpqPort.fbb, startsBbs: null, onStartsBbs: learned.add);
     await d.logIn(user: 'slow', password: 'slow', name: 'Slow User');

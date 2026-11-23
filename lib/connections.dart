@@ -199,7 +199,7 @@ String connectionKind(String bbsType, String portKind) {
 /// For LinBPQ, [startsBbs] is what is known about the account starting the
 /// BBS by itself, and [onStartsBbs] hears what login learns.
 MailDriver newDriver(String bbsType, PortKind portKind, Transport transport,
-        {required Duration timeout, bool? startsBbs, void Function(bool startsBbs)? onStartsBbs}) =>
+        {required Duration timeout, bool? startsBbs, void Function(bool? startsBbs)? onStartsBbs}) =>
     switch (BbsType.byId(bbsType)) {
       BbsType.bpq => BpqDriver(
           transport,

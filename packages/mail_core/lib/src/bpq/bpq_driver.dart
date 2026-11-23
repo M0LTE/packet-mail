@@ -50,14 +50,83 @@ class BpqDriver implements MailDriver {
   bool? get startsBbs => _startsBbs;
   bool? _startsBbs;
 
-  /// Told whenever [startsBbs] is learned or changes.
-  final void Function(bool startsBbs)? onStartsBbs;
+  /// Told whenever [startsBbs] is learned or changes, or forgotten (null).
+  final void Function(bool? startsBbs)? onStartsBbs;
 
-  void _learnStartsBbs(bool value) {
+  void _learnStartsBbs(bool? value) {
     if (_startsBbs == value) return;
     _startsBbs = value;
     onStartsBbs?.call(value);
   }
+
+  /// True once the BBS has ended the session without being asked to. Nothing
+  /// more is sent: the next line would reach the node, which matches commands
+  /// by their first letter too.
+  var _ended = false;
+
+  /// True if this session sent `BBS` itself, and false while no command has
+  /// been answered yet.
+  var _sentBbs = false;
+  var _answered = false;
+
+  /// The node's name as the banner gave it (`ALIAS:CALL`), if we saw it.
+  String? _node;
+
+  static const _endedMessage = 'The BBS ended the session. Try again in a moment.';
+
+  /// What the BBS being replaced by the node looks like: the node's
+  /// `Returned to Node ALIAS:CALL` line, and for a command the node answered
+  /// instead, its `ALIAS:CALL} ` header. The sign-off line before it is
+  /// configurable, so it is not relied on. The node's own name must match
+  /// when we know it, which keeps text in a message body from ending the
+  /// session. [body] leaves out the header form, as a message may quote one.
+  Pattern _endPattern({required bool body}) {
+    final node = _node == null ? r'[A-Z0-9#]*:[A-Z0-9]+(?:-\d+)?' : RegExp.escape(_node!);
+    final returned = 'Returned to Node $node\r';
+    return RegExp(body ? '(?:^|\r)$returned' : '(?:^|\r)$returned|(?:^|\r)$node\\} (?!Connected to BBS)');
+  }
+
+  /// The error for a session the BBS ended, closing it to further commands.
+  /// An unexpected end right after login, on a connection that sent `BBS`
+  /// itself, forgets the remembered answer to "does the account start the BBS
+  /// by itself", so the next session waits and looks before sending it.
+  BbsError _sessionEnded() {
+    _ended = true;
+    if (_sentBbs && !_answered && _startsBbs == false) _learnStartsBbs(null);
+    return BbsError(BbsErrorKind.sessionEnded, _endedMessage);
+  }
+
+  /// [LineSession.readUntil] that turns the BBS handing the session back to
+  /// the node into an error at once.
+  Future<String> _read(Pattern pattern, {bool keepCodes = false, bool body = false}) async {
+    try {
+      return await _session.readUntil(
+        pattern,
+        timeout: timeout,
+        keepCodes: keepCodes,
+        abortOn: _endPattern(body: body),
+      );
+    } on SessionInterrupted {
+      throw _sessionEnded();
+    }
+  }
+
+  /// Called before a command is sent. A BBS that has already signed off, or
+  /// is just about to (its sign-off line arrives with no prompt after it, and
+  /// the node's return follows a second later), must not be sent anything.
+  Future<void> _beforeCommand() async {
+    if (_ended) throw BbsError(BbsErrorKind.sessionEnded, _endedMessage);
+    final pending = _session.pending;
+    if (pending.trim().isEmpty) return;
+    final gone = _endPattern(body: true);
+    if (gone.allMatches(pending).isNotEmpty) throw _sessionEnded();
+    if (pending.contains(_promptOrThrow)) return;
+    if (await _session.sees(gone, timeout: _atMost(timeout, _signOffWait))) throw _sessionEnded();
+  }
+
+  /// How long the BBS may take to hand back to the node after signing off
+  /// (LinBPQ pauses a second first).
+  static const _signOffWait = Duration(seconds: 2);
 
   /// True after we sent `BBS` until the first command's reply: an account
   /// that starts the BBS by itself, but too slowly for us to see, answers it
@@ -84,6 +153,7 @@ class BpqDriver implements MailDriver {
   /// The BBS's callsign: its prompt (`de GB7RDG>`), or else its banner
   /// (`READNG:GB7RDG} Connected to BBS`).
   static final _promptCall = RegExp(r'^de ([A-Z0-9]+(?:-\d+)?)>\r$');
+  static final _bannerNode = RegExp(r'([A-Z0-9#]*:[A-Z0-9]+(?:-\d+)?)\} Connected to BBS');
   static final _bannerCall = RegExp(r'[A-Z0-9#]*:([A-Z0-9]+(?:-\d+)?)\} Connected to BBS');
 
   @override
@@ -189,6 +259,7 @@ class BpqDriver implements MailDriver {
     }
     _prompt = '${_anyPrompt.allMatches(text).last.group(1)}\r';
     _bbsCall = _promptCall.firstMatch(_prompt!)?.group(1) ?? banner;
+    _node = _bannerNode.firstMatch(text)?.group(1);
   }
 
   /// Sends `BBS` unless the BBS has started by itself: an account whose
@@ -212,15 +283,19 @@ class BpqDriver implements MailDriver {
     }
     await _session.sendLine('BBS');
     _mayHaveStray = true;
+    _sentBbs = true;
   }
 
   String get _promptOrThrow => _prompt ?? (throw StateError('Not logged in'));
 
   /// Sends a line and returns what came back before the prompt.
   Future<String> _exchange(String line) async {
+    await _beforeCommand();
     await _session.sendLine(line);
     final text = await _reply();
-    return _isStray(text) ? await _afterStray(_reply, text) : text;
+    final answer = _isStray(text) ? await _afterStray(_reply, text) : text;
+    _answered = true;
+    return answer;
   }
 
   /// True if [reply] (up to and without the prompt) is the stray answer to
@@ -254,7 +329,7 @@ class BpqDriver implements MailDriver {
   }
 
   Future<String> _reply() async {
-    final text = await _session.readUntil(_promptOrThrow, timeout: timeout);
+    final text = await _read(_promptOrThrow);
     return text.substring(0, text.length - _promptOrThrow.length);
   }
 
@@ -291,14 +366,16 @@ class BpqDriver implements MailDriver {
 
   @override
   Future<ReadMessage> read(int number) async {
+    await _beforeCommand();
     await _session.sendLine('R $number');
     final end = RegExp('\\[End of Message #$number from [^\\]\\r]*\\]\\r'
         '|(?:^|\\r)Message $number not (?:found|for you)\\r'
         '|(?:^|\\r)File for Message $number not found\\r');
     // The body may carry escape codes of its own, so they come too.
-    final raw = decodeMailText(_withoutStray(await _session.readUntil(end, timeout: timeout, keepCodes: true)));
+    final raw = decodeMailText(_withoutStray(await _read(end, keepCodes: true, body: true)));
     final text = stripAnsi(raw);
-    await _session.readUntil(_promptOrThrow, timeout: timeout);
+    await _read(_promptOrThrow, body: true);
+    _answered = true;
     if (text.contains('Message $number not found')) {
       throw BbsError(BbsErrorKind.notFound, 'Message $number is not on the BBS.');
     }
@@ -337,10 +414,10 @@ class BpqDriver implements MailDriver {
     if (title.isEmpty) throw ArgumentError.value(subject, 'subject', 'must not be empty (an empty title cancels)');
     if (title.length > maxTitleLength) throw ArgumentError.value(subject, 'subject', 'longer than $maxTitleLength');
 
+    await _beforeCommand();
     await _session.sendLine(command);
-    Future<String> firstReply() => _session.readUntil(
-        RegExp('Enter Title \\(only\\):\\r|${RegExp.escape(_promptOrThrow)}'),
-        timeout: timeout);
+    Future<String> firstReply() =>
+        _read(RegExp('Enter Title \\(only\\):\\r|${RegExp.escape(_promptOrThrow)}'));
     var first = await firstReply();
     if (_isStray(first.endsWith(_promptOrThrow) ? first.substring(0, first.length - _promptOrThrow.length) : '')) {
       first = await _afterStray(firstReply, first);
@@ -355,7 +432,7 @@ class BpqDriver implements MailDriver {
     final notes = said.where((l) => !l.startsWith('Enter Title')).toList();
 
     await _session.sendLine(title);
-    await _session.readUntil('Enter Message Text (end with /ex or ctrl/z)\r', timeout: timeout);
+    await _read('Enter Message Text (end with /ex or ctrl/z)\r');
     for (final line in escapeBody(body)) {
       await _session.sendLine(line);
     }
@@ -409,7 +486,7 @@ class BpqDriver implements MailDriver {
   @override
   Future<void> disconnect() async {
     try {
-      if (_prompt != null) {
+      if (_prompt != null && !_ended) {
         await _session.sendLine('B');
         await _session.readUntil('Disconnected', timeout: const Duration(seconds: 3));
       }

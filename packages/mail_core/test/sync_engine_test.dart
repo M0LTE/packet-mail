@@ -1565,6 +1565,19 @@ void main() {
       });
     });
 
+    test('the BBS ending the session while sending stops the sync and leaves the rest queued', () async {
+      await queue(['G8BPQ@GB7BPQ.#76.GBR.EU', 'M0LTE@GB7RDG.#42.GBR.EURO']);
+      bbs
+        ..addPersonal(10)
+        ..failOn = 'sendPersonal'
+        ..failure = BbsError(BbsErrorKind.sessionEnded, 'The BBS ended the session. Try again in a moment.');
+      final r = await engine.sync(conn);
+      expect(r.ok, isFalse);
+      expect(r.summary, 'Sync stopped: The BBS ended the session. Try again in a moment.');
+      expect((await recipients()).map((r) => r.state), ['sending', 'queued']);
+      expect(bbs.calls.where((c) => c.startsWith('sendPersonal')), hasLength(1));
+    });
+
     test('lost while sending: earlier sends kept, the rest stay queued', () async {
       await queue(['G8BPQ@GB7BPQ.#76.GBR.EU', 'M0LTE@GB7RDG.#42.GBR.EURO']);
       bbs

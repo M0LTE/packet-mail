@@ -598,7 +598,8 @@ class SyncEngine {
       final call = row.read<String>('call');
       try {
         if (!isCallsign(call) || await _homeBbs(driver, connection, s, call) == null) continue;
-      } on BbsError {
+      } on BbsError catch (e) {
+        if (e.kind == BbsErrorKind.sessionEnded) rethrow;
         continue;
       }
       final contact = await (store.select(store.contacts)..where((c) => c.callsign.equals(call))).getSingleOrNull();
@@ -668,6 +669,8 @@ class SyncEngine {
               state: const Value('sent'),
               note: Value([?note, 'The BBS already had it from an earlier try.'].join(' ')),
             );
+          case BbsErrorKind.sessionEnded:
+            rethrow;
           case BbsErrorKind.protocol when retry && tries < 2:
             continue;
           case BbsErrorKind.protocol:

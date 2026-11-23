@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mail_core/mail_core.dart';
@@ -38,7 +40,7 @@ void main() {
         ].map((l) => l.replaceAll('\r', r'\r')).join('\n'),
       ),
     );
-    final learned = <bool>[];
+    final learned = <bool?>[];
     final d = driverFor(t, BpqPort.fbb, onStartsBbs: learned.add);
     await d.logIn(user: 'user', password: 'user', name: 'x');
     expect(await d.lookUpHomeBbs('M0LTE'), 'GB7RDG.#42.GBR.EURO');
@@ -113,4 +115,115 @@ void main() {
     expect(BpqDriver.parseWhitePages('M0LTE', ['M0LTEX  GB7RDG.#42.GBR.EURO Tom']), isNull);
     expect(BpqDriver.parseWhitePages('M0LTE', ['Invalid Command']), isNull);
   });
+
+  group('the BBS ends the session by itself', () {
+    // Modelled on a field report; callsigns are made up.
+    Future<(BpqDriver, ReplayTransport, List<bool?>)> start(String fixture) async {
+      final t = ReplayTransport(Recording.parse(File('test/fixtures/driver/$fixture.jsonl').readAsStringSync()));
+      final learned = <bool?>[];
+      final d = driverFor(t, BpqPort.fbb, onStartsBbs: learned.add);
+      await d.logIn(user: 'user', password: 'user', name: 'x');
+      return (d, t, learned);
+    }
+
+    final ended = throwsA(isA<BbsError>().having((e) => e.kind, 'kind', BbsErrorKind.sessionEnded));
+
+    test('sign-off then the node answering our command: stops at once, sends nothing more', () async {
+      final (d, t, learned) = await start('signoff-after-command-fbb');
+      final clock = Stopwatch()..start();
+      await expectLater(d.lookUpHomeBbs('Q0USR'), ended);
+      expect(clock.elapsed, lessThan(const Duration(seconds: 2)));
+      // The recording ends after the node's reply, so any further send would be a mismatch.
+      await expectLater(d.listPersonal(), ended);
+      await d.disconnect();
+      expect(t.finished, isTrue);
+      // Ended right after login on a connection that sent BBS itself: forget what it knew.
+      expect(
+        [d.startsBbs, learned],
+        [
+          null,
+          [null],
+        ],
+      );
+    });
+
+    test('the sign-off arrives with the first prompt: the first command is never sent', () async {
+      final (d, t, learned) = await start('signoff-with-prompt-fbb');
+      await expectLater(d.listPersonal(), ended);
+      expect(t.finished, isTrue);
+      expect(learned, [null]);
+    });
+
+    test('a sign-off whose return to the node comes a second later is waited for, not sent into', () async {
+      final writes = <String>[];
+      late final StreamController<List<int>> rx;
+      rx = StreamController<List<int>>();
+      final t = _Scripted(rx, writes, (line) {
+        if (line == 'BBS\r') {
+          rx.add(latin1.encode('NODE:Q0NOD-7} Connected to BBS\r[BPQ-6.0.25.30-B2FWIHJM\$]\rde Q0NOD>\r73 de Q0NOD\r'));
+          Timer(const Duration(milliseconds: 400), () => rx.add(latin1.encode('Returned to Node NODE:Q0NOD-7\r')));
+        }
+      });
+      final d = driverFor(t, BpqPort.fbb);
+      await d.logIn(user: 'user', password: 'user', name: 'x');
+      await expectLater(d.lookUpHomeBbs('Q0USR'), ended);
+      expect(writes, ['user\r', 'PASSWORD\r', 'BBS\r']);
+    });
+
+    test('a connection that did not send BBS itself keeps what it knew', () async {
+      final t = ReplayTransport(
+        Recording.parse(
+          File('test/fixtures/driver/signoff-after-command-fbb.jsonl')
+              .readAsStringSync()
+              .replaceFirst(RegExp(r'\{"t":1.0,"dir":"tx","data":"BBS\\r"\}\n'), ''),
+        ),
+      );
+      final learned = <bool?>[];
+      final d = driverFor(t, BpqPort.fbb, startsBbs: true, onStartsBbs: learned.add);
+      await d.logIn(user: 'user', password: 'user', name: 'x');
+      await expectLater(d.lookUpHomeBbs('Q0USR'), ended);
+      expect([d.startsBbs, learned], [true, isEmpty]);
+    });
+
+    test('message text that looks like the node does not end a read', () async {
+      final t = ReplayTransport(
+        Recording.parse(
+          [
+            '{"dir":"tx","data":"user\r"}',
+            '{"dir":"tx","data":"PASSWORD\r","secret":true}',
+            '{"dir":"tx","data":"BBS\r"}',
+            '{"dir":"rx","data":"NODE:Q0NOD-7} Connected to BBS\r[BPQ-6.0.25.30-B2FWIHJM\$]\rde Q0NOD>\r"}',
+            '{"dir":"tx","data":"R 5\r"}',
+            '{"dir":"rx","data":"From: Q0USR\rTo: Q0OTH\rType/Status: PN\rDate/Time: 28-Oct 13:25Z\rBid: 5_Q0NOD\rTitle: Quoted\r\r'
+                'Returned to Node OTHER:Q0XYZ-1\r73 de Q0NOD\rNODE:Q0NOD-7} quoted\r\r\r[End of Message #5 from Q0USR]\rde Q0NOD>\r"}',
+          ].map((l) => l.replaceAll('\r', r'\r')).join('\n'),
+        ),
+      );
+      final d = driverFor(t, BpqPort.fbb);
+      await d.logIn(user: 'user', password: 'user', name: 'x');
+      // Another node's return line, and the node's header quoted in a body, are only text.
+      expect((await d.read(5)).body, contains('quoted'));
+    });
+  });
+}
+
+/// A transport that plays [onLine] for every line we send and records them.
+class _Scripted implements Transport {
+  _Scripted(this._rx, this._writes, this._onLine);
+  final StreamController<List<int>> _rx;
+  final List<String> _writes;
+  final void Function(String line) _onLine;
+
+  @override
+  Stream<List<int>> get incoming => _rx.stream;
+
+  @override
+  Future<void> write(List<int> bytes, {bool secret = false}) async {
+    final line = latin1.decode(bytes);
+    _writes.add(secret ? 'PASSWORD\r' : line);
+    _onLine(line);
+  }
+
+  @override
+  Future<void> close() async {}
 }

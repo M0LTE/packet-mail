@@ -1,0 +1,9 @@
+# Hand-made, modelled on a field report, not recorded: the BBS signs off and
+# the session returns to the node, then the node answers the command meant
+# for the BBS. Made-up callsigns (Q0...). Do not refresh.
+{"t":1.0,"dir":"tx","data":"user\r"}
+{"t":1.0,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":1.0,"dir":"tx","data":"BBS\r"}
+{"t":1.3,"dir":"rx","data":"NODE:Q0NOD-7} Connected to BBS\r[BPQ-6.0.25.30-B2FWIHJM$]\rde Q0NOD>\r"}
+{"t":2.4,"dir":"tx","data":"I Q0USR\r"}
+{"t":2.5,"dir":"rx","data":"73 de Q0NOD\rReturned to Node NODE:Q0NOD-7\rNODE:Q0NOD-7} Node Q0USR not found\r"}
