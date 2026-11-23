@@ -181,3 +181,8 @@ Future<void> setStarred(MailStore store, int id, bool starred) =>
 /// Hides a message here; the next sync kills it on the BBS.
 Future<void> setPendingKill(MailStore store, int id, bool pending) =>
     (store.update(store.messages)..where((m) => m.id.equals(id))).write(MessagesCompanion(pendingKill: Value(pending)));
+
+/// Marks messages read or unread here; the app's own read state, so nothing
+/// goes to the BBS.
+Future<void> setMessagesRead(MailStore store, Iterable<int> ids, bool read) =>
+    (store.update(store.messages)..where((m) => m.id.isIn(ids))).write(MessagesCompanion(read: Value(read)));

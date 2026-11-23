@@ -13,6 +13,7 @@ import 'bulletin_compose_screen.dart';
 import 'mail_widgets.dart';
 import 'message_screen.dart';
 import 'layout.dart';
+import 'selection.dart';
 
 /// Bulletins grouped by category, then by area, or all of them newest first.
 class BulletinsTab extends ConsumerWidget {
@@ -28,6 +29,16 @@ class BulletinsTab extends ConsumerWidget {
     final connections = ref.watch(connectionsProvider).value ?? const [];
     final none = connections.isNotEmpty && ref.watch(connectionsWithProvider(DriverCapability.bulletins)).isEmpty;
     final byDate = ref.watch(bulletinsByDateProvider);
+    ref.listen(bulletinsByDateProvider, (_, _) => ref.read(selectionProvider.notifier).clear());
+    const scope = 'bulletins:date';
+    final selection = ref.watch(selectionProvider);
+    final selecting = byDate && all != null && selection?.scope == scope;
+    final picked = selecting
+        ? [
+            for (final m in all)
+              if (selection!.ids.contains(m.id)) m,
+          ]
+        : const <Message>[];
 
     return Scaffold(
       body: SafeArea(
@@ -35,36 +46,40 @@ class BulletinsTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
-              child: Row(
-                children: [
-                  // The title gives way before the Subscriptions button is cut short.
-                  const Expanded(flex: 2, child: ListTitle('Bulletins')),
-                  if (!none) ...[
-                    Flexible(
-                      flex: 3,
-                      child: TextButton(
-                        onPressed: () =>
-                            Navigator.of(context)
-                                .push(MaterialPageRoute<void>(builder: (_) => const SubscriptionsScreen())),
-                        child: Text(
-                          subs.isEmpty ? 'Subscriptions' : 'Subscriptions ${subs.length}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+            if (selecting)
+              SelectHeader(visible: [for (final m in all) m.id])
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+                child: Row(
+                  children: [
+                    // The title gives way before the Subscriptions button is cut short.
+                    const Expanded(flex: 2, child: ListTitle('Bulletins')),
+                    if (!none) ...[
+                      Flexible(
+                        flex: 3,
+                        child: TextButton(
+                          onPressed: () =>
+                              Navigator.of(context)
+                                  .push(MaterialPageRoute<void>(builder: (_) => const SubscriptionsScreen())),
+                          child: Text(
+                            subs.isEmpty ? 'Subscriptions' : 'Subscriptions ${subs.length}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      key: const ValueKey('new-bulletin'),
-                      tooltip: 'New bulletin',
-                      icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
-                      onPressed: () => openBulletinCompose(context),
-                    ),
+                      if (byDate && all != null && all.isNotEmpty) const SelectButton(scope: scope),
+                      IconButton(
+                        key: const ValueKey('new-bulletin'),
+                        tooltip: 'New bulletin',
+                        icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+                        onPressed: () => openBulletinCompose(context),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
             Padding(
               padding: EdgeInsets.fromLTRB(20, 0, unread > 0 ? 8 : 20, unread > 0 ? 0 : 8),
               child: Row(
@@ -125,14 +140,14 @@ class BulletinsTab extends ConsumerWidget {
                       ),
                     if (byDate)
                       for (final m in all ?? const <Message>[])
-                        BulletinRow(message: m, from: 'Bulletins', showWhere: true)
+                        BulletinRow(message: m, from: 'Bulletins', showWhere: true, scope: scope)
                     else
                       for (final g in groups) _CategoryBlock(group: g, subscriptions: subs),
                   ],
                 ),
               ),
             ),
-            const SyncStatusBar(),
+            if (selecting) SelectBar(picked: picked, noun: 'bulletin') else const SyncStatusBar(),
           ],
         ),
       ),
@@ -316,37 +331,54 @@ class BulletinListScreen extends ConsumerWidget {
         if (categoryOf(m) == category && (area == null || areaOf(m) == area)) m,
     ];
     final isCovered = covered(subs, category, area);
+    final scope = 'bulletins:$category/${area ?? '*'}';
+    final selection = ref.watch(selectionProvider);
+    final selecting = selection?.scope == scope;
+    final picked = selecting
+        ? [
+            for (final m in list)
+              if (selection!.ids.contains(m.id)) m,
+          ]
+        : const <Message>[];
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        centerTitle: false,
-        titleSpacing: 8,
-        toolbarHeight: 40,
-        title: TextButton.icon(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.chevron_left, size: 20),
-          label: const Text('Bulletins'),
-          style: TextButton.styleFrom(textStyle: text.bodyMedium, padding: const EdgeInsets.symmetric(horizontal: 4)),
-        ),
-        actions: [
-          if (list.any((m) => !m.read))
-            IconButton(
-              key: const ValueKey('list-mark-all-read'),
-              tooltip: 'Mark all read',
-              icon: const Icon(Icons.done_all, color: Logbook.inkSoft),
-              onPressed: () => markAllRead(context, ref, list),
+      bottomNavigationBar: selecting ? SelectBar(picked: picked, noun: 'bulletin') : null,
+      appBar: selecting
+          ? null
+          : AppBar(
+              automaticallyImplyLeading: false,
+              centerTitle: false,
+              titleSpacing: 8,
+              toolbarHeight: 40,
+              title: TextButton.icon(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.chevron_left, size: 20),
+                label: const Text('Bulletins'),
+                style: TextButton.styleFrom(
+                  textStyle: text.bodyMedium,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+              ),
+              actions: [
+                if (list.any((m) => !m.read))
+                  IconButton(
+                    key: const ValueKey('list-mark-all-read'),
+                    tooltip: 'Mark all read',
+                    icon: const Icon(Icons.done_all, color: Logbook.inkSoft),
+                    onPressed: () => markAllRead(context, ref, list),
+                  ),
+                if (list.isNotEmpty) SelectButton(scope: scope),
+                IconButton(
+                  tooltip: 'New bulletin',
+                  icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+                  onPressed: () => openBulletinCompose(context, category: category, area: area),
+                ),
+                const SizedBox(width: 4),
+              ],
             ),
-          IconButton(
-            tooltip: 'New bulletin',
-            icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
-            onPressed: () => openBulletinCompose(context, category: category, area: area),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          if (selecting) SafeArea(bottom: false, child: SelectHeader(visible: [for (final m in list) m.id])),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
             child: Row(
@@ -375,7 +407,7 @@ class BulletinListScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: Text('None here now.', style: text.titleMedium?.copyWith(color: Logbook.inkSoft)),
             ),
-          for (final m in list) BulletinRow(message: m, from: title),
+          for (final m in list) BulletinRow(message: m, from: title, scope: scope),
         ],
       ),
     );
@@ -384,9 +416,12 @@ class BulletinListScreen extends ConsumerWidget {
 
 /// A bulletin in a list. One with only its headers here offers Fetch.
 class BulletinRow extends ConsumerStatefulWidget {
-  const BulletinRow({super.key, required this.message, required this.from, this.showWhere = false});
+  const BulletinRow({super.key, required this.message, required this.from, this.showWhere = false, this.scope});
 
   final Message message;
+
+  /// The list's select-mode scope.
+  final String? scope;
 
   /// Whether to show its category and area, for a list that mixes them.
   final bool showWhere;
@@ -434,6 +469,7 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
       key: ('message', m.id),
       builder: (_) => MessageScreen(messageId: m.id, from: widget.from),
     );
+    final select = ref.rowSelection(widget.scope, m.id);
     if (ref.watch(compactListsProvider)) {
       return CompactRow(
         call: call,
@@ -441,11 +477,13 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
         when: listWhen(m.date, ref.watch(clockProvider)()),
         unread: unread,
         starred: m.starred,
-        onTap: open,
+        select: select,
+        onTap: select.onTap ?? open,
       );
     }
     return InkWell(
-      onTap: open,
+      onTap: select.onTap ?? open,
+      onLongPress: select.onLongPress,
       child: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Logbook.rule)),
@@ -454,7 +492,14 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CallsignStamp(call, faded: !unread),
+            if (select.selecting)
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(child: SelectTick(selected: select.selected)),
+              )
+            else
+              CallsignStamp(call, faded: !unread),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -502,7 +547,7 @@ class _BulletinRowState extends ConsumerState<BulletinRow> {
                         else
                           TextButton(
                             key: ValueKey('fetch-${m.id}'),
-                            onPressed: _fetch,
+                            onPressed: select.selecting ? null : _fetch,
                             style: TextButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                               padding: const EdgeInsets.symmetric(horizontal: 8),

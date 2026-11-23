@@ -28,6 +28,8 @@ Fixed behaviour throughout: no settings beyond what is listed here. The exceptio
 
 Replies (Tom, 2026-11-11): a Settings switch chooses writing above or below the quoted mail (below unless changed). The reply screen offers how much of the original to quote: all, the first 5 lines ending in a `> [...]` line, the last 5 lines starting with a `> [...]` line, or none. It starts on the first 5 lines, since long quotes cost airtime, and remembers the last choice. Changing it leaves the writing alone, and it goes quiet once the quote itself has been edited. A forward always carries the whole message.
 
+Selecting several messages (Tom, 2026-11-23): a Select button in the list header, or a long-press on a row, starts select mode in the Inbox and Starred lists and in the bulletin lists (per category or area, and By date). Sent and Outbox have no select mode, since a sent item has nothing to do to it from the list. Each row shows a tick circle where its stamp is. The header shows the count with Select all (then Select none) and Cancel, and a bar along the bottom offers Delete, Mark read or Mark unread, and Star or Unstar, using the single-message paths. On a phone the bar takes the tab bar's place; on a wide window it replaces the sync line at the foot of the list pane and leaves the open message alone. Delete is immediate with one Undo for the whole batch. Any action, Cancel, back, a mailbox switch or a tab change ends select mode.
+
 ## Layers
 
 From top to bottom:

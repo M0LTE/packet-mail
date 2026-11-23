@@ -7,6 +7,7 @@ import '../message_format.dart';
 import '../providers.dart';
 import '../sync.dart';
 import '../theme.dart';
+import 'selection.dart';
 
 /// A callsign in a small rubber-stamp box, tilted a little. Faded once read.
 class CallsignStamp extends StatelessWidget {
@@ -225,6 +226,7 @@ class CompactRow extends StatelessWidget {
     this.unread = false,
     this.starred = false,
     this.problem = false,
+    this.select,
     this.onTap,
   });
 
@@ -236,6 +238,9 @@ class CompactRow extends StatelessWidget {
 
   /// Something went wrong with it, such as a send that failed.
   final bool problem;
+
+  /// Set while the list is in select mode: a tick circle leads the row.
+  final RowSelection? select;
   final VoidCallback? onTap;
 
   @override
@@ -246,6 +251,7 @@ class CompactRow extends StatelessWidget {
     final colour = unread ? Logbook.ink : Logbook.inkSoft;
     return InkWell(
       onTap: onTap,
+      onLongPress: select?.onLongPress,
       child: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Logbook.rule)),
@@ -253,6 +259,10 @@ class CompactRow extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 7, 20, 7),
         child: Row(
           children: [
+            if (select?.selecting ?? false) ...[
+              SelectTick(selected: select!.selected, size: 20),
+              const SizedBox(width: 10),
+            ],
             SizedBox(
               width: 8,
               child: unread

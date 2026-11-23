@@ -15,6 +15,7 @@ import 'held_screen.dart';
 import 'layout.dart';
 import 'message_screen.dart';
 import 'outgoing_screen.dart';
+import 'selection.dart';
 
 /// Inbox, Outbox, Sent and Starred, with the sync status underneath.
 class MailTab extends ConsumerStatefulWidget {
@@ -38,26 +39,45 @@ class _MailTabState extends ConsumerState<MailTab> {
     final identity = ref.watch(identityProvider).value;
     final connections = ref.watch(connectionsProvider).value ?? const [];
     final via = connections.map((c) => c.name).join(', ');
+    ref.listen(mailboxProvider, (_, _) => ref.read(selectionProvider.notifier).clear());
+    // Only Inbox and Starred select: Outbox and Sent offer nothing to do to several at once.
+    final shown = switch (_box) {
+      Mailbox.inbox => ref.watch(inboxProvider).value,
+      Mailbox.starred => ref.watch(starredProvider).value,
+      _ => null,
+    }?.where((m) => !_hidden.contains(m.id)).toList();
+    final selection = ref.watch(selectionProvider);
+    final selecting = shown != null && selection?.scope == _scope;
+    final picked = selecting
+        ? [
+            for (final m in shown)
+              if (selection!.ids.contains(m.id)) m,
+          ]
+        : const <Message>[];
 
     return SafeArea(
       bottom: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
-            child: Row(
-              children: [
-                Expanded(child: ListTitle(_box.label)),
-                IconButton(
-                  key: const ValueKey('compose'),
-                  tooltip: 'New message',
-                  icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
-                  onPressed: () => openSheet<bool>(context, (_) => const ComposeScreen(), rootNavigator: true),
-                ),
-              ],
+          if (selecting)
+            SelectHeader(visible: [for (final m in shown) m.id])
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+              child: Row(
+                children: [
+                  Expanded(child: ListTitle(_box.label)),
+                  if (shown != null && shown.isNotEmpty) SelectButton(scope: _scope),
+                  IconButton(
+                    key: const ValueKey('compose'),
+                    tooltip: 'New message',
+                    icon: const Icon(Icons.edit_outlined, color: Logbook.stampRed),
+                    onPressed: () => openSheet<bool>(context, (_) => const ComposeScreen(), rootNavigator: true),
+                  ),
+                ],
+              ),
             ),
-          ),
           if (identity != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -84,11 +104,23 @@ class _MailTabState extends ConsumerState<MailTab> {
               },
             ),
           ),
-          const SyncStatusBar(),
+          if (selecting)
+            SelectBar(
+              picked: picked,
+              noun: 'message',
+              hide: (ids) => setState(() => _hidden.addAll(ids)),
+              unhide: (ids) {
+                if (mounted) setState(() => _hidden.removeAll(ids));
+              },
+            )
+          else
+            const SyncStatusBar(),
         ],
       ),
     );
   }
+
+  String get _scope => 'mail:${_box.name}';
 
   Widget _messages(AsyncValue<List<Message>> value, {required bool sections}) {
     final all = value.value;
@@ -123,6 +155,7 @@ class _MailTabState extends ConsumerState<MailTab> {
     final store = ref.read(storeProvider);
     return Dismissible(
       key: ValueKey('message-${m.id}'),
+      direction: ref.watch(selectionProvider)?.scope == _scope ? DismissDirection.none : DismissDirection.horizontal,
       background: _SwipeBackground(
         alignment: Alignment.centerLeft,
         icon: m.starred ? Icons.star_outline : Icons.star,
@@ -143,7 +176,7 @@ class _MailTabState extends ConsumerState<MailTab> {
       onDismissed: (_) => _delete(m),
       child: PaneHighlight(
         detail: ('message', m.id),
-        child: MessageRow(message: m, onTap: () => _open(m)),
+        child: MessageRow(message: m, scope: _scope, onTap: () => _open(m)),
       ),
     );
   }
@@ -328,10 +361,13 @@ class _MailboxSwitcher extends ConsumerWidget {
 
 /// A message in a list: stamp, sender, time, subject. Unread is darker.
 class MessageRow extends ConsumerWidget {
-  const MessageRow({super.key, required this.message, this.onTap});
+  const MessageRow({super.key, required this.message, this.onTap, this.scope});
 
   final Message message;
   final VoidCallback? onTap;
+
+  /// The list's select-mode scope; null for a list that cannot select.
+  final String? scope;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -339,6 +375,7 @@ class MessageRow extends ConsumerWidget {
     final call = bareCall(message.fromCall);
     final name = ref.watch(contactNamesProvider).value?[call];
     final unread = !message.read;
+    final select = ref.rowSelection(scope, message.id);
     if (ref.watch(compactListsProvider)) {
       return CompactRow(
         call: call,
@@ -346,11 +383,13 @@ class MessageRow extends ConsumerWidget {
         when: listWhen(message.date, ref.watch(clockProvider)()),
         unread: unread,
         starred: message.starred,
-        onTap: onTap,
+        select: select,
+        onTap: select.onTap ?? onTap,
       );
     }
     return InkWell(
-      onTap: onTap,
+      onTap: select.onTap ?? onTap,
+      onLongPress: select.onLongPress,
       child: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Logbook.rule)),
@@ -359,7 +398,14 @@ class MessageRow extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CallsignStamp(call, faded: !unread),
+            if (select.selecting)
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(child: SelectTick(selected: select.selected)),
+              )
+            else
+              CallsignStamp(call, faded: !unread),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

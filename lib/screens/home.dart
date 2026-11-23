@@ -19,6 +19,7 @@ import 'identity_screen.dart';
 import 'layout.dart';
 import 'mail_tab.dart';
 import 'report_screen.dart';
+import 'selection.dart';
 
 /// The app after first run: Mail, Bulletins, Contacts and Settings.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -86,6 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   void _select(int i) {
+    ref.read(selectionProvider.notifier).clear();
     if (i == _tab) {
       // Tapping the current tab again goes back to its top.
       _navigators[i].currentState?.popUntil((r) => r.isFirst);
@@ -99,6 +101,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
   /// A mailbox chosen in the sidebar.
   void _selectMailbox(Mailbox box) {
+    ref.read(selectionProvider.notifier).clear();
     if (_tab != 0) _select(0);
     _navigators[0].currentState?.popUntil((r) => r.isFirst);
     if (ref.read(mailboxProvider) != box) {
@@ -159,6 +162,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        // Back while selecting only stops selecting.
+        if (ref.read(selectionProvider) != null) {
+          ref.read(selectionProvider.notifier).clear();
+          return;
+        }
         if (wide && await (_panes[_tab].detailNavigator.currentState?.maybePop() ?? Future.value(false))) return;
         final nav = _navigators[_tab].currentState;
         if (nav != null && await nav.maybePop()) return;
@@ -172,28 +180,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           ? _wideLayout(context, lists, stack)
           : Scaffold(
               body: lists,
-              bottomNavigationBar: NavigationBar(
-                selectedIndex: _tab,
-                onDestinationSelected: _select,
-                destinations: const [
-                  NavigationDestination(icon: Icon(Icons.mail_outline), selectedIcon: Icon(Icons.mail), label: 'Mail'),
-                  NavigationDestination(
-                    icon: Icon(Icons.article_outlined),
-                    selectedIcon: Icon(Icons.article),
-                    label: 'Bulletins',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.people_outline),
-                    selectedIcon: Icon(Icons.people),
-                    label: 'Contacts',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.settings_outlined),
-                    selectedIcon: Icon(Icons.settings),
-                    label: 'Settings',
-                  ),
-                ],
-              ),
+              // The select bar takes the tab bar's place while selecting.
+              bottomNavigationBar: ref.watch(selectionProvider) != null
+                  ? null
+                  : NavigationBar(
+                      selectedIndex: _tab,
+                      onDestinationSelected: _select,
+                      destinations: const [
+                        NavigationDestination(
+                          icon: Icon(Icons.mail_outline),
+                          selectedIcon: Icon(Icons.mail),
+                          label: 'Mail',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.article_outlined),
+                          selectedIcon: Icon(Icons.article),
+                          label: 'Bulletins',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.people_outline),
+                          selectedIcon: Icon(Icons.people),
+                          label: 'Contacts',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.settings_outlined),
+                          selectedIcon: Icon(Icons.settings),
+                          label: 'Settings',
+                        ),
+                      ],
+                    ),
             ),
     );
   }
