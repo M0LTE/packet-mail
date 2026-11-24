@@ -290,6 +290,16 @@ void main() {
       expect(learned, [true]);
     });
 
+    test('a renamed BBS that is slow to print its SID is still the BBS', () async {
+      final (d, writes, learned, _) = rig((emit) {
+        emit('TEST:Q0TST} Connected to MAIL\r');
+        emit('${sid}Hello Tom. Latest Message is 1, Last listed is 0\rde Q0TST>\r', 5500);
+      }, (_, _) {});
+      await d.logIn(user: 'user', password: 'user', name: 'Tom');
+      expect(writes, ['user\r', 'PASSWORD\r']);
+      expect(learned, [true]);
+    });
+
     test('a start-up command that connects elsewhere fails the login and sends nothing', () async {
       final (d, writes, learned, _) = rig((emit) => emit('TEST:Q0TST} Connected to Q0FAR\r'), (_, _) {});
       await expectLater(d.logIn(user: 'user', password: 'user', name: 'Tom'), ended);

@@ -214,6 +214,9 @@ class BpqDriver implements MailDriver {
   /// as finished.
   static const _startupQuiet = Duration(milliseconds: 600);
 
+  /// How long after `Connected to` an application may take to show it is the BBS.
+  static const _connectedWait = Duration(seconds: 10);
+
   /// A new user's name prompt answered by a `BBS` line.
   static final _nameTaken = RegExp(r'(?:^|\r)Hello BBS\.');
 
@@ -325,8 +328,10 @@ class BpqDriver implements MailDriver {
         if (_connectedTo.hasMatch(_session.pending)) {
           // An application or link was started: the BBS under another name
           // (its SID follows the connect line, slowly), or something else.
-          final rest = _atMost(timeout, _bbsStartWait) - DateTime.now().difference(started);
-          if (rest > Duration.zero && await _session.sees(_insideBbs, timeout: rest)) {
+          // It gets its own, longer wait from here: a loaded node can take
+          // seconds to print the SID, and giving up early would blame the
+          // account's settings for a slow start.
+          if (await _session.sees(_insideBbs, timeout: _atMost(timeout, _connectedWait))) {
             _learnStartsBbs(true);
             return;
           }
