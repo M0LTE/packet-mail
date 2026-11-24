@@ -20,7 +20,7 @@ String describeConnectionProblem(Object e, {required String host, required int p
       TimeoutException() => _noReply(host),
       BbsError(kind: BbsErrorKind.loginFailed) =>
         'The BBS did not accept the login name or password. Check them and try again.',
-      BbsError(kind: BbsErrorKind.wrongPort || BbsErrorKind.sessionEnded) => e.message,
+      BbsError(kind: BbsErrorKind.wrongPort || BbsErrorKind.sessionEnded || BbsErrorKind.notBbs) => e.message,
       BbsError() => 'The BBS said something unexpected: ${e.message}',
       SessionTimeout() => 'The BBS stopped answering. Check the port kind matches the port.',
       SessionClosed() => 'The BBS hung up. Check the login name, password and port kind.',

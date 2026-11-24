@@ -204,6 +204,121 @@ void main() {
       // Another node's return line, and the node's header quoted in a body, are only text.
       expect((await d.read(5)).body, contains('quoted'));
     });
+
+  group('start-up output after the password, with real delays', () {
+    const sid = '[BPQ-6.0.26.1-B2FWIHJM\$]\r';
+    final ended = throwsA(isA<BbsError>().having((e) => e.kind, 'kind', BbsErrorKind.notBbs));
+
+    /// A scripted node: [onPassword] gets a way to emit text after a delay;
+    /// [onLine] answers every other line we send.
+    (BpqDriver, List<String>, List<bool?>, Stopwatch) rig(
+      void Function(void Function(String text, [int afterMs]) emit) onPassword,
+      void Function(String line, void Function(String text, [int afterMs]) emit) onLine,
+    ) {
+      final writes = <String>[];
+      final learned = <bool?>[];
+      final clock = Stopwatch()..start();
+      final rx = StreamController<List<int>>();
+      void emit(String text, [int afterMs = 0]) {
+        if (afterMs == 0) {
+          rx.add(latin1.encode(text));
+        } else {
+          Timer(Duration(milliseconds: afterMs), () => rx.add(latin1.encode(text)));
+        }
+      }
+
+      final t = _Scripted(rx, writes, (line) {
+        if (line == 'PASSWORD\r') return onPassword(emit);
+        onLine(line, emit);
+      });
+      final d = driverFor(t, BpqPort.fbb, startsBbs: null, onStartsBbs: learned.add);
+      return (d, writes, learned, clock);
+    }
+
+    const bbsUp = 'TEST:Q0TST} Connected to BBS\r$sid' 'Hello Tom. Latest Message is 1, Last listed is 0\rde Q0TST>\r';
+
+    test('output is waited out and discarded, then BBS is sent, and nothing is remembered', () async {
+      late int lastOutputMs;
+      late Stopwatch clock;
+      int? bbsAt;
+      final (d, writes, learned, c) = rig((emit) {
+        emit('TEST:Q0TST} Nodes\r');
+        emit('de Q0OLD>\r', 250);
+        lastOutputMs = clock.elapsedMilliseconds + 250;
+      }, (line, emit) {
+        if (line == 'BBS\r') {
+          bbsAt = clock.elapsedMilliseconds;
+          emit(bbsUp);
+        } else if (line == 'I Q0OTH\r') {
+          emit('Q0OTH  Q0TST.#42.GBR.EURO Olive  \rde Q0TST>\r');
+        }
+      });
+      clock = c;
+      await d.logIn(user: 'user', password: 'user', name: 'Tom');
+      // Not sent before the output had been quiet for most of 600 ms.
+      expect(bbsAt! - lastOutputMs, greaterThanOrEqualTo(500));
+      // The discarded text's `de Q0OLD>` was not taken for the prompt.
+      expect(d.bbsCall, 'Q0TST');
+      expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
+      expect(writes, ['user\r', 'PASSWORD\r', 'BBS\r', 'I Q0OTH\r']);
+      expect([d.startsBbs, learned], [null, isEmpty]);
+    });
+
+    test('the application under another name: its SID comes late, nothing is sent, yes is remembered', () async {
+      final (d, writes, learned, _) = rig((emit) {
+        emit('TEST:Q0TST} Connected to MAIL\r');
+        emit('$sid' 'Hello Tom. Latest Message is 1, Last listed is 0\rde Q0TST>\r', 1100);
+      }, (line, emit) {
+        if (line == 'I Q0OTH\r') emit('Q0OTH  Q0TST.#42.GBR.EURO Olive  \rde Q0TST>\r');
+      });
+      await d.logIn(user: 'user', password: 'user', name: 'Tom');
+      expect(d.bbsCall, 'Q0TST');
+      expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
+      expect(writes, ['user\r', 'PASSWORD\r', 'I Q0OTH\r']);
+      expect(learned, [true]);
+    });
+
+    test('a new user on such an account answers the name prompt with the name, not BBS', () async {
+      final (d, writes, learned, _) = rig((emit) {
+        emit('TEST:Q0TST} Connected to MAIL\r');
+        emit('${sid}Please enter your Name\r>\r', 1100);
+      }, (line, emit) {
+        if (line == 'Tom\r') emit('Hello Tom. Latest Message is 1, Last listed is 0\rde Q0TST>\r');
+      });
+      await d.logIn(user: 'user', password: 'user', name: 'Tom');
+      expect(writes, ['user\r', 'PASSWORD\r', 'Tom\r']);
+      expect(learned, [true]);
+    });
+
+    test('a start-up command that connects elsewhere fails the login and sends nothing', () async {
+      final (d, writes, learned, _) = rig((emit) => emit('TEST:Q0TST} Connected to Q0FAR\r'), (_, _) {});
+      await expectLater(d.logIn(user: 'user', password: 'user', name: 'Tom'), ended);
+      expect(writes, ['user\r', 'PASSWORD\r']);
+      expect([d.startsBbs, learned], [null, isEmpty]);
+    });
+
+    test('a header that arrives apart from the rest of the line is still the BBS', () async {
+      final (d, writes, learned, _) = rig((emit) {
+        emit('TEST:Q0TST} ');
+        emit('Connected to BBS\r${sid}Hello Tom. Latest Message is 1, Last listed is 0\rde Q0TST>\r', 120);
+      }, (_, _) {});
+      await d.logIn(user: 'user', password: 'user', name: 'Tom');
+      expect(writes, ['user\r', 'PASSWORD\r']);
+      expect(learned, [true]);
+    });
+
+    test('a node alias and call with lower case, dashes and underscores are still a node', () async {
+      final (d, writes, learned, _) = rig(
+        (emit) => emit('Nod_1:q0tst-1} Nodes\r'),
+        (line, emit) {
+          if (line == 'BBS\r') emit('Nod_1:q0tst-1} Connected to BBS\r${sid}de Q0TST>\r');
+        },
+      );
+      await d.logIn(user: 'user', password: 'user', name: 'Tom');
+      expect(writes, ['user\r', 'PASSWORD\r', 'BBS\r']);
+      expect([d.startsBbs, learned], [null, isEmpty]);
+    });
+  });
   });
 }
 
@@ -220,8 +335,9 @@ class _Scripted implements Transport {
   @override
   Future<void> write(List<int> bytes, {bool secret = false}) async {
     final line = latin1.decode(bytes);
-    _writes.add(secret ? 'PASSWORD\r' : line);
-    _onLine(line);
+    final shown = secret ? 'PASSWORD\r' : line;
+    _writes.add(shown);
+    _onLine(shown);
   }
 
   @override

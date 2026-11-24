@@ -42,6 +42,10 @@ enum BbsErrorKind {
   /// type, than the one chosen.
   wrongPort,
 
+  /// The login started something other than the BBS (the account's start-up
+  /// command or application is not the mail application). Nothing was sent.
+  notBbs,
+
   /// The BBS signed off or handed the session back to the node when we had
   /// not asked it to. The session is over; nothing more was sent.
   sessionEnded,

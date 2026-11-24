@@ -72,6 +72,9 @@ class BpqDriver implements MailDriver {
   /// The node's name as the banner gave it (`ALIAS:CALL`), if we saw it.
   String? _node;
 
+  static const _notBbsMessage =
+      "This login opens something other than the BBS. Check the account's settings on the node.";
+
   static const _endedMessage = 'The BBS ended the session. Try again in a moment.';
 
   /// What the BBS being replaced by the node looks like: the node's
@@ -81,7 +84,7 @@ class BpqDriver implements MailDriver {
   /// when we know it, which keeps text in a message body from ending the
   /// session. [body] leaves out the header form, as a message may quote one.
   Pattern _endPattern({required bool body}) {
-    final node = _node == null ? r'[A-Z0-9#]*:[A-Z0-9]+(?:-\d+)?' : RegExp.escape(_node!);
+    final node = _node == null ? _nodeName : RegExp.escape(_node!);
     final returned = 'Returned to Node $node\r';
     return RegExp(body ? '(?:^|\r)$returned' : '(?:^|\r)$returned|(?:^|\r)$node\\} (?!Connected to BBS)');
   }
@@ -153,8 +156,14 @@ class BpqDriver implements MailDriver {
   /// The BBS's callsign: its prompt (`de GB7RDG>`), or else its banner
   /// (`READNG:GB7RDG} Connected to BBS`).
   static final _promptCall = RegExp(r'^de ([A-Z0-9]+(?:-\d+)?)>\r$');
-  static final _bannerNode = RegExp(r'([A-Z0-9#]*:[A-Z0-9]+(?:-\d+)?)\} Connected to BBS');
-  static final _bannerCall = RegExp(r'[A-Z0-9#]*:([A-Z0-9]+(?:-\d+)?)\} Connected to BBS');
+  /// `ALIAS:CALL` as the node prints it before `}`: letters, digits and the
+  /// odd `#`, `-` or `_` (the alias and call are free text in the config).
+  static const _nodeName = r'[A-Za-z0-9#_-]*:[A-Za-z0-9#_-]+';
+
+  /// The banner names the application the node started, which is `BBS` unless
+  /// the sysop called it something else.
+  static final _bannerNode = RegExp('($_nodeName)\\} Connected to \\S+');
+  static final _bannerCall = RegExp('[A-Za-z0-9#_-]*:([A-Za-z0-9#_-]+)\\} Connected to \\S+');
 
   @override
   Set<DriverCapability> get capabilities => supported;
@@ -190,9 +199,16 @@ class BpqDriver implements MailDriver {
   /// header: what an account's own start-up command prints. A port's greeting
   /// (`Connected to ... Telnet Server`, CTEXT) has no such header, so it does
   /// not count.
-  static final _startupOutput = RegExp(r'(?:^|[\r\n])[A-Z0-9#]*:[A-Z0-9]+(?:-\d+)?\} (?!Connected to BBS)');
+  static final _nodeHeader = RegExp('(?:^|[\\r\\n])$_nodeName\\} ');
 
-  static final _somethingStarted = RegExp('${_bbsStarted.pattern}|${_startupOutput.pattern}');
+  /// The node starting an application or a link: `Connected to BBS`, or
+  /// whatever the sysop called the application, or another node.
+  static final _connectedTo = RegExp(r'\} Connected to \S+');
+
+  /// The BBS itself, as opposed to the node: its SID or its name prompt.
+  static final _insideBbs = RegExp(r'\[BPQ-|Please enter your Name');
+
+  static final _somethingStarted = RegExp('${_bbsStarted.pattern}|${_nodeHeader.pattern}');
 
   /// How long a start-up command's output must stay quiet before it is taken
   /// as finished.
@@ -287,6 +303,7 @@ class BpqDriver implements MailDriver {
         break;
       case null:
         // Never send a line straight after the password here: LinBPQ 6.0.26.1 can crash on it (https://github.com/M0LTE/linbpq/issues/86).
+        final started = DateTime.now();
         final seen = await _session.sees(_somethingStarted, timeout: _atMost(timeout, _bbsStartWait));
         if (!seen) {
           _learnStartsBbs(false);
@@ -296,23 +313,33 @@ class BpqDriver implements MailDriver {
           _learnStartsBbs(true);
           return;
         }
-        if (_startupOutput.hasMatch(_session.pending)) {
-          // The account runs a command of its own (the application field can
-          // hold any node command): let its output finish, throw it away so it
-          // is not taken for a reply, and enter the BBS. Not remembered as
-          // "no": the BBS may still start by itself on a later day, and what
-          // happens must be looked at every time.
-          await _session.settle(quiet: _startupQuiet, max: _atMost(timeout, _bbsStartWait));
-          if (_bbsBanner.hasMatch(_session.pending)) {
+        if (!_nodeHeader.hasMatch(_session.pending)) return; // A login refusal: the caller reads it.
+        // The node is talking. Let it finish before deciding what it said, as
+        // the header may arrive apart from the rest.
+        final left = _atMost(timeout, _bbsStartWait) - DateTime.now().difference(started);
+        await _session.settle(quiet: _startupQuiet, max: left);
+        if (_bbsBanner.hasMatch(_session.pending)) {
+          _learnStartsBbs(true);
+          return;
+        }
+        if (_connectedTo.hasMatch(_session.pending)) {
+          // An application or link was started: the BBS under another name
+          // (its SID follows the connect line, slowly), or something else.
+          final rest = _atMost(timeout, _bbsStartWait) - DateTime.now().difference(started);
+          if (rest > Duration.zero && await _session.sees(_insideBbs, timeout: rest)) {
             _learnStartsBbs(true);
             return;
           }
-          _session.discard();
-          await _session.sendLine('BBS');
-          _sentBbs = true;
-          return;
+          throw BbsError(BbsErrorKind.notBbs, _notBbsMessage);
         }
-        // A login refusal: the caller reads it.
+        // The account runs a node command of its own (the application field
+        // can hold any): throw its output away so it is not taken for a
+        // reply, and enter the BBS. Not remembered as "no": what happens must
+        // be looked at every time.
+        _session.discard();
+        await _session.sendLine('BBS');
+        _mayHaveStray = true;
+        _sentBbs = true;
         return;
     }
     await _session.sendLine('BBS');

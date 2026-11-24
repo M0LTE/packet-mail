@@ -1,15 +1,15 @@
 # Recorded by driver_live_test.dart against test-bbs; do not edit.
 {"t":1.0,"dir":"tx","data":"startnode\r"}
 {"t":1.0,"dir":"tx","data":"PASSWORD\r","secret":true}
-{"t":1.026,"dir":"rx","data":"TEST:Q0TST} Nodes\r"}
-{"t":1.627,"dir":"tx","data":"BBS\r"}
-{"t":1.651,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
-{"t":1.721,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rPlease enter your Name\r>\r"}
-{"t":1.722,"dir":"tx","data":"Start Node\r"}
-{"t":1.823,"dir":"rx","data":"Hello Start Node. Latest Message is 10, Last listed is -10\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
-{"t":1.823,"dir":"tx","data":"I Q0OTH\r"}
-{"t":1.924,"dir":"rx","data":"Q0OTH  Q0TST.#42.GBR.EURO Olive Other  Reading \rde Q0TST>\r"}
-{"t":1.924,"dir":"tx","data":"L< Q0NOD\r"}
-{"t":2.025,"dir":"rx","data":"de Q0TST>\r"}
-{"t":2.025,"dir":"tx","data":"B\r"}
-{"t":3.126,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
+{"t":1.027,"dir":"rx","data":"TEST:Q0TST} Nodes\r"}
+{"t":1.629,"dir":"tx","data":"BBS\r"}
+{"t":1.653,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":1.724,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rPlease enter your Name\r>\r"}
+{"t":2.724,"dir":"tx","data":"Start Node\r"}
+{"t":2.836,"dir":"rx","data":"Hello Start Node. Latest Message is 10, Last listed is -10\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":2.836,"dir":"tx","data":"I Q0OTH\r"}
+{"t":2.937,"dir":"rx","data":"Q0OTH  Q0TST.#42.GBR.EURO Olive Other  Reading \rde Q0TST>\r"}
+{"t":2.938,"dir":"tx","data":"L< Q0NOD\r"}
+{"t":3.038,"dir":"rx","data":"de Q0TST>\r"}
+{"t":3.039,"dir":"tx","data":"B\r"}
+{"t":4.14,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}
