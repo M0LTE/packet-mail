@@ -1,0 +1,2 @@
+- Fixed: on some LinBPQ accounts the BBS ended the session straight after login, so mail could not be sent. Accounts set up to run a node command at login now work every time.
+- If a login opens something other than the BBS, the app says so and sends nothing.
