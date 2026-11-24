@@ -133,6 +133,23 @@ class LineSession {
     return true;
   }
 
+  /// Waits until nothing has arrived for [quiet] (or the transport closes, or
+  /// [max] has passed in all).
+  Future<void> settle({required Duration quiet, required Duration max}) async {
+    final deadline = DateTime.now().add(max);
+    while (!_closed && DateTime.now().isBefore(deadline)) {
+      final w = _waiter = Completer<void>();
+      try {
+        await w.future.timeout(quiet);
+      } on TimeoutException {
+        return;
+      }
+    }
+  }
+
+  /// Forgets what has arrived and not yet been read.
+  void discard() => _buffer.clear();
+
   /// [raw] without escape sequences, and where each of its characters came from.
   static (String, List<int>) _clean(String raw) {
     if (!raw.contains('\x1b')) return (raw, _Identity(raw.length));

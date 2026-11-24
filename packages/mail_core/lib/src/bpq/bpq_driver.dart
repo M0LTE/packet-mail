@@ -186,6 +186,18 @@ class BpqDriver implements MailDriver {
   /// Signs that the BBS started by itself (not a login refusal).
   static final _bbsBanner = RegExp(r'Connected to BBS|\[BPQ-|Please enter your Name');
 
+  /// A node command's reply, which always starts with the node's `ALIAS:CALL} `
+  /// header: what an account's own start-up command prints. A port's greeting
+  /// (`Connected to ... Telnet Server`, CTEXT) has no such header, so it does
+  /// not count.
+  static final _startupOutput = RegExp(r'(?:^|[\r\n])[A-Z0-9#]*:[A-Z0-9]+(?:-\d+)?\} (?!Connected to BBS)');
+
+  static final _somethingStarted = RegExp('${_bbsStarted.pattern}|${_startupOutput.pattern}');
+
+  /// How long a start-up command's output must stay quiet before it is taken
+  /// as finished.
+  static const _startupQuiet = Duration(milliseconds: 600);
+
   /// A new user's name prompt answered by a `BBS` line.
   static final _nameTaken = RegExp(r'(?:^|\r)Hello BBS\.');
 
@@ -275,11 +287,33 @@ class BpqDriver implements MailDriver {
         break;
       case null:
         // Never send a line straight after the password here: LinBPQ 6.0.26.1 can crash on it (https://github.com/M0LTE/linbpq/issues/86).
-        if (await _session.sees(_bbsStarted, timeout: _atMost(timeout, _bbsStartWait))) {
-          if (_bbsBanner.hasMatch(_session.pending)) _learnStartsBbs(true);
+        final seen = await _session.sees(_somethingStarted, timeout: _atMost(timeout, _bbsStartWait));
+        if (!seen) {
+          _learnStartsBbs(false);
+          break;
+        }
+        if (_bbsBanner.hasMatch(_session.pending)) {
+          _learnStartsBbs(true);
           return;
         }
-        _learnStartsBbs(false);
+        if (_startupOutput.hasMatch(_session.pending)) {
+          // The account runs a command of its own (the application field can
+          // hold any node command): let its output finish, throw it away so it
+          // is not taken for a reply, and enter the BBS. Not remembered as
+          // "no": the BBS may still start by itself on a later day, and what
+          // happens must be looked at every time.
+          await _session.settle(quiet: _startupQuiet, max: _atMost(timeout, _bbsStartWait));
+          if (_bbsBanner.hasMatch(_session.pending)) {
+            _learnStartsBbs(true);
+            return;
+          }
+          _session.discard();
+          await _session.sendLine('BBS');
+          _sentBbs = true;
+          return;
+        }
+        // A login refusal: the caller reads it.
+        return;
     }
     await _session.sendLine('BBS');
     _mayHaveStray = true;

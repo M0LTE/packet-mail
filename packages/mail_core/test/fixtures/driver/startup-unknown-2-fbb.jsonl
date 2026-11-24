@@ -1,0 +1,13 @@
+# Recorded by driver_live_test.dart against test-bbs; do not edit.
+{"t":0.999,"dir":"tx","data":"startnode\r"}
+{"t":1.0,"dir":"tx","data":"PASSWORD\r","secret":true}
+{"t":1.027,"dir":"rx","data":"TEST:Q0TST} Nodes\r"}
+{"t":1.628,"dir":"tx","data":"BBS\r"}
+{"t":1.652,"dir":"rx","data":"TEST:Q0TST} Connected to BBS\r"}
+{"t":1.723,"dir":"rx","data":"[BPQ-6.0.26.1-B2FWIHJM$]\rHello Start Node. Latest Message is 10, Last listed is -10\rPlease enter your Home BBS using the Home command.\rYou may also enter your QTH and ZIP/Postcode using qth and zip commands.\rde Q0TST>\r"}
+{"t":1.723,"dir":"tx","data":"I Q0OTH\r"}
+{"t":1.824,"dir":"rx","data":"Q0OTH  Q0TST.#42.GBR.EURO Olive Other  Reading \rde Q0TST>\r"}
+{"t":1.824,"dir":"tx","data":"L< Q0NOD\r"}
+{"t":1.925,"dir":"rx","data":"de Q0TST>\r"}
+{"t":1.925,"dir":"tx","data":"B\r"}
+{"t":3.026,"dir":"rx","data":"Disconnected from Node - Telnet Session kept\r\n"}

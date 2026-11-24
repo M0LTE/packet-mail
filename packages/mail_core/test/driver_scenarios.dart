@@ -304,4 +304,52 @@ void defineScenarios(Connect connect) {
     expect(await after.lookUpHomeBbs('Q0SLO'), isNull);
     await after.disconnect();
   });
+
+  // An account whose USER line names a node command of its own (here NODE)
+  // runs it after the password; its output is not the BBS, so login must not
+  // take it for a reply, and must not remember that the BBS is never started
+  // by the account: it looks every time. An older app that did remember "no"
+  // sends `BBS` at once, which then reaches the BBS ahead of the NODE line and
+  // signs it off; that session fails once, and the answer is forgotten.
+  for (final port in BpqPort.values) {
+    final ended = throwsA(isA<BbsError>().having((e) => e.kind, 'kind', BbsErrorKind.sessionEnded));
+
+    Future<void> works(String scenario, {bool? startsBbs, required List<bool?> learned}) async {
+      final d = driverFor(await connect(scenario, port), port, startsBbs: startsBbs, onStartsBbs: learned.add);
+      await d.logIn(user: 'startnode', password: 'startnode', name: 'Start Node');
+      expect(await d.lookUpHomeBbs('Q0OTH'), 'Q0TST.#42.GBR.EURO');
+      expect(await d.listSent('Q0NOD'), isEmpty);
+      await d.disconnect();
+    }
+
+    test('an account with a start-up command of its own works every time, ${port.name} port', () async {
+      final learned = <bool?>[];
+      await works('startup-unknown-1-${port.name}', learned: learned, startsBbs: null);
+      await works('startup-unknown-2-${port.name}', learned: learned, startsBbs: null);
+      expect(learned, isEmpty);
+    });
+
+    test('a remembered "no" fails once, then works every time, ${port.name} port', () async {
+      final learned = <bool?>[];
+      if (port == BpqPort.fbb) {
+        final t = await connect('startup-no-fail-fbb', port);
+        final d = driverFor(t, port, startsBbs: false, onStartsBbs: learned.add);
+        await expectLater(() async {
+          await d.logIn(user: 'startnode', password: 'startnode', name: 'Start Node');
+          await d.lookUpHomeBbs('Q0OTH');
+        }(), ended);
+        await d.disconnect();
+        expect([d.startsBbs, learned], [null, [null]]);
+      } else {
+        // The telnet port only answers after the start-up command has run,
+        // so `BBS` cannot overtake it: there is nothing to fail.
+        await works('startup-no-fail-telnet', learned: learned, startsBbs: false);
+        expect(learned, isEmpty);
+        learned.add(null);
+      }
+      await works('startup-no-after-1-${port.name}', learned: learned, startsBbs: null);
+      await works('startup-no-after-2-${port.name}', learned: learned, startsBbs: null);
+      expect(learned, [null]);
+    });
+  }
 }
